@@ -1,5 +1,7 @@
 # CrowdNav repository relationship and implementation guide
 
+> The new Waffle Pi-specific primary backend is `gazebo_sim/` in the parent repository. See [GAZEBO_TRAINING.md](GAZEBO_TRAINING.md). The pinned TurtleBot2i submodule and the original CrowdSim code remain historical reference assets, not the hardware used for the new Gazebo training.
+
 This guide describes the two independent Git repositories currently arranged as a parent checkout with a nested checkout:
 
 ```text

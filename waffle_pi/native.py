@@ -64,5 +64,5 @@ def profile_contract(args):
     if getattr(args,'waffle_gazebo',False):
         result.update(waffle_gazebo=True,waffle_gazebo_model_sha=args.waffle_gazebo_model_sha,
                       waffle_gazebo_worker_sha=args.waffle_gazebo_worker_sha,
-                      waffle_detector_sha=args.waffle_detector_sha)
+                      waffle_detector_sha=args.waffle_detector_sha,waffle_safety_sha=args.waffle_safety_sha)
     return result

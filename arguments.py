@@ -282,6 +282,7 @@ def get_args(argv=None):
     parser.add_argument('--waffle-gazebo-detector-device',default='cpu')
     parser.add_argument('--waffle-gazebo-model-sha',default=None,help=argparse.SUPPRESS)
     parser.add_argument('--waffle-gazebo-worker-sha',default=None,help=argparse.SUPPRESS)
+    parser.add_argument('--waffle-safety-sha',default=None,help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
     if args.waffle_gazebo:
         if not args.waffle_pi or not args.waffle_native_action:

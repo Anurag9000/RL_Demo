@@ -1,82 +1,247 @@
-# Gazebo-first Waffle Pi training
+# Gazebo-first TurtleBot3 Waffle Pi training
 
-Status: qualification foundation only. The existing tensor simulator is not
-Gazebo and remains a baseline. No Gazebo PPO integration or real sensor timing
-validation is claimed by this commit.
+## Status and model contract
 
-## Selected stack
+The Gazebo-specific trainer and experiment runners now select Gazebo, never an
+implicit tensor fallback. The native worker implementation must be built and
+qualified on a real Gazebo Harmonic installation. Python fixture tests are not
+physics tests; do not confuse the earlier tensor CI or a stationary GzDRL
+probe with a successful Gazebo PPO run. No calibrated policy, full training
+run, 10,000-world benchmark, or physical deployment result is supplied.
 
-Use ROS 2 Jazzy / Gazebo Harmonic on a compatible Ubuntu workstation, official
-ROBOTIS turtlebot3_simulations Jazzy model, and evaluate GzDRL as the native
-parallel stepping layer. Upstream GzDRL API inspected at commit
-3e5c5f9a62c1160b3b2889e6d34d794a5361e178 (MIT).
-https://github.com/amaldevh/gz-drl
-https://gz-drl.readthedocs.io/en/latest/
+Use Ubuntu 24.04, Gazebo Harmonic (gz-sim8, gz-transport13, gz-msgs10), and the
+official ROBOTIS Jazzy TurtleBot3 Waffle Pi SDF and mesh resources:
+https://github.com/ROBOTIS-GIT/turtlebot3_simulations/tree/jazzy
+The qualification workflow pins upstream commit
+45633014a14e8f438495b532a723e4ad45cbbd31. Robot name must be
+turtlebot3_waffle_pi; the two wheel joints, base joint, LDS, IMU and camera
+must be present. No Burger, generic differential-drive substitute, or
+TurtleBot2i. The original paper's simulator was custom 2D CrowdSim/ORCA.
 
-The original Waffle Pi SDF (inspected blob
-b898477ad9c9d702ecf22853913266fe1d295b6f) retains joints, contact, inertias,
-DiffDrive, GPU LiDAR, IMU, and camera. Nominal stock parameters are not
-measured hardware fidelity; calibrate floor friction, wheel controller,
-LDS revision, noise, timing and payload separately. The original friction
-parameters are explicitly described as unreliable in the SDF.
+## Architecture
 
-## Qualification fixture
+- gazebo_sim/world.py loads the installed official SDF, resolves meshes, retains
+  chassis, inertial data, wheels, joints, camera, IMU and LDS, inserts the
+  surveyed scene and adjusts calibrated wheel friction/slip and laser geometry.
+  The stock DiffDrive plugin is removed to prevent competing wheel writers.
+- gazebo_sim/worker.cc uses the Gazebo Server API and an in-process System.
+  Each request latches velocity commands before synchronous physics stepping.
+  Left/right wheel references use nominal firmware geometry, command-delay
+  queue, per-side gain/deadband/time constant and acceleration/braking limits;
+  bounded PI torque acts on the actual wheel joints. No base pose or velocity
+  override is used for the robot. This is an actuator emulator, not the OpenCR
+  or DYNAMIXEL firmware or a validated motor electrical model.
+- Native ground-truth pose, physical contacts, wheel feedback, quantized
+  encoder-derived odometry and timestamped GPU laser frames are separate.
+  Odom is integrated at physics steps; scan-time odom is interpolated. Wheel
+  encoder odom uses nominal .033 m / .287 m geometry; effective radii/track
+  from external measurements are calibration targets, not an additional
+  fictitious kinematic motion update. Confirm wheel contact and slip in logs.
+- gazebo_sim/worker.py gives each native server a unique Gazebo transport
+  partition. Sequence IDs, bounded response waits and explicit shutdown
+  prevent silent substitution of failed transitions. No ROS bridge to real
+  hardware is started. Workers persist within an episode; a full process
+  restart on reset deliberately clears physics, rendering and controller
+  state. This costs more than in-place reset and must be profiled.
+- gazebo_sim/vector_env.py runs independent worlds concurrently using a
+  thread pool. ORCA computes crowd commands in a batch; actual Gazebo bodies
+  produce leg-like LiDAR returns and collision surfaces. The people are
+  simplified two-leg/torso/head bodies with prescribed planar velocity, not
+  animated gait or independently validated human dynamics. Static obstacle
+  rejection and conservative clearance supplement contact detection; no
+  general obstacle-aware crowd planner is claimed.
+- Each world passes actual Gazebo GPU LiDAR frames through the shared
+  DR-SPAAM DetectorEngine, ROS geometry conversion, Kalman/Hungarian Tracker
+  and timestamped GST history. No ground-truth human state enters the
+  actor observation. One detector instance per world; current inference is
+  not batched across recurrent detector streams. Ground truth is used only
+  for reward, collision/termination, metrics and simulated crowd behavior.
+- The exact existing GST, HH/RH attention, GRU, actor/critic and latent native
+  action contract are reused. PPO stores the sampled latent action and log
+  probability, not the actuator-filtered command. Safety runs at a profile
+  interval (example .05 s) using the same safe_command and scan_coverage
+  functions as the Pi gate. Policy interval is .25 s. Perception faults block
+  motion and reset recurrent masks separately from GAE episode masks.
+- Rewards retain original terminal values, optional additive hardware-specific
+  shaping, GST future-intrusion penalty, and clearance/path metrics. The
+  configured time horizon is a task terminal; proper-time-limits bootstrap
+  is not supported in this backend. All rollout worlds use one behavior
+  policy until the synchronous PPO update finishes.
+- train.py and waffle_pi/evaluate.py select Gazebo through --waffle-gazebo.
+  scripts/train_gazebo.py sets the required native flags automatically.
+  Adaptive/portfolio/benchmark runners default to Gazebo; explicit tensor
+  or live/replay choices preserve prior experiments. DDP, masked GRU,
+  GPU rollout storage, GAE scan/Triton, compiled actor/GST, BF16/TF32,
+  fused Adam and CUDA Graph options remain available subject to their
+  existing constraints. Measured-reference mode refuses reduced precision
+  and graph/compile flags until separately qualified. Adaptive PPO preserves
+  Adam state, does curriculum, halving, PBT, KL feedback and early stopping.
+  DDP uses one local world pool per rank; multi-host execution is via
+  torchrun, not an automatic remote provisioning service.
 
-Install the official robot simulation packages and build GzDRL for Harmonic
-using its version-specific instructions in an isolated Python environment.
-Then generate a reference SDF:
+## Installation and native qualification
 
-```sh
-python -m waffle_pi.gazebo_world --model-sdf "$(ros2 pkg prefix --share turtlebot3_gazebo)/models/turtlebot3_waffle_pi/model.sdf" --output gazebo_runs/reference.sdf
-```
+Install Gazebo Harmonic per https://gazebosim.org/docs/harmonic/install_ubuntu/
+and native development packages libgz-sim8-dev, libgz-transport13-dev,
+libgz-msgs10-dev, nlohmann-json3-dev, cmake and g++. Install the official
+robot model using ROS 2 Jazzy packages or a pinned Jazzy source checkout.
+ROS is not required inside the training worker itself.
 
-The optional scene JSON contains rectangles_m (axis-aligned obstacles) and
-static_targets_m ([x,y,radius] stationary cylinders). This is not the dynamic
-training scene. Use an empty controlled simulator namespace and separate
-Gazebo partition; do not bridge to a physical robot.
+~~~sh
+cmake -S gazebo_sim -B build/gazebo -DCMAKE_BUILD_TYPE=Release
+cmake --build build/gazebo -j
+export WAFFLE_MODEL="$(ros2 pkg prefix --share turtlebot3_gazebo)/models/turtlebot3_waffle_pi/model.sdf"
+python -m scripts.qualify_gazebo --model "$WAFFLE_MODEL" --envs 1 --output gazebo_runs/qualification_1
+~~~
 
-```sh
-GZ_PARTITION=waffle_reference gz sim -s --headless-rendering gazebo_runs/reference.sdf
-```
+Install a compatible Python 3.10–3.12 and PyTorch build, then
+pip install -r requirements-waffle.txt. Install upstream trusted DR-SPAAM
+separately (https://github.com/RWTHVision/2D_lidar_person_detection).
+Its checkpoint is not bundled. The detector interface is shared with the ROS
+runtime. Set its actual SHA-256 in the profile detector.weights_sha256.
+Use the existing released GST and navigation checkpoints from this repository.
+Native qualification requires only Python/NumPy, not detector/PPO. It commands
+the simulated wheels, checks physical floor contact and movement, scan time
+ordering/ray counts, and records truth/odom/wheels. It is not physical
+calibration. A render or transport failure aborts. Run EGL/OGRE2 with a
+supported GPU/driver or qualify software rendering independently. Repeat with
+2, 4, 8, etc. worlds, never assuming linear scaling.
 
-Stop that server before the native pool probe, which owns its own servers.
+## Measured profile
 
-```sh
-python -m scripts.probe_gazebo_pool --world gazebo_runs/reference.sdf --envs 1 --output gazebo_runs/probe1.json
-```
+Copy configs/waffle_gazebo.example.json to a new file. The example is explicitly
+illustrative and is not a measured profile. Its detector hash is intentionally
+a placeholder; fill in a trusted checkpoint hash even for a pilot. The profile
+has hardware identity/LDS/firmware/floor/recording references, motor fits,
+laser sample count, angles, range, scan frequency, mounting extrinsics, noise,
+dropouts, gazebo physics/gate intervals, torque PI and limit parameters, contact
+friction/slip, pedestrian geometry and scene cases with train/validation/test
+splits. Select the actual LDS revision from observed LaserScan metadata, not
+from the example's nominal LDS-01-like settings. Measure actual wheel response,
+external motion truth, stopping distance, scan errors and detector accuracy
+using independent fit/holdout datasets (waffle_pi.identify). Calibrate mass,
+contact solver and payload against the actual robot as necessary; these are
+not automatically identified by the current scripts. The official SDF's
+nominal masses/inertias remain unchanged unless a reviewed model revision
+changes them.
 
-Only after successful execution repeat for 2, 4, 8, etc. in fresh processes.
-The probe measures physics and sensor retrieval, not PPO steps or scan
-freshness. EGL/OGRE2 support and native pool sensor compatibility must be
-checked on the actual host. Do not increase world count beyond memory or
-renderer capacity. A state-only probe is diagnostic, not a fidelity result.
+Set gazebo.model_sha256 from source_digest (includes the SDF and mesh bytes),
+gazebo.worker_sha256 from the compiled binary, and gazebo.safety_sha256 from the
+independent supervised safety record. Supply physics_calibration_record and
+hardware evidence, and status measured only after reviewing residuals. These
+checks verify provenance, not that a self-declared measured profile is correct.
+Measured mode requires surveyed cases for each crowd count and split, detector
+weights hash, safety file hash and model/worker hashes. The file must not
+change during continuation. Current SDF scene support is square outer boundary
+plus axis-aligned rectangles and explicit unobstructed pedestrian waypoints,
+not arbitrary map import. Add measured static geometry before final training.
 
-## Full rollout integration requirements
+## Actual PPO training
 
-- A native controller interface that writes the actual differential-drive
-  command or calibrated wheel actuator targets and waits for command
-  acceptance at a physics boundary. Do NOT use GzDRL base-link velocity
-  setters for robot actuation: they bypass the desired wheel physics.
-- Dynamic articulated or calibrated pedestrian models and surveyed layouts.
-  ORCA generates desired pedestrian motion; collision and sensor geometry
-  remain in Gazebo. Validate pedestrian trajectories and interaction response.
-- Physics substeps, timestamped fresh scan/odometry, wheel feedback, controller
-  delay, safety gate and sensor-to-policy processing with identical contracts
-  to the ROS runtime. Ground truth for reward/termination only.
-- Reset simulation, motor commands, sensor and detector memory, GST histories,
-  recurrent masks, and scenario RNG without leaking across episodes. GzDRL
-  warns against respawning models with rendered sensors enabled.
-- Integrate a Gazebo VecEnv with original GST, HH/RH attention, GRU, native
-  actor-critic and PPO. Preserve latent action log-probs, timeout bootstrap,
-  episode boundaries and contiguous recurrent minibatches.
-- Distribute native pools across CPU hosts, use batch inference/GAE/learner on
-  GPUs. Synchronize behavior-policy versions per rollout; no uncorrected stale
-  rollouts. Optimize data transfers and batching before reducing physics quality.
-- Compare complete pipeline results with unoptimized reference and real robot
-  logs, including contact, scan, detector, localization, commands and response.
-  GPU/Triton/compile and mixed precision require parity checks. Curriculum,
-  halving, PBT and checkpoint continuation can be reused after backend integration.
+Use a fresh output directory. For a native integration smoke test with an
+illustrative profile whose trusted detector hash is filled in:
 
-10,000 worlds is a scaling target, not an achieved or guaranteed capacity.
-Gazebo rendering, physics and perception resource consumption must be
-measured before selecting number of servers, worlds, hosts or GPUs.
+~~~sh
+export PROFILE=calibration/waffle_gazebo.json
+export DETECTOR=calibration/dr_spaam.pth
+python -m scripts.train_gazebo --waffle-gazebo-model "$WAFFLE_MODEL" \
+  --waffle-fidelity-profile "$PROFILE" --waffle-detector-weights "$DETECTOR" \
+  --waffle-init-cartesian --resume \
+  --load-path trained_models/GST_predictor_rand/checkpoints/41665.pt \
+  --no-cuda --num-processes 2 --num-mini-batch 1 \
+  --num-steps 4 --seq_length 4 --ppo-epoch 1 --num-env-steps 8 \
+  --waffle-humans 1 --save-training-state --output_dir experiments/gazebo_smoke
+~~~
+
+The smoke test proves only end-to-end execution. Use the same profile with
+measured values, actual independent safety calibration and
+--waffle-require-measured for final reference training. Training uses transfer
+learning and a native reinitialized action head; GST stays frozen. For a
+scratch control omit --resume and --waffle-init-cartesian. For continuation
+use --continue-state instead of weights-only resume, with matching contracts
+and new rollouts. A tensor-trained checkpoint is not a Gazebo learner state.
+
+### Concurrent curriculum and policy search
+
+~~~sh
+python -m scripts.train_adaptive --backend gazebo \
+  --gazebo-model "$WAFFLE_MODEL" --fidelity-profile "$PROFILE" \
+  --detector-weights "$DETECTOR" --safety-calibration calibration/safety.json \
+  --require-measured --gpus 0 --envs 4 --minibatches 2 \
+  --humans 4 --rung-updates 8 24 64 128 256 \
+  --mode hybrid --output experiments/gazebo_adaptive
+~~~
+
+The world count shown is a starting experiment, not a measured optimum. The
+scheduler uses scene split validation/test, confidence-aware ranking in
+measured mode, and a separate final evaluation. All candidates train in
+Gazebo. Different GPUs are independent learners; synchronous DDP is separate.
+The number of world processes across all ranks and learners is additive.
+Use CPU workers when no CUDA is available. The original paper's 20M steps
+are a reference, not a required budget or convergence guarantee.
+
+### Benchmarking and distributed rollout
+
+~~~sh
+python -m scripts.benchmark_sweep --backend gazebo --gazebo-model "$WAFFLE_MODEL" \
+  --fidelity-profile "$PROFILE" --detector-weights "$DETECTOR" \
+  --envs 2 4 8 --minibatches 1 2 --presets eager scan \
+  --output benchmarks/gazebo_fp32
+~~~
+
+Use --device cpu if needed; benchmark a specific crowd size with --humans.
+Benchmark logs/JSON report end-to-end rates, not physical performance.
+Advanced presets require supported CUDA and numerical parity testing. Do not
+reduce physics steps or skip required sensors just to increase reported FPS.
+For DDP use torchrun --nproc_per_node=N train.py --waffle-pi
+--waffle-native-action --waffle-gazebo plus the same model/profile/weight
+flags and normal trainer parameters. For multiple hosts use torchrun's
+documented rendezvous flags, identical source/model/weights and a shared or
+rank-zero accessible output directory. Native worker logs are per process.
+No 10,000-world deployment, remote cluster provisioning, GPU physics,
+shared-memory binary sensor transport, batched detector, in-place reset,
+or performance claim is included. GzDRL remains a separate qualification
+experiment, not the current actuation path.
+
+### Evaluation and physical validation
+
+Use the Gazebo trainer with --waffle-eval-episodes N,
+--waffle-scene-split test, --load-path PATH, --waffle-eval-json PATH and
+identical hardware profile/worker/weights. Keep run_args.json with the
+checkpoint; hashes prevent silent backend/model changes. Evaluate separately
+on held-out scenarios, independent seeds, repeated runs and physical recordings.
+Report success, collisions, timeouts, clearance quantiles, interventions,
+travel time/path length, and straight-line SPL. Wilson intervals are descriptive
+for correlated scenarios. Do not use simulator collision fractions as physical
+safety certification.
+
+The real ROS 2 path uses actual LDS, DR-SPAAM, timestamped tracker/GST,
+native actor, and independent Pi safety gate. Pass --fidelity-profile to
+the detector and policy; the detector verifies model parameters, weight hash
+and actual LDS geometry. Gazebo checkpoint motor-request mode additionally
+requires matching detector and safety files. Keep policy in shadow mode and
+gate in dry run until supervised calibration, firmware watchdog, e-stop,
+source exclusivity, ROS topic/TF timing and actual safe stopping tests pass.
+This does not automatically arm the robot. Raspberry Pi 4 deployment,
+firmware behavior, AMCL/SLAM, actual IMU fusion, command/network jitter,
+detector compute deadlines, leg gait and reflectivity, battery/load effects
+and multi-world native renderer behavior remain to be qualified or modeled.
+Camera and IMU exist in the official model; their complete streams are not
+currently fed to the navigation learner, matching the original architecture.
+
+## Validation commands
+
+~~~sh
+bash scripts/validate_waffle.sh
+python -m scripts.qualify_gazebo --model "$WAFFLE_MODEL" --envs 1 --output gazebo_runs/qualification_new
+~~~
+
+The native GitHub Actions job builds against Harmonic and attempts a real
+wheel/scan qualification with the pinned official SDF. Check its actual
+conclusion. It does not install DR-SPAAM weights or train the policy.
+Python integration fixtures use synthetic frames only to exercise the API,
+episode/reset semantics and separate recurrent masks. Native execution,
+detector inference, ROS integration and convergence are separate evidence.
+
+The stock Gazebo fixture remains available using waffle_pi.gazebo_world
+and scripts.probe_gazebo_pool for comparing against upstream DiffDrive.

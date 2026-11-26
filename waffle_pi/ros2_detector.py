@@ -24,6 +24,14 @@ class DetectorNode(Node):
         self.args=args
         self.geometry=self.detector=None
         self.last_stamp=None
+        self.profile=None
+        if args.fidelity_profile:
+            import hashlib
+            from .fidelity import read_profile
+            self.profile,_=read_profile(args.fidelity_profile)
+            d=self.profile['detector']
+            if hashlib.sha256(Path(args.weights).read_bytes()).hexdigest()!=d['weights_sha256'] or any(getattr(args,k)!=d[k] for k in ('model','stride','confidence','max_range')):
+                raise ValueError('Detector runtime differs from fidelity profile')
         self.pub=self.create_publisher(PoseArray,args.output_topic,qos_profile_sensor_data)
         self.create_subscription(LaserScan,args.input_topic,self.on_scan,qos_profile_sensor_data)
         self.get_logger().info('Detector is perception-only; waiting for LaserScan')
@@ -42,6 +50,12 @@ class DetectorNode(Node):
                 raise ValueError("Stale or invalid scan header")
             if self.last_stamp is not None and stamp<=self.last_stamp:
                 raise ValueError("Repeated or out-of-order scan")
+            if self.profile is not None:
+                laser=self.profile['laser']
+                if (len(msg.ranges)!=laser['rays'] or not math.isclose(msg.range_min,laser['range_min'],abs_tol=1e-5)
+                        or not math.isclose(msg.range_max,laser['range_max'],abs_tol=1e-5)
+                        or abs(math.remainder(msg.angle_min-laser['angle_min'],2*math.pi))>1e-4):
+                    raise ValueError('Live LDS metadata differs from fidelity profile')
             geometry=ScanGeometry.from_metadata(len(msg.ranges),msg.angle_min,msg.angle_max,msg.angle_increment)
             if self.detector is None:
                 self.initialize(geometry)
@@ -73,6 +87,7 @@ class DetectorNode(Node):
 def main():
     p=argparse.ArgumentParser()
     p.add_argument('--weights',required=True)
+    p.add_argument('--fidelity-profile')
     p.add_argument('--model',choices=['DR-SPAAM','DROW3'],default='DR-SPAAM')
     p.add_argument('--device',default='cpu')
     p.add_argument('--input-topic',default='/scan')

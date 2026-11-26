@@ -32,7 +32,7 @@ def validate_gazebo_profile(profile,measured=False):
         raise ValueError('Invalid calibrated wheel contact parameters')
     if not .025<=g['leg_radius_m']<=.15 or not .05<=g['leg_separation_m']<=.4:
         raise ValueError('Invalid pedestrian leg proxy')
-    if measured and (not g.get('physics_calibration_record') or not g.get('model_sha256') or not g.get('worker_sha256')):
+    if measured and (not g.get('physics_calibration_record') or not g.get('model_sha256') or not g.get('worker_sha256') or not g.get('safety_sha256')):
         raise ValueError('Measured Gazebo requires physics evidence and model/worker hashes')
     if not profile.get('scene'):
         raise ValueError('Gazebo requires an explicit scenario bank')

@@ -1,3 +1,5 @@
+> **Gazebo-first project direction:** See [GAZEBO_TRAINING.md](GAZEBO_TRAINING.md) for the primary official Waffle Pi Gazebo backend, native build, qualification, calibrated profile and training/evaluation. This document retains the earlier tensor and ROS baseline commands. For old adaptive/portfolio commands below add `--backend tensor` explicitly; benchmark commands must select `--backend live` or `--backend replay`. Do not use tensor throughput results as Gazebo results.
+
 # Waffle Pi experimental adaptation
 
 Opt-in simulation path preserving the Cartesian checkpoint action semantics.
@@ -391,7 +393,7 @@ candidate per listed GPU, starts another as soon as a slot frees up, then
 evaluates every successful candidate on a common held-out seed.
 
 ```sh
-python -m scripts.train_portfolio --output experiments/native_portfolio --gpus 0 1 --envs 256 --minibatches 16 --seeds 11 29 47 --lrs 0.00004 0.0001 --entropies 0 0.01 --transitions 1000000 --eval-episodes 100
+python -m scripts.train_portfolio --backend tensor --output experiments/native_portfolio --gpus 0 1 --envs 256 --minibatches 16 --seeds 11 29 47 --lrs 0.00004 0.0001 --entropies 0 0.01 --transitions 1000000 --eval-episodes 100
 ```
 
 On CPU use --cpu-workers 2 --envs 16 --minibatches 4; no CUDA needed.
@@ -434,7 +436,7 @@ of convergence. It cannot change a captured optimizer graph's LR.
 ### Adaptive concurrent portfolio
 
 ```sh
-python -m scripts.train_adaptive --output experiments/adaptive_native \
+python -m scripts.train_adaptive --backend tensor --output experiments/adaptive_native \
   --gpus 0 1 --mode hybrid --envs 256 --minibatches 16 \
   --rung-updates 8 24 64 128 256 --seeds 11 29 --lrs 0.00004 0.0001 \
   --entropies 0.001 0.01 --humans 4 --eval-episodes 64 --test-episodes 200

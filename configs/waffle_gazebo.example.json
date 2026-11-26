@@ -90,12 +90,12 @@
         "id": "illustrative-1-train",
         "split": "train",
         "robot_start": [
-          -1.5,
+          -1.3,
           -0.1,
           0
         ],
         "robot_goal": [
-          1.5,
+          1.3,
           -0.1
         ],
         "humans": [
@@ -123,12 +123,12 @@
         "id": "illustrative-1-validation",
         "split": "validation",
         "robot_start": [
-          -1.5,
+          -1.3,
           -0.020000000000000004,
           0.15
         ],
         "robot_goal": [
-          1.5,
+          1.3,
           -0.020000000000000004
         ],
         "humans": [
@@ -156,12 +156,12 @@
         "id": "illustrative-1-test",
         "split": "test",
         "robot_start": [
-          -1.5,
+          -1.3,
           0.06,
           0.3
         ],
         "robot_goal": [
-          1.5,
+          1.3,
           0.06
         ],
         "humans": [
@@ -189,12 +189,12 @@
         "id": "illustrative-2-train",
         "split": "train",
         "robot_start": [
-          -1.5,
+          -1.3,
           -0.1,
           0
         ],
         "robot_goal": [
-          1.5,
+          1.3,
           -0.1
         ],
         "humans": [
@@ -240,12 +240,12 @@
         "id": "illustrative-2-validation",
         "split": "validation",
         "robot_start": [
-          -1.5,
+          -1.3,
           -0.020000000000000004,
           0.15
         ],
         "robot_goal": [
-          1.5,
+          1.3,
           -0.020000000000000004
         ],
         "humans": [
@@ -291,12 +291,12 @@
         "id": "illustrative-2-test",
         "split": "test",
         "robot_start": [
-          -1.5,
+          -1.3,
           0.06,
           0.3
         ],
         "robot_goal": [
-          1.5,
+          1.3,
           0.06
         ],
         "humans": [
@@ -342,12 +342,12 @@
         "id": "illustrative-4-train",
         "split": "train",
         "robot_start": [
-          -1.5,
+          -1.3,
           -0.1,
           0
         ],
         "robot_goal": [
-          1.5,
+          1.3,
           -0.1
         ],
         "humans": [
@@ -429,12 +429,12 @@
         "id": "illustrative-4-validation",
         "split": "validation",
         "robot_start": [
-          -1.5,
+          -1.3,
           -0.020000000000000004,
           0.15
         ],
         "robot_goal": [
-          1.5,
+          1.3,
           -0.020000000000000004
         ],
         "humans": [
@@ -516,12 +516,12 @@
         "id": "illustrative-4-test",
         "split": "test",
         "robot_start": [
-          -1.5,
+          -1.3,
           0.06,
           0.3
         ],
         "robot_goal": [
-          1.5,
+          1.3,
           0.06
         ],
         "humans": [

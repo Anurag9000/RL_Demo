@@ -69,6 +69,13 @@ class Shadow(Node):
             _,digest=read_profile(opts.fidelity_profile,opts.enable_requests)
             if digest!=manifest['waffle_fidelity_sha']:
                 raise ValueError('Deployment fidelity profile hash mismatch')
+        if manifest.get('waffle_gazebo') and opts.enable_requests:
+            import hashlib
+            if not opts.safety_calibration or not opts.detector_weights:
+                raise ValueError('Gazebo checkpoint request mode requires matching detector and safety artifacts')
+            for path,key in ((opts.safety_calibration,'waffle_safety_sha'),(opts.detector_weights,'waffle_detector_sha')):
+                if hashlib.sha256(Path(path).read_bytes()).hexdigest()!=manifest.get(key):
+                    raise ValueError('Deployment artifact mismatch: '+key)
         self.model.load_state_dict(load_weights(opts.checkpoint,self.device),strict=True)
         self.model.eval()
         gst_args=load_gst_args(Path(opts.gst_dir)/'checkpoint'/'args.pickle')
@@ -229,6 +236,8 @@ def main():
     parser.add_argument('--waffle-native-action',action='store_true')
     parser.add_argument('--angular-speed',type=float,default=1.82)
     parser.add_argument('--fidelity-profile')
+    parser.add_argument('--safety-calibration')
+    parser.add_argument('--detector-weights')
     parser.add_argument('--enable-requests',action='store_true')
     opts,ros_args=parser.parse_known_args()
     if opts.waffle_native_action:

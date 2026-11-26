@@ -64,6 +64,10 @@ def configure(config, args):
             if not worker.is_file() or not os.access(worker,os.X_OK) or not math.isfinite(args.waffle_gazebo_timeout) or args.waffle_gazebo_timeout<=0:
                 raise ValueError('Build native Gazebo worker and set positive timeout')
             args.waffle_gazebo_worker_sha=hashlib.sha256(worker.read_bytes()).hexdigest()
+            if args.waffle_safety_calibration:
+                args.waffle_safety_sha=hashlib.sha256(Path(args.waffle_safety_calibration).read_bytes()).hexdigest()
+            if args.waffle_require_measured and g.get('safety_sha256')!=args.waffle_safety_sha:
+                raise ValueError('Safety calibration hash differs from measured profile')
             if args.waffle_require_measured and (g['model_sha256']!=args.waffle_gazebo_model_sha or g['worker_sha256']!=args.waffle_gazebo_worker_sha):
                 raise ValueError('Measured Gazebo model or worker hash mismatch')
             if args.waffle_dynamics_randomization or args.waffle_pose_drift or args.waffle_occlusion:
