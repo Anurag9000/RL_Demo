@@ -403,3 +403,73 @@ These are independent full-budget trials, not population-based training,
 early stopping, or successive halving. A common selection seed is not a
 final untouched test set; evaluate the chosen policy with further independent
 seeds and the calibrated physical profile. No policy is automatically deployed.
+
+
+## Adaptive convergence and resumable PPO
+
+For new native Waffle training, use `--save-training-state` to save
+`training_state.pt` atomically beside the ordinary inference checkpoints.
+The state includes model weights, every Adam moment/step and parameter group,
+learner update/transition counters, effective LR/entropy/clip, and Python,
+NumPy, PyTorch CPU and active CUDA RNG. To continue, use a NEW output directory
+and `--continue-state PATH` instead of `--resume --waffle-init-cartesian`.
+The transition budget is additional, not cumulative. This preserves full
+optimizer state but deliberately resets environment/recurrent histories and
+collects new on-policy experience. It is not bitwise simulator continuation.
+`--curriculum-transition` allows scenario/crowd-size changes while preserving
+hardware action/observation contract; trainable parameter names must match.
+`--retune-optimizer` explicitly changes LR/entropy/clip without dropping moments.
+`--fresh-continuation-rng` reseeds learner sampling for independent descendants.
+State continuation initially supports single-rank Waffle learners, not
+captured optimizer graphs, linear LR decay, or distributed state snapshots.
+
+`--adaptive-kl 0.01` enables per-update bounded LR feedback using the mean
+approximate KL over PPO minibatches (globally reduced in DDP). If KL is above
+1.5 times target, divide LR by 1.5; below target/1.5, multiply by 1.5; clamp to
+`--lr-min` and `--lr-max`. This is feedback, not a hard KL bound or a guarantee
+of convergence. It cannot change a captured optimizer graph's LR.
+
+### Adaptive concurrent portfolio
+
+```sh
+python -m scripts.train_adaptive --output experiments/adaptive_native \
+  --gpus 0 1 --mode hybrid --envs 256 --minibatches 16 \
+  --rung-updates 8 24 64 128 256 --seeds 11 29 --lrs 0.00004 0.0001 \
+  --entropies 0.001 0.01 --humans 4 --eval-episodes 64 --test-episodes 200
+```
+
+Specify only GPUs actually available; CPU alternative `--cpu-workers 2`.
+Each rung trains for the listed ADDITIONAL PPO updates per candidate, with
+one worker per device. All candidates in a rung use the same stage and
+validation seed. The default curriculum increases crowds 1 -> 2 -> 4 (for
+four target humans), gradually introduces configured noise/dropout/motor
+randomization, and enables configured occlusion/reactive humans/delay at
+the final stage. Hardware limits and safety margins never loosen during
+curriculum. `--promotion-success` optionally gates advancement on the best
+candidate's validation success; if it never reaches the final stage, no
+winner is reported. Noise defaults are zero until explicitly configured;
+use actual calibrated parameters. `--no-curriculum` starts at target difficulty.
+
+Modes: `halving` retains ceil(population/eta) each rung; `pbt` retains the
+population and replaces lower-ranked learners with elite model+Adam state,
+mutating LR/entropy/clip; `hybrid` combines both with a minimum survivor
+population. Every descendant uses fresh training seeds and fresh rollouts.
+No averaging weights, off-policy replay, or simulator-state copying.
+Each process restart may incur compilation/initialization cost; benchmark
+before enabling --compile for short rungs.
+
+Early stopping is based only on final-stage validation. A candidate must
+meet success, collision and intervention thresholds for --target-streak
+consecutive rungs (streak resets when exploited or difficulty changes).
+Optional --patience stops after stagnant final-stage validation rounds.
+A separate test seed is used once on the selected candidate. The result
+records whether both repeated validation and final test met targets;
+a ranked checkpoint is not automatically a converged or safe policy.
+`history.json` records all rungs, commands, lineage, pruned candidates,
+effective hyperparameters and metrics; `result.json` records the selection,
+stopping reason and test. Never use these simulator thresholds as physical
+safety certification. Default thresholds are illustrative and may be
+unattainable with the uncalibrated stopping model.
+
+The prior train_portfolio script remains a full-budget baseline. This
+adaptive scheduler targets reduced time-to-target, not demonstrated speedups.
