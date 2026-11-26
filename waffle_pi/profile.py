@@ -60,7 +60,8 @@ def configure(config, args):
             g=validate_gazebo_profile(config.fidelity,args.waffle_require_measured)
             args.waffle_gazebo_model_sha=source_digest(args.waffle_gazebo_model)
             worker=Path(args.waffle_gazebo_worker)
-            if not worker.is_file() or not math.isfinite(args.waffle_gazebo_timeout) or args.waffle_gazebo_timeout<=0:
+            import os
+            if not worker.is_file() or not os.access(worker,os.X_OK) or not math.isfinite(args.waffle_gazebo_timeout) or args.waffle_gazebo_timeout<=0:
                 raise ValueError('Build native Gazebo worker and set positive timeout')
             args.waffle_gazebo_worker_sha=hashlib.sha256(worker.read_bytes()).hexdigest()
             if args.waffle_require_measured and (g['model_sha256']!=args.waffle_gazebo_model_sha or g['worker_sha256']!=args.waffle_gazebo_worker_sha):

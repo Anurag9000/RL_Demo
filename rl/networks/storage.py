@@ -13,7 +13,7 @@ def _flatten_helper(T, N, _tensor):
 class RolloutStorage(object):
     """ The rollout buffer to store the agent's experience for PPO """
     def __init__(self, num_steps, num_processes, obs_shape, action_space,
-                 human_node_rnn_size, human_human_edge_rnn_size, compact_edges=False):
+                 human_node_rnn_size, human_human_edge_rnn_size, compact_edges=False, separate_rnn_masks=False):
 
         if isinstance(obs_shape, dict):
             self.obs = {}
@@ -45,6 +45,7 @@ class RolloutStorage(object):
         if action_space.__class__.__name__ == 'Discrete':
             self.actions = self.actions.long()
         self.masks = torch.ones(num_steps + 1, num_processes, 1)
+        self.rnn_masks = torch.ones_like(self.masks) if separate_rnn_masks else None
 
         # Masks that indicate whether it's a true terminal state
         # or time limit end state
@@ -52,6 +53,10 @@ class RolloutStorage(object):
 
         self.num_steps = num_steps
         self.step = 0
+
+    @property
+    def policy_masks(self):
+        return self.masks if self.rnn_masks is None else self.rnn_masks
 
     def to(self, device):
         for key in self.obs:
@@ -65,10 +70,12 @@ class RolloutStorage(object):
         self.action_log_probs = self.action_log_probs.to(device)
         self.actions = self.actions.to(device)
         self.masks = self.masks.to(device)
+        if self.rnn_masks is not None:
+            self.rnn_masks=self.rnn_masks.to(device)
         self.bad_masks = self.bad_masks.to(device)
 
     def insert(self, obs, recurrent_hidden_states, actions, action_log_probs,
-               value_preds, rewards, masks, bad_masks):
+               value_preds, rewards, masks, bad_masks, rnn_masks=None):
 
 
         for key in self.obs:
@@ -81,6 +88,8 @@ class RolloutStorage(object):
         self.value_preds[self.step].copy_(value_preds)
         self.rewards[self.step].copy_(rewards)
         self.masks[self.step + 1].copy_(masks)
+        if self.rnn_masks is not None:
+            self.rnn_masks[self.step+1].copy_(masks if rnn_masks is None else rnn_masks)
         self.bad_masks[self.step + 1].copy_(bad_masks)
 
         self.step = (self.step + 1) % self.num_steps
@@ -93,6 +102,8 @@ class RolloutStorage(object):
             self.recurrent_hidden_states[key][0].copy_(self.recurrent_hidden_states[key][-1])
 
         self.masks[0].copy_(self.masks[-1])
+        if self.rnn_masks is not None:
+            self.rnn_masks[0].copy_(self.rnn_masks[-1])
         self.bad_masks[0].copy_(self.bad_masks[-1])
 
     def compute_returns(self,
@@ -182,7 +193,7 @@ class RolloutStorage(object):
                                               self.actions.size(-1))[indices]
             value_preds_batch = self.value_preds[:-1].view(-1, 1)[indices]
             return_batch = self.returns[:-1].view(-1, 1)[indices]
-            masks_batch = self.masks[:-1].view(-1, 1)[indices]
+            masks_batch = self.policy_masks[:-1].view(-1, 1)[indices]
             old_action_log_probs_batch = self.action_log_probs.view(-1,
                                                                     1)[indices]
             if advantages is None:
@@ -205,5 +216,5 @@ class RolloutStorage(object):
             obs = {k:gather(v[:-1],ids) for k,v in self.obs.items()}
             hidden = {k:v[0].index_select(0,ids) for k,v in self.recurrent_hidden_states.items()}
             yield (obs, hidden, gather(self.actions,ids), gather(self.value_preds[:-1],ids),
-                   gather(self.returns[:-1],ids), gather(self.masks[:-1],ids),
+                   gather(self.returns[:-1],ids), gather(self.policy_masks[:-1],ids),
                    gather(self.action_log_probs,ids), gather(advantages,ids))

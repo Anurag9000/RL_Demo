@@ -74,6 +74,8 @@ def run(args):
                 total=total+reward.to(device).reshape(b)
                 done=torch.as_tensor(done,device=device,dtype=torch.bool)
                 masks=(~done).float().unsqueeze(-1)
+                if args.waffle_gazebo:
+                    masks=masks*(~env.venv.policy_reset).float().unsqueeze(-1)
                 active=completed<quota
                 counted_transitions+=int(active.sum().item())
                 accepted=done&active

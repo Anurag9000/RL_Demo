@@ -46,6 +46,10 @@ def source_digest(source):
     model=ET.parse(source).getroot().find('model')
     if model is None or model.get('name')!=MODEL:
         raise ValueError('Only official TurtleBot3 Waffle Pi is accepted')
+    if any(model.find("joint[@name='"+j+"']") is None for j in ('wheel_left_joint','wheel_right_joint','base_joint')):
+        raise ValueError('Missing official wheel or base joints')
+    if any(model.find(".//sensor[@type='"+s+"']") is None for s in ('gpu_lidar','imu','camera')):
+        raise ValueError('Missing official Waffle Pi sensors')
     for node in model.findall('.//mesh/uri'):
         if not node.text.startswith('model://'):
             raise ValueError('Expected installed model:// mesh resources')

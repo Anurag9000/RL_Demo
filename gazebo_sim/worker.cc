@@ -34,6 +34,12 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <iterator>
+#ifdef __linux__
+#include <sys/prctl.h>
+#include <unistd.h>
+#include <signal.h>
+#endif
 
 using json=nlohmann::json;
 using namespace gz::sim;
@@ -46,10 +52,10 @@ class Drive final: public System, public ISystemPreUpdate, public ISystemPostUpd
  public:
   explicit Drive(const json &cfg): cfg(cfg) {
     const auto &m=cfg.at("motor");
-    tau=m.at("tau_s"); accel=m.at("accel_rad_s2"); brake=m.at("brake_rad_s2");
-    gain=m.at("gain"); dead=m.at("deadband_rad_s");
-    kp=m.at("velocity_kp"); ki=m.at("velocity_ki"); torque=m.at("torque_limit_nm");
-    start=cfg.at("start"); odom=start;
+    tau=m.at("tau_s").get<Pair>(); accel=m.at("accel_rad_s2").get<Pair>(); brake=m.at("brake_rad_s2").get<Pair>();
+    gain=m.at("gain").get<Pair>(); dead=m.at("deadband_rad_s").get<Pair>();
+    kp=m.at("velocity_kp").get<Pair>(); ki=m.at("velocity_ki").get<Pair>(); torque=m.at("torque_limit_nm").get<Pair>();
+    start=cfg.at("start").get<Pose>(); odom=start;
     dt=cfg.at("dt");
     delay=std::llround(m.at("delay_s").get<double>()/dt);
     queue.assign(delay+1,Pair{0,0});
@@ -266,6 +272,9 @@ class Scans {
 void respond(const json& j){std::cout<<"WAFFLE_FRAME "<<j.dump()<<std::endl;}
 int main(int argc,char** argv) {
   try {
+    #ifdef __linux__
+    if(prctl(PR_SET_PDEATHSIG,SIGTERM)!=0||getppid()==1)throw std::runtime_error("parent process unavailable");
+    #endif
     if(argc!=3)throw std::runtime_error("usage: waffle_gazebo_worker world.sdf config.json");
     std::ifstream in(argv[2]);json cfg;in>>cfg;
     ServerConfig sc;sc.SetSdfFile(argv[1]);sc.SetHeadlessRendering(true);sc.SetSeed(cfg.at("seed").get<unsigned int>());
@@ -282,7 +291,7 @@ int main(int argc,char** argv) {
       if(command.at("op")!="step")throw std::runtime_error("unknown operation");
       auto n=command.at("iterations").get<uint64_t>();
       if(n==0||n>20000)throw std::runtime_error("invalid iteration count");
-      drive->command(command.at("v"),command.at("w"),command.at("humans"),command.at("stop"));
+      drive->command(command.at("v").get<double>(),command.at("w").get<double>(),command.at("humans").get<std::vector<Pair>>(),command.at("stop").get<bool>());
       double before=drive->simTime;
       if(!server.Run(true,n,false))throw std::runtime_error("Gazebo Run failed");
       double dt=cfg.at("dt");

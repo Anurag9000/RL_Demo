@@ -70,6 +70,7 @@ class PerWorld:
         self.scan=None
         self.points=None
         self.fault=True
+        self.reset_recurrent=True
         self.steps=0
         if self.detector is not None:
             self.detector.reset()
@@ -128,6 +129,7 @@ class PerWorld:
         xy=np.array([x,y],np.float32)
         valid=np.zeros(self.n,bool)
         rel=np.full((self.n,2),15.,np.float32)
+        previous_fault=self.fault
         self.fault=(self.points is None or self.last_stamp<=self.used_stamp
                     or self.state['time']-self.last_stamp>.5)
         if not self.fault:
@@ -148,6 +150,7 @@ class PerWorld:
             self.history.clear()
             valid[:]=False
             rel[:]=15.
+        self.reset_recurrent=previous_fault or self.fault
         hist,mask=self.history.sample(self.last_stamp)
         v=self.state['twist'][0]
         return dict(robot_node=np.asarray([[x,y,self.cfg.robot.radius,*self.goal,self.cfg.robot.v_pref,theta%(2*math.pi)]],np.float32),
@@ -266,6 +269,7 @@ class GazeboVecEnv(VecEnv):
     def reset(self):
         cases=[self._case(i) for i in range(self.n)]
         rows=list(self.pool.map(lambda x:x[0].reset(x[1]),zip(self.worlds,cases)))
+        self.policy_reset=torch.ones(self.n,device=self.device,dtype=torch.bool)
         return self._tensor(rows)
 
     def step_async(self,actions):
@@ -308,6 +312,7 @@ class GazeboVecEnv(VecEnv):
         resets=[(i,self._case(i)) for i,d in enumerate(done) if d]
         for i,o in self.pool.map(lambda x:(x[0],self.worlds[x[0]].reset(x[1])),resets):
             obs[i]=o
+        self.policy_reset=torch.as_tensor([w.reset_recurrent for w in self.worlds],device=self.device,dtype=torch.bool)
         return self._tensor(obs),torch.as_tensor(rewards,device=self.device,dtype=torch.float32)[:,None],torch.as_tensor(done,device=self.device,dtype=torch.bool),None
 
     def close(self):
