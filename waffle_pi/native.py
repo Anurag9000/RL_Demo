@@ -61,4 +61,8 @@ def profile_contract(args):
         'waffle_radius','waffle_sensor_range','waffle_humans','gst_adjacent_mask')}
     if getattr(args,'waffle_fidelity_sha',None):
         result['waffle_fidelity_sha']=args.waffle_fidelity_sha
+    if getattr(args,'waffle_gazebo',False):
+        result.update(waffle_gazebo=True,waffle_gazebo_model_sha=args.waffle_gazebo_model_sha,
+                      waffle_gazebo_worker_sha=args.waffle_gazebo_worker_sha,
+                      waffle_detector_sha=args.waffle_detector_sha)
     return result

@@ -73,7 +73,7 @@ class PerWorld:
         self.steps=0
         if self.detector is not None:
             self.detector.reset()
-        world,conf=write_case(self.root,self.args.waffle_gazebo_model,self.profile,scenario)
+        world,conf=write_case(self.root,self.args.waffle_gazebo_model,self.profile,scenario,int(self.rng.integers(2**31-1)))
         self.worker=self.worker_factory(self.args.waffle_gazebo_worker,world,conf,
                         self.root/f'episode_{self.episode:06d}.log',self.args.waffle_gazebo_timeout)
         # Settle on the floor with zero commands. This is not an RL transition.
@@ -311,6 +311,9 @@ class GazeboVecEnv(VecEnv):
         return self._tensor(obs),torch.as_tensor(rewards,device=self.device,dtype=torch.float32)[:,None],torch.as_tensor(done,device=self.device,dtype=torch.bool),None
 
     def close(self):
+        if self.closed:
+            return
+        self.closed=True
         list(self.pool.map(lambda w:w.close(),self.worlds))
         self.pool.shutdown(wait=True)
 

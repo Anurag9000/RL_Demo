@@ -139,11 +139,11 @@ def worker_config(profile,scenario):
                 laser_hz=profile['laser']['hz'])
 
 
-def write_case(directory,source,profile,scenario):
+def write_case(directory,source,profile,scenario,seed=0):
     directory=Path(directory)
     directory.mkdir(parents=True,exist_ok=True)
     world=directory/'world.sdf'
     config=directory/'worker.json'
     ET.ElementTree(training_world(source,profile,scenario)).write(world,encoding='utf-8',xml_declaration=True)
-    config.write_text(json.dumps(worker_config(profile,scenario),allow_nan=False))
+    config.write_text(json.dumps(dict(worker_config(profile,scenario),seed=int(seed)),allow_nan=False))
     return world,config

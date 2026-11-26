@@ -43,7 +43,7 @@ def main():
 
 	from waffle_pi.distributed import setup
 	rank,world,device = setup(algo_args)
-	if world>1 and (not algo_args.waffle_pi or algo_args.compile_policy or not (algo_args.waffle_replay or algo_args.waffle_live_orca)):
+	if world>1 and (not algo_args.waffle_pi or algo_args.compile_policy or not (algo_args.waffle_replay or algo_args.waffle_live_orca or algo_args.waffle_gazebo)):
 		raise ValueError("Distributed path requires Waffle mode; use eager DDP policy initially")
 	if algo_args.amp_bf16 and (device.type!='cuda' or not torch.cuda.is_bf16_supported()):
 		raise ValueError("BF16 requires a supported CUDA device")
@@ -141,12 +141,15 @@ def main():
 
 
 	# Create a wrapped, monitored VecEnv
-	tensor_env = bool(algo_args.waffle_replay or algo_args.waffle_live_orca)
+	tensor_env = bool(algo_args.waffle_replay or algo_args.waffle_live_orca or algo_args.waffle_gazebo)
 	if algo_args.waffle_live_orca and algo_args.waffle_replay:
 		raise ValueError("Choose either live tensor ORCA or replay")
-	if algo_args.waffle_reactive_humans and not algo_args.waffle_live_orca:
+	if algo_args.waffle_reactive_humans and not (algo_args.waffle_live_orca or algo_args.waffle_gazebo):
 		raise ValueError("Reactive humans require live tensor ORCA")
-	if tensor_env:
+	if algo_args.waffle_gazebo:
+		from gazebo_sim.vector_env import make_gazebo
+		envs = make_gazebo(config,algo_args,device)
+	elif tensor_env:
 		from waffle_pi.replay import make_replay
 		envs = make_replay(config, algo_args, device)
 	else:
@@ -156,6 +159,9 @@ def main():
 						 algo_args.gamma, None, device, False, config=env_config, ax=ax, pretext_wrapper=config.env.use_wrapper)
 
 
+	if algo_args.waffle_gazebo:
+		import atexit
+		atexit.register(envs.close)
 	# create a policy network
 	actor_critic = Policy(
 		envs.observation_space.spaces, # pass the Dict into policy to parse
@@ -399,6 +405,7 @@ def main():
 		seconds=float(rows.sum())
 		steps=len(rows)*algo_args.num_steps*algo_args.num_processes*world
 		result=dict(measured_updates=len(rows),global_transitions=steps,
+			backend='gazebo' if algo_args.waffle_gazebo else 'tensor' if tensor_env else 'legacy',
 			transitions_per_sec=steps/seconds,rollout_s=float(rows[:,0].sum()),
 			gae_and_bootstrap_s=float(rows[:,1].sum()),learner_s=float(rows[:,2].sum()),
 			note='Excludes checkpoint/logging time and warmup; phase sync overhead included',

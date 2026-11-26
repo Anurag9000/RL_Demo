@@ -75,6 +75,8 @@ def load(path,model,agent,args,device):
     if state.get('schema')!=SCHEMA:
         raise ValueError('Expected versioned learner state, not inference weights')
     old=state['args']
+    if bool(old.get('waffle_gazebo'))!=args.waffle_gazebo:
+        raise ValueError('Cannot silently change simulator backend during learner continuation')
     if bool(old.get('waffle_native_action'))!=args.waffle_native_action:
         raise ValueError('Action semantics changed')
     for key,value in profile_contract(args).items():

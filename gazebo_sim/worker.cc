@@ -268,7 +268,7 @@ int main(int argc,char** argv) {
   try {
     if(argc!=3)throw std::runtime_error("usage: waffle_gazebo_worker world.sdf config.json");
     std::ifstream in(argv[2]);json cfg;in>>cfg;
-    ServerConfig sc;sc.SetSdfFile(argv[1]);sc.SetHeadlessRendering(true);
+    ServerConfig sc;sc.SetSdfFile(argv[1]);sc.SetHeadlessRendering(true);sc.SetSeed(cfg.at("seed").get<unsigned int>());
     Scans scans;
     gz::transport::Node node;
     if(!node.Subscribe("/crowdnav_sim/scan",&Scans::receive,&scans))throw std::runtime_error("laser subscription failed");

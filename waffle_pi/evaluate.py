@@ -13,7 +13,7 @@ def run(args):
     if not args.waffle_pi or args.waffle_eval_episodes < 1:
         raise ValueError("Use --waffle-pi and a positive evaluation count")
     config=Config(args)
-    tensor=bool(args.waffle_live_orca or args.waffle_replay)
+    tensor=bool(args.waffle_live_orca or args.waffle_replay or args.waffle_gazebo)
     if args.waffle_live_orca and args.waffle_replay:
         raise ValueError("Select one tensor environment")
     b=min(args.num_processes,args.waffle_eval_episodes) if tensor else 1
@@ -22,7 +22,10 @@ def run(args):
     device=torch.device('cuda' if args.cuda else 'cpu')
     config.training.device=str(device)
     torch.manual_seed(args.seed)
-    if tensor:
+    if args.waffle_gazebo:
+        from gazebo_sim.vector_env import make_gazebo
+        env=make_gazebo(config,args,device)
+    elif tensor:
         from .replay import make_replay
         env=make_replay(config,args,device)
     else:
@@ -119,7 +122,7 @@ def run(args):
                 'timeout_rate':outcomes['Timeout']/len(rewards),
                 'mean_reward':sum(rewards)/len(rewards),'seed':args.seed,
                 'gate_intervention_fraction':interventions/counted_transitions if args.waffle_native_action else None,
-                'backend':'live_tensor' if args.waffle_live_orca else 'replay' if args.waffle_replay else 'reference',
+                'backend':'gazebo' if args.waffle_gazebo else 'live_tensor' if args.waffle_live_orca else 'replay' if args.waffle_replay else 'reference',
                 'transitions_per_sec':steps*b/elapsed,'counted_transitions':counted_transitions,'elapsed_s':elapsed}
         result['success_ci95']=wilson(outcomes['ReachGoal'],len(rewards))
         result['collision_ci95']=wilson(outcomes['Collision'],len(rewards))
