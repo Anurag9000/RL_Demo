@@ -68,8 +68,8 @@ def main():
 			raise RuntimeError("Policy compilation requires PyTorch 2.x")
 
 	if algo_args.continue_state or algo_args.save_training_state:
-		if not algo_args.waffle_pi or world!=1 or algo_args.cuda_graph_ppo or algo_args.benchmark_updates or algo_args.use_linear_lr_decay:
-			raise ValueError('Learner state continuation currently requires single-rank Waffle training, fixed schedule and no captured learner')
+		if not algo_args.waffle_pi or algo_args.cuda_graph_ppo or algo_args.benchmark_updates or algo_args.use_linear_lr_decay:
+			raise ValueError('Learner state continuation requires Waffle training, fixed schedule and no captured learner')
 	if algo_args.continue_state and algo_args.resume:
 		raise ValueError('Use --continue-state instead of weights-only --resume')
 	if (algo_args.retune_optimizer or algo_args.curriculum_transition or algo_args.fresh_continuation_rng) and not algo_args.continue_state:
@@ -362,10 +362,10 @@ def main():
 				os.mkdir(save_path)
 
 			torch.save(actor_critic.state_dict(), os.path.join(save_path, '%.5i'%j + ".pt"))
-			if algo_args.save_training_state or algo_args.continue_state:
-				from waffle_pi.training_state import save
-				save(os.path.join(algo_args.output_dir,'training_state.pt'),actor_critic,agent,algo_args,
-					previous_updates+j+1,previous_transitions+(j+1)*algo_args.num_steps*algo_args.num_processes*world,device)
+		if (algo_args.save_training_state or algo_args.continue_state) and (j % algo_args.save_interval==0 or j==num_updates-1):
+			from waffle_pi.training_state import save
+			save(os.path.join(algo_args.output_dir,'training_state.pt'),actor_critic,agent,algo_args,
+				previous_updates+j+1,previous_transitions+(j+1)*algo_args.num_steps*algo_args.num_processes*world,device)
 
 		if rank==0 and j % algo_args.log_interval == 0:
 			total_num_steps = (j + 1) * algo_args.num_processes * algo_args.num_steps * world

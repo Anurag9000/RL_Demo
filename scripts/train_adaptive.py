@@ -72,7 +72,8 @@ def next_population(rows,a,rng):
         keep=ordered[:min(n,len(ordered))]
     else:
         keep=ordered
-    pruned=[r['id'] for r in ordered if r not in keep]
+    retained_ids={r['id'] for r in keep}
+    pruned=[r['id'] for r in rows if r['id'] not in retained_ids]
     elite_count=max(1,math.ceil(len(keep)*a.elite_fraction))
     elites=keep[:elite_count]
     result=[]
@@ -177,7 +178,9 @@ def segment(a,root,slot,candidate,rung,stage_index,stage,budget):
     try:
         execute(cmd,device_env(a,slot),out.parent/(out.name+'.train.log'),a.timeout_s)
         summary=json.loads((out/'training_summary.json').read_text())
-        checkpoint=max((out/'checkpoints').glob('*.pt'),key=lambda p:int(p.stem))
+        checkpoint=max((out/'checkpoints').glob('*.pt'),key=lambda p:int(p.stem),default=None)
+        if checkpoint is None:
+            raise RuntimeError('Missing inference checkpoint')
         state=out/'training_state.pt'
         if not state.is_file() or summary['segment_updates']!=budget:
             raise RuntimeError('Incomplete segment state')

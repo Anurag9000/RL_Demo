@@ -45,6 +45,10 @@ def run(args):
         total=torch.zeros(b,device=device)
         steps=0
         interventions=0
+        counted_transitions=0
+        quota=torch.full((b,),args.waffle_eval_episodes//b,device=device,dtype=torch.long)
+        quota[:args.waffle_eval_episodes%b]+=1
+        completed=torch.zeros_like(quota)
         start=time.perf_counter()
         limit=args.waffle_eval_episodes*(int(config.env.time_limit/config.env.time_step)+5)
         with torch.no_grad():
@@ -56,17 +60,21 @@ def run(args):
                 total=total+reward.to(device).reshape(b)
                 done=torch.as_tensor(done,device=device,dtype=torch.bool)
                 masks=(~done).float().unsqueeze(-1)
+                active=completed<quota
+                counted_transitions+=int(active.sum().item())
+                accepted=done&active
                 if tensor:
                     if args.waffle_native_action:
-                        interventions+=int(env.venv.intervened.sum().item())
+                        interventions+=int((env.venv.intervened&active).sum().item())
                     codes=env.venv.outcome
-                    finished=list(zip(codes[done].cpu().tolist(),total[done].cpu().tolist()))
-                    for code,value in finished[:args.waffle_eval_episodes-len(rewards)]:
+                    finished=list(zip(codes[accepted].cpu().tolist(),total[accepted].cpu().tolist()))
+                    for code,value in finished:
                         outcomes[{1:'ReachGoal',2:'Collision',3:'Timeout'}[code]]+=1
                         rewards.append(value)
                 elif bool(done[0]):
                     outcomes[type(infos[0]['info']).__name__]+=1
                     rewards.append(float(total[0]))
+                completed+=accepted.long()
                 total=torch.where(done,0.,total)
                 steps+=1
         elapsed=time.perf_counter()-start
@@ -75,9 +83,9 @@ def run(args):
                 'collision_rate':outcomes['Collision']/len(rewards),
                 'timeout_rate':outcomes['Timeout']/len(rewards),
                 'mean_reward':sum(rewards)/len(rewards),'seed':args.seed,
-                'gate_intervention_fraction':interventions/(steps*b) if args.waffle_native_action else None,
+                'gate_intervention_fraction':interventions/counted_transitions if args.waffle_native_action else None,
                 'backend':'live_tensor' if args.waffle_live_orca else 'replay' if args.waffle_replay else 'reference',
-                'transitions_per_sec':steps*b/elapsed,'elapsed_s':elapsed}
+                'transitions_per_sec':steps*b/elapsed,'counted_transitions':counted_transitions,'elapsed_s':elapsed}
         print(json.dumps(result,indent=2))
         if args.waffle_eval_json:
             path=Path(args.waffle_eval_json)

@@ -420,8 +420,10 @@ collects new on-policy experience. It is not bitwise simulator continuation.
 hardware action/observation contract; trainable parameter names must match.
 `--retune-optimizer` explicitly changes LR/entropy/clip without dropping moments.
 `--fresh-continuation-rng` reseeds learner sampling for independent descendants.
-State continuation initially supports single-rank Waffle learners, not
-captured optimizer graphs, linear LR decay, or distributed state snapshots.
+State continuation supports single-rank and synchronous DDP Waffle learners.
+DDP saves rank-zero shared model/Adam and gathers per-rank learner RNG states;
+changing world size requires --fresh-continuation-rng. Captured optimizer graphs
+and linear LR decay are not supported in continuation mode.
 
 `--adaptive-kl 0.01` enables per-update bounded LR feedback using the mean
 approximate KL over PPO minibatches (globally reduced in DDP). If KL is above
@@ -473,3 +475,9 @@ unattainable with the uncalibrated stopping model.
 
 The prior train_portfolio script remains a full-budget baseline. This
 adaptive scheduler targets reduced time-to-target, not demonstrated speedups.
+
+Evaluation allocates a fixed number of episodes to each vectorized world and
+counts only active quota transitions for safety intervention fractions. This
+avoids preferentially scoring the fastest-terminating episodes in a batch.
+The validation seed is deliberately reused for selection, so repeated successes
+are not statistically independent; the separate test seed is not used for training.

@@ -53,9 +53,19 @@ def atomic_save(obj,path):
 
 
 def save(path,model,agent,args,updates,transitions,device):
+    local_rng=rng_state(device)
+    distributed=torch.distributed.is_initialized()
+    if distributed:
+        rank=torch.distributed.get_rank()
+        states=[None]*torch.distributed.get_world_size() if rank==0 else None
+        torch.distributed.gather_object(local_rng,states,dst=0)
+        if rank!=0:
+            return
+    else:
+        states=[local_rng]
     atomic_save(dict(schema=SCHEMA,model=model.state_dict(),optimizer=agent.optimizer.state_dict(),
         parameter_names=parameter_names(model),args=dict(vars(args)),updates=int(updates),
-        transitions=int(transitions),rng=rng_state(device),
+        transitions=int(transitions),rng=local_rng,rank_rng=states,world_size=len(states),
         hyperparameters=dict(lr=agent.optimizer.param_groups[0]['lr'],
             entropy_coef=agent.entropy_coef,clip_param=agent.clip_param)),path)
 
@@ -95,5 +105,9 @@ def load(path,model,agent,args,device):
     agent.entropy_coef=float(values['entropy_coef'])
     agent.clip_param=float(values['clip_param'])
     if not args.fresh_continuation_rng:
-        restore_rng(state['rng'],device)
+        rank=torch.distributed.get_rank() if torch.distributed.is_initialized() else 0
+        world=torch.distributed.get_world_size() if torch.distributed.is_initialized() else 1
+        if state.get('world_size',1)!=world:
+            raise ValueError('Changed world size requires --fresh-continuation-rng')
+        restore_rng(state.get('rank_rng',[state['rng']])[rank],device)
     return int(state['updates']),int(state['transitions'])

@@ -40,3 +40,31 @@ class Adaptive(unittest.TestCase):
         pop,pruned=next_population(rows,self.a,random.Random(3))
         self.assertEqual(len(pop),2)
         self.assertTrue(all(not p['retune'] for p in pop))
+
+    def test_target_stop_and_final_test(self):
+        from pathlib import Path
+        import tempfile
+        from scripts.train_adaptive import optimize
+        a=self.a
+        a.scheduler_seed=1
+        a.rung_updates=[1,1,1,1,1]
+        a.promotion_success=0.
+        a.target_streak=2
+        a.patience=0
+        a.envs=a.steps=1
+        a.test_seed=99
+        a.test_episodes=5
+        candidates=[dict(self.row(0,.9,0.),stage=-1,streak=0)]
+        def worker(a,root,slot,c,rung,stage_index,stage,budget):
+            return dict(c,status='ok',stage=stage_index,rung=rung,
+                        checkpoint='model.pt',streak=(c['streak']+1 if c['stage']==stage_index else 1))
+        calls=[]
+        def final(a,stage,slot,checkpoint,seed,episodes,out,log):
+            calls.append((stage['humans'],seed,episodes))
+            return self.row(0,.9,0.)['evaluation']
+        with tempfile.TemporaryDirectory() as tmp:
+            result=optimize(a,Path(tmp),['cpu:0'],candidates,worker,final)
+            self.assertEqual(result['reason'],'validation_target_reached')
+            self.assertEqual(result['completed_rungs'],4)
+            self.assertTrue(result['converged'])
+            self.assertEqual(calls,[(4,99,5)])
