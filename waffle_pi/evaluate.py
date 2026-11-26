@@ -7,6 +7,7 @@ import torch
 
 
 def run(args):
+    from .quality import wilson
     from crowd_nav.configs.config import Config
     from rl.networks.model import Policy
     if not args.waffle_pi or args.waffle_eval_episodes < 1:
@@ -46,6 +47,16 @@ def run(args):
         steps=0
         interventions=0
         counted_transitions=0
+        episode_metrics=[]
+        scenario_ids=set()
+        travel=torch.zeros(b,device=device)
+        turns=torch.zeros_like(travel)
+        duration=torch.zeros_like(travel)
+        intrusion=torch.zeros_like(travel)
+        minimum=torch.full_like(travel,float('inf'))
+        minimum_wall=torch.full_like(travel,float('inf'))
+        initial_distance=torch.zeros_like(travel)
+        gate_ticks=torch.zeros_like(travel)
         quota=torch.full((b,),args.waffle_eval_episodes//b,device=device,dtype=torch.long)
         quota[:args.waffle_eval_episodes%b]+=1
         completed=torch.zeros_like(quota)
@@ -66,7 +77,31 @@ def run(args):
                 if tensor:
                     if args.waffle_native_action:
                         interventions+=int((env.venv.intervened&active).sum().item())
-                    codes=env.venv.outcome
+                    venv=env.venv
+                    initial_distance=torch.where(duration==0,venv.last_goal_distance,initial_distance)
+                    duration+=config.env.time_step
+                    travel+=venv.last_path
+                    turns+=venv.last_turn
+                    intrusion+=(venv.last_clearance<config.reward.discomfort_dist).float()*config.env.time_step
+                    minimum=torch.minimum(minimum,venv.last_clearance)
+                    minimum_wall=torch.minimum(minimum_wall,venv.last_static_clearance)
+                    gate_ticks+=venv.intervened.float()
+                    codes=venv.outcome
+                    for i in accepted.nonzero().flatten().tolist():
+                        scenario_ids.add(int(venv.last_scenario[i]))
+                        shortest=float(initial_distance[i])
+                        actual=float(travel[i])
+                        success=int(codes[i])==1
+                        episode_metrics.append(dict(success=success,path_m=actual,time_s=float(duration[i]),
+                            rotation_rad=float(turns[i]),min_human_clearance_m=float(minimum[i]),
+                            min_wall_clearance_m=float(minimum_wall[i]),intrusion_s=float(intrusion[i]),
+                            gate_fraction=float(gate_ticks[i])*config.env.time_step/float(duration[i]),
+                            straight_line_spl=float(success)*shortest/max(shortest,actual,1e-8),
+                            final_goal_distance_m=float(venv.last_goal_distance_after[i])))
+                    for t in (travel,turns,duration,intrusion,initial_distance,gate_ticks):
+                        t.masked_fill_(done,0.)
+                    minimum.masked_fill_(done,float('inf'))
+                    minimum_wall.masked_fill_(done,float('inf'))
                     finished=list(zip(codes[accepted].cpu().tolist(),total[accepted].cpu().tolist()))
                     for code,value in finished:
                         outcomes[{1:'ReachGoal',2:'Collision',3:'Timeout'}[code]]+=1
@@ -86,7 +121,19 @@ def run(args):
                 'gate_intervention_fraction':interventions/counted_transitions if args.waffle_native_action else None,
                 'backend':'live_tensor' if args.waffle_live_orca else 'replay' if args.waffle_replay else 'reference',
                 'transitions_per_sec':steps*b/elapsed,'counted_transitions':counted_transitions,'elapsed_s':elapsed}
-        print(json.dumps(result,indent=2))
+        result['success_ci95']=wilson(outcomes['ReachGoal'],len(rewards))
+        result['collision_ci95']=wilson(outcomes['Collision'],len(rewards))
+        if episode_metrics:
+            import numpy as np
+            result['scene_split']=args.waffle_scene_split
+            result['unique_scenarios']=len(scenario_ids)
+            result['episode_metrics']=episode_metrics
+            for k in ('path_m','time_s','rotation_rad','intrusion_s','straight_line_spl','final_goal_distance_m'):
+                result['mean_'+k]=float(np.mean([e[k] for e in episode_metrics]))
+            for k in ('min_human_clearance_m','min_wall_clearance_m'):
+                result['p05_'+k]=float(np.quantile([e[k] for e in episode_metrics],.05))
+            result['gate_episode_fraction']=sum(e['gate_fraction']>0 for e in episode_metrics)/len(episode_metrics)
+        print(json.dumps(result,indent=2,allow_nan=False))
         if args.waffle_eval_json:
             path=Path(args.waffle_eval_json)
             if path.exists():

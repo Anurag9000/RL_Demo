@@ -500,3 +500,29 @@ second ideal scan. It remains a statistical detector, not actual neural inferenc
 The policy runner requires the identical fidelity-profile hash for fidelity-trained
 checkpoints and a measured profile in request mode. The physical safety gate
 remains independent. Never infer physical safety from a profile hash.
+
+## Fidelity evaluation and objective
+
+Measured profiles must label scenarios with unique `id` and `split` values
+(train/validation/test), with all three splits represented at each curriculum
+crowd size. Training refuses held-out splits. Evaluation visits cases cyclically
+in a seeded order and requires enough episodes to cover all measured cases.
+The adaptive scheduler uses distinct validation/test scene splits and Wilson
+95% success lower/collision upper bounds for measured candidate selection.
+These intervals are descriptive: repeated scenarios and correlated episodes
+violate independence, so do not treat them as guarantees of real-world risk.
+Final test cases should be collected separately (not slight variants of training).
+Metrics now include per-episode path length, travel time, rotation, minimum
+human/wall clearance, intrusion duration, gate fraction and straight-line SPL
+(not obstacle-aware shortest path). The fifth percentile clearance and gate
+intervention episode rate are reported. A scene's sampled start-goal Euclidean
+baseline is not a substitute for measured social navigation performance.
+A fidelity profile may optionally define a `reward` object with finite positive
+or nonnegative coefficients: progress, time, turn, intervention, human_clearance,
+wall_clearance, human_margin, wall_margin. This switches to additive progress,
+time, squared yaw rate, gate intervention and clearance costs, preserving the
+terminal rewards and frozen GST future penalty. Coefficients require explicit
+experimental justification; do not assume one arbitrary reward is optimal.
+Measured adaptive runs disallow BF16 and compilation presets initially; compare
+numerical and policy-quality parity before using acceleration. Select by measured
+performance, not throughput or a single point estimate of success.

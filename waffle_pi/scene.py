@@ -7,7 +7,7 @@ are ordered cyclic waypoints. This is not a general polygonal map planner.
 import torch
 
 
-def scene_tensors(profile,arena,humans,robot_radius,device):
+def scene_tensors(profile,arena,humans,robot_radius,device,split='train',require_measured=False):
     from .fidelity import disk_clearance
     scene=profile.get('scene')
     if scene is None:
@@ -22,7 +22,22 @@ def scene_tensors(profile,arena,humans,robot_radius,device):
         raise ValueError('Empty scenario bank')
     # Use only explicitly supplied layouts for this crowd size. No silent
     # resizing or truncation of surveyed scenarios during curriculum.
-    cases=[s for s in scenarios if len(s['humans'])==humans]
+    if require_measured:
+        import json
+        signatures=set()
+        ids=set()
+        for s in scenarios:
+            if s.get('split') not in ('train','validation','test') or not s.get('id') or s['id'] in ids:
+                raise ValueError('Measured scene requires unique IDs and explicit splits')
+            ids.add(s['id'])
+            signature=json.dumps({k:s[k] for k in ('robot_start','robot_goal','humans')},sort_keys=True)
+            if signature in signatures:
+                raise ValueError('Duplicate measured scenario across bank')
+            signatures.add(signature)
+        for name in ('train','validation','test'):
+            if not any(s['split']==name and len(s['humans'])==humans for s in scenarios):
+                raise ValueError('Measured scene missing '+name+' cases for crowd size')
+    cases=[s for s in scenarios if len(s['humans'])==humans and s.get('split','train')==split]
     if not cases:
         raise ValueError('No surveyed scenario for requested crowd size')
     starts=torch.tensor([s['robot_start'] for s in cases],device=device)

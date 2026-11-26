@@ -23,23 +23,29 @@ def atomic_json(path,obj):
     os.replace(tmp,path)
 
 
-def score(row,max_collision,max_gate):
+def score(row,max_collision,max_gate,confidence=False):
     e=row['evaluation']
-    feasible=e['collision_rate']<=max_collision and e['gate_intervention_fraction']<=max_gate
-    return (int(feasible),-max(0.,e['collision_rate']-max_collision),
-            -max(0.,e['gate_intervention_fraction']-max_gate),e['success_rate'],
-            -e['collision_rate'],-e['gate_intervention_fraction'],e['mean_reward'])
+    collision=e['collision_ci95'][1] if confidence else e['collision_rate']
+    success=e['success_ci95'][0] if confidence else e['success_rate']
+    feasible=collision<=max_collision and e['gate_intervention_fraction']<=max_gate
+    return (int(feasible),-max(0.,collision-max_collision),
+            -max(0.,e['gate_intervention_fraction']-max_gate),success,
+            -collision,-e['gate_intervention_fraction'],e.get('p05_min_human_clearance_m',0.),
+            e.get('mean_straight_line_spl',0.),e['mean_reward'])
 
 
 def target(row,a):
     e=row['evaluation']
-    return (e['success_rate']>=a.target_success and e['collision_rate']<=a.max_collision
+    confidence=getattr(a,'confidence_selection',False)
+    success=e['success_ci95'][0] if confidence else e['success_rate']
+    collision=e['collision_ci95'][1] if confidence else e['collision_rate']
+    return (success>=a.target_success and collision<=a.max_collision
             and e['gate_intervention_fraction']<=a.max_gate)
 
 
 def rank(rows,a):
     return sorted((r for r in rows if r['status']=='ok'),
-                  key=lambda r:(score(r,a.max_collision,a.max_gate),-r['id']),reverse=True)
+                  key=lambda r:(score(r,a.max_collision,a.max_gate,getattr(a,'confidence_selection',False)),-r['id']),reverse=True)
 
 
 def curriculum(a):
@@ -145,6 +151,8 @@ def execute(cmd,env,log,timeout):
 def evaluate(a,stage,slot,checkpoint,seed,episodes,out,log):
     cmd=common(a,stage,slot)+['--seed',str(seed),'--waffle-eval-episodes',str(episodes),
                               '--load-path',str(checkpoint),'--waffle-eval-json',str(out)]
+    if a.require_measured:
+        cmd+=['--waffle-scene-split','test' if seed==a.test_seed else 'validation']
     execute(cmd,device_env(a,slot),log,a.timeout_s)
     result=json.loads(out.read_text())
     for k in ('success_rate','collision_rate','gate_intervention_fraction','mean_reward'):
@@ -242,7 +250,7 @@ def optimize(a,root,slots,candidates,worker=segment,final_eval=evaluate):
             break
         if stage==len(stages)-1:
             final_rows.extend(ranked)
-            current=score(ranked[0],a.max_collision,a.max_gate)
+            current=score(ranked[0],a.max_collision,a.max_gate,getattr(a,'confidence_selection',False))
             if best_score is None or current>best_score:
                 best_score,stale=current,0
             else:
@@ -261,8 +269,7 @@ def optimize(a,root,slots,candidates,worker=segment,final_eval=evaluate):
         atomic_json(root/'history.json',history)
     # Only final-difficulty results are eligible. No easy-stage winner.
     eligible=rank(final_rows,a)
-    eligible=[r for r in eligible if r['evaluation']['collision_rate']<=a.max_collision
-              and r['evaluation']['gate_intervention_fraction']<=a.max_gate]
+    eligible=[r for r in eligible if score(r,a.max_collision,a.max_gate,getattr(a,'confidence_selection',False))[0]]
     result=dict(reason=reason,stages=stages,completed_rungs=len(history),
                 attempted_candidates=sum(len(h['rows']) for h in history),
                 successful_training_transitions=0,winner=None,converged=False)
@@ -336,6 +343,7 @@ def main():
     p.add_argument('--reactive',action='store_true')
     p.add_argument('--fidelity-profile')
     p.add_argument('--require-measured',action='store_true')
+    p.add_argument('--confidence-selection',action='store_true')
     p.add_argument('--calibration')
     p.add_argument('--safety-calibration')
     p.add_argument('--freeze-human-attention',action='store_true')
@@ -345,6 +353,10 @@ def main():
     p.add_argument('--bf16',action='store_true')
     p.add_argument('--timeout-s',type=int,default=14400)
     a=p.parse_args()
+    if a.require_measured:
+        a.confidence_selection=True
+        if a.compile or a.bf16:
+            p.error('Measured reference runs use eager FP32; validate accelerated parity separately')
     if a.gpus is None and not a.cpu_workers:
         a.gpus=[0]
     if (a.cpu_workers<0 or (a.cpu_workers and a.gpus) or

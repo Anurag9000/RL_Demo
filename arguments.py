@@ -271,6 +271,7 @@ def get_args(argv=None):
     parser.add_argument('--waffle-fidelity-profile', default=None)
     parser.add_argument('--waffle-require-measured', action='store_true')
     parser.add_argument('--waffle-fidelity-sha', default=None, help=argparse.SUPPRESS)
+    parser.add_argument('--waffle-scene-split', choices=['train','validation','test'],default='train')
     args = parser.parse_args(argv)
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()

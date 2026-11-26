@@ -23,7 +23,8 @@ class ReplayVecEnv(VecEnv):
         self.scene=None
         if args.waffle_fidelity_profile:
             from .scene import scene_tensors
-            self.scene=scene_tensors(config.fidelity,config.sim.arena_size,self.h,config.robot.radius,device)
+            self.scene=scene_tensors(config.fidelity,config.sim.arena_size,self.h,config.robot.radius,device,
+                args.waffle_scene_split,args.waffle_require_measured)
         self.args = args
         self.rng = torch.Generator(device=device).manual_seed(args.seed+int(os.environ.get('RANK','0'))*100003)
         if self.live:
@@ -45,6 +46,11 @@ class ReplayVecEnv(VecEnv):
                     raise RuntimeError('Compiled ORCA requires PyTorch 2.x')
                 self.orca = torch.compile(self.orca,fullgraph=True)
         self._setup_spaces_and_state(config,args,device)
+        self.eval_scene=bool(self.scene is not None and args.waffle_eval_episodes)
+        self.scenario_cursor=torch.arange(self.n,device=device,dtype=torch.long)
+        self.scenario_order=torch.randperm(len(self.starts),device=device,generator=self.rng) if self.eval_scene else None
+        if self.eval_scene and args.waffle_require_measured and args.waffle_eval_episodes<len(self.starts):
+            raise ValueError('Evaluation budget must cover all surveyed scenarios')
         self.fidelity=None
         if args.waffle_fidelity_profile:
             from .fidelity import FidelityDrive
@@ -142,7 +148,11 @@ class ReplayVecEnv(VecEnv):
         self.velocity = torch.zeros_like(self.goal)
 
     def _reset(self, done):
-        ids = torch.randint(len(self.starts),(self.n,),device=self.device,generator=self.rng)
+        if self.eval_scene:
+            ids=self.scenario_order[self.scenario_cursor%len(self.starts)]
+            self.scenario_cursor+=done.long()*self.n
+        else:
+            ids = torch.randint(len(self.starts),(self.n,),device=self.device,generator=self.rng)
         self.ids = torch.where(done,ids,self.ids)
         self.t = torch.where(done,0,self.t)
         self.pose = torch.where(done[:,None],self.starts[self.ids],self.pose)
@@ -233,6 +243,8 @@ class ReplayVecEnv(VecEnv):
         self.actions = actions
 
     def step_wait(self):
+        self.last_scenario=self.ids.clone()
+        self.last_goal_distance=(self.goal-self.pose[:,:2]).norm(dim=-1)
         old = self.pose
         old_velocity = self.velocity
         prev_humans = self._frame()
@@ -289,10 +301,15 @@ class ReplayVecEnv(VecEnv):
         r = torch.where(clearance<self.cfg.reward.discomfort_dist,
               (clearance-self.cfg.reward.discomfort_dist)*self.cfg.reward.discomfort_penalty_factor*self.cfg.env.time_step,r)
         r = r-4.5*dtheta.square()
+        if self.fidelity is not None and self.cfg.fidelity.get('reward'):
+            from .quality import navigation_reward
+            r=navigation_reward(old_dist,dist,clearance,static_clearance,dtheta,self.intervened,dt,self.cfg.fidelity['reward'])
         r = torch.where(timeout,0.,r)
         r = torch.where(success,self.cfg.reward.success_reward,r)
         r = torch.where(collision,self.cfg.reward.collision_penalty,r)
         self.last_clearance=clearance
+        self.last_static_clearance=static_clearance if self.fidelity is not None else self.cfg.sim.arena_size-self.pose[:,:2].abs().amax(-1)-self.cfg.robot.radius
+        self.last_goal_distance_after=dist
         self.last_path=path if self.fidelity is not None else (self.pose[:,:2]-old[:,:2]).norm(dim=-1)
         self.last_turn=dtheta.abs()
         self.outcome=torch.where(collision,2,torch.where(success,1,torch.where(timeout,3,0)))
