@@ -27,6 +27,14 @@ def main():
 	# read arguments
 	algo_args = get_args()
 
+	if algo_args.algo != 'ppo' or algo_args.seq_length != algo_args.num_steps:
+		raise ValueError("Use PPO and match seq_length to num_steps")
+	if algo_args.num_mini_batch <= 0 or algo_args.num_processes % algo_args.num_mini_batch:
+		raise ValueError("num_processes must be divisible by num_mini_batch")
+	if algo_args.waffle_eval_episodes:
+		from waffle_pi.evaluate import run
+		return run(algo_args)
+
 	# create a directory for saving the logs and weights
 	if not os.path.exists(algo_args.output_dir):
 		os.makedirs(algo_args.output_dir)
@@ -99,17 +107,23 @@ def main():
 							  envs.observation_space.spaces,
 							  envs.action_space,
 							  algo_args.human_node_rnn_size,
-							  algo_args.human_human_edge_rnn_size)
+							  algo_args.human_human_edge_rnn_size,
+								  compact_edges=algo_args.fast_training and config.robot.policy == 'selfAttn_merge_srnn')
 
 	# continue training from an existing model if resume = True
 	if algo_args.resume:
-		load_path = config.training.load_path
-		actor_critic.load_state_dict(torch.load(load_path))
+		load_path = algo_args.load_path
+		actor_critic.load_state_dict(torch.load(load_path, map_location='cpu'), strict=True)
 		print("Loaded the following checkpoint:", load_path)
 
 
 	# allow the usage of multiple GPUs to increase the number of examples processed simultaneously
-	nn.DataParallel(actor_critic).to(device)
+	actor_critic.to(device)
+	if algo_args.freeze_human_attention:
+		for name in ('spatial_attn', 'spatial_linear'):
+			module = getattr(actor_critic.base, name, None)
+			if module is not None:
+				module.requires_grad_(False)
 
 	# create the ppo optimizer
 	agent = ppo.PPO(
@@ -164,7 +178,7 @@ def main():
 					rollouts.masks[step])
 
 			# if we use real prediction, send predictions to env for rendering
-			if env_name == 'CrowdSimPredRealGST-v0' and env_config.env.use_wrapper:
+			if config.sim.render and env_name == 'CrowdSimPredRealGST-v0' and env_config.env.use_wrapper:
 				# [nenv, max_human_num, 2*(pred_steps+1)] -> [nenv, max_human_num, 2*pred_steps]
 				out_pred = rollouts_obs['spatial_edges'][:, :, 2:].to('cpu').numpy()
 				# send manager action to all processes

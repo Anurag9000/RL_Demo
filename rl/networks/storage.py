@@ -13,7 +13,7 @@ def _flatten_helper(T, N, _tensor):
 class RolloutStorage(object):
     """ The rollout buffer to store the agent's experience for PPO """
     def __init__(self, num_steps, num_processes, obs_shape, action_space,
-                 human_node_rnn_size, human_human_edge_rnn_size):
+                 human_node_rnn_size, human_human_edge_rnn_size, compact_edges=False):
 
         if isinstance(obs_shape, dict):
             self.obs = {}
@@ -27,7 +27,7 @@ class RolloutStorage(object):
 
         node_num = 1
         # todo: uncomment the next line for previous models!
-        edge_num = self.human_num + 1
+        edge_num = 1 if compact_edges else self.human_num + 1
         # edge_num = 2
 
         self.recurrent_hidden_states['human_node_rnn'] = torch.zeros(num_steps + 1, num_processes, node_num, human_node_rnn_size)
@@ -182,72 +182,16 @@ class RolloutStorage(object):
                 value_preds_batch, return_batch, masks_batch, old_action_log_probs_batch, adv_targ
 
     def recurrent_generator(self, advantages, num_mini_batch):
-        num_processes = self.rewards.size(1)
-        assert num_processes >= num_mini_batch, (
-            "PPO requires the number of processes ({}) "
-            "to be greater than or equal to the number of "
-            "PPO mini batches ({}).".format(num_processes, num_mini_batch))
-        num_envs_per_batch = num_processes // num_mini_batch
-        perm = torch.randperm(num_processes)
-        for start_ind in range(0, num_processes, num_envs_per_batch):
-
-            obs_batch = {}
-            for key in self.obs:
-                obs_batch[key] = []
-            recurrent_hidden_states_batch = {}
-            for key in self.recurrent_hidden_states:
-                recurrent_hidden_states_batch[key] = []
-
-            actions_batch = []
-            value_preds_batch = []
-            return_batch = []
-            masks_batch = []
-            old_action_log_probs_batch = []
-            adv_targ = []
-
-            for offset in range(num_envs_per_batch):
-                ind = perm[start_ind + offset]
-
-
-                for key in self.obs:
-                    obs_batch[key].append(self.obs[key][:-1, ind])
-                for key in self.recurrent_hidden_states:
-                    recurrent_hidden_states_batch[key].append(self.recurrent_hidden_states[key][0:1, ind])
-
-                actions_batch.append(self.actions[:, ind])
-                value_preds_batch.append(self.value_preds[:-1, ind])
-                return_batch.append(self.returns[:-1, ind])
-                masks_batch.append(self.masks[:-1, ind])
-                old_action_log_probs_batch.append(
-                    self.action_log_probs[:, ind])
-                adv_targ.append(advantages[:, ind])
-
-            T, N = self.num_steps, num_envs_per_batch
-            # These are all tensors of size (T, N, -1)
-
-            actions_batch = torch.stack(actions_batch, 1)
-            value_preds_batch = torch.stack(value_preds_batch, 1)
-            return_batch = torch.stack(return_batch, 1)
-            masks_batch = torch.stack(masks_batch, 1)
-            old_action_log_probs_batch = torch.stack(
-                old_action_log_probs_batch, 1)
-            adv_targ = torch.stack(adv_targ, 1)
-
-            for key in obs_batch:
-                obs_batch[key] = torch.stack(obs_batch[key], 1)
-            for key in recurrent_hidden_states_batch:
-                temp = torch.stack(recurrent_hidden_states_batch[key], 1)
-                recurrent_hidden_states_batch[key] = temp.view(N, *(temp.size()[2:]))
-
-            # Flatten the (T, N, ...) tensors to (T * N, ...)
-            obs_batch = _flatten_helper(T, N, obs_batch)
-            actions_batch = _flatten_helper(T, N, actions_batch)
-            value_preds_batch = _flatten_helper(T, N, value_preds_batch)
-            return_batch = _flatten_helper(T, N, return_batch)
-            masks_batch = _flatten_helper(T, N, masks_batch)
-            old_action_log_probs_batch = _flatten_helper(T, N, \
-                    old_action_log_probs_batch)
-            adv_targ = _flatten_helper(T, N, adv_targ)
-
-            yield obs_batch, recurrent_hidden_states_batch, actions_batch, \
-                value_preds_batch, return_batch, masks_batch, old_action_log_probs_batch, adv_targ
+        n = self.rewards.size(1)
+        if num_mini_batch <= 0 or n % num_mini_batch:
+            raise ValueError("Recurrent batches must divide environments evenly")
+        T, N = self.num_steps, n//num_mini_batch
+        perm = torch.randperm(n, device=self.rewards.device)
+        def gather(t, ids):
+            return t.index_select(1, ids).reshape(T*N, *t.shape[2:])
+        for ids in perm.split(N):
+            obs = {k:gather(v[:-1],ids) for k,v in self.obs.items()}
+            hidden = {k:v[0].index_select(0,ids) for k,v in self.recurrent_hidden_states.items()}
+            yield (obs, hidden, gather(self.actions,ids), gather(self.value_preds[:-1],ids),
+                   gather(self.returns[:-1],ids), gather(self.masks[:-1],ids),
+                   gather(self.action_log_probs,ids), gather(advantages,ids))

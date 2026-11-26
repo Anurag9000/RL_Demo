@@ -159,6 +159,11 @@ class Config(object):
     sim2real.fixed_time_interval = 0.1
     sim2real.use_fixed_time_interval = True
 
+    def __init__(self):
+        if getattr(self.args, 'waffle_pi', False):
+            from waffle_pi.profile import configure
+            configure(self, self.args)
+
     if sim.predict_method == 'inferred' and env.use_wrapper == False:
         raise ValueError("If using inferred prediction, you must wrap the envs!")
     if sim.predict_method != 'inferred' and env.use_wrapper:

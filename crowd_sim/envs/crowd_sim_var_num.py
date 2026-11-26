@@ -62,6 +62,21 @@ class CrowdSimVarNum(CrowdSim):
     # for crowd nav: human_num == self.human_num
     # for leader follower: human_num = self.human_num - 1
     def generate_robot_humans(self, phase, human_num=None):
+        if getattr(self.config, 'waffle_pi', False):
+            bound = self.arena_size - self.robot.radius
+            for _ in range(2000):
+                px, py, gx, gy = np.random.uniform(-bound, bound, 4)
+                if self.config.waffle_min_goal <= np.hypot(px-gx, py-gy) <= self.config.waffle_max_goal:
+                    break
+            else:
+                raise RuntimeError("No feasible Waffle goal sampled")
+            self.robot.set(px, py, gx, gy, 0, 0, np.random.uniform(0, 2*np.pi))
+            self.human_num = self.config.sim.human_num
+            self.generate_random_human_position(human_num=self.human_num)
+            self.last_human_states = np.zeros((self.human_num, 5))
+            for i, human in enumerate(self.humans):
+                human.id = i
+            return
         if self.record:
             px, py = 0, 0
             gx, gy = 0, -1.5
@@ -118,7 +133,11 @@ class CrowdSimVarNum(CrowdSim):
         if self.randomize_attributes:
             human.sample_random_attributes()
 
+        attempts = 0
         while True:
+            attempts += 1
+            if getattr(self.config, 'waffle_pi', False) and attempts > 2000:
+                raise RuntimeError("Human spawn infeasible; reduce density")
             angle = np.random.random() * np.pi * 2
             # add some noise to simulate all the possible cases robot could meet with human
             noise_range = 2
@@ -317,6 +336,9 @@ class CrowdSimVarNum(CrowdSim):
         if test_case is not None:
             self.case_counter[phase] = test_case # test case is passed in to calculate specific seed to generate case
         self.global_time = 0
+        if getattr(self.config, 'waffle_pi', False):
+            self.waffle_wheels = (0., 0.)
+            self.desiredVelocity = [0., 0.]
         self.step_counter = 0
         self.id_counter = 0
 
@@ -485,7 +507,9 @@ class CrowdSimVarNum(CrowdSim):
 
 
         # check if reaching the goal
-        if self.robot.kinematics == 'unicycle':
+        if getattr(self.config, 'waffle_pi', False):
+            goal_radius = self.robot.radius
+        elif self.robot.kinematics == 'unicycle':
             goal_radius = 0.6
         else:
             goal_radius = self.robot.radius

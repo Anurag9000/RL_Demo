@@ -29,7 +29,7 @@ class PPO():
         self.max_grad_norm = max_grad_norm
         self.use_clipped_value_loss = use_clipped_value_loss
 
-        self.optimizer = optim.Adam(actor_critic.parameters(), lr=lr, eps=eps)
+        self.optimizer = optim.Adam([p for p in actor_critic.parameters() if p.requires_grad], lr=lr, eps=eps)
 
 
 
@@ -38,9 +38,8 @@ class PPO():
         advantages = (advantages - advantages.mean()) / (
             advantages.std() + 1e-5)
 
-        value_loss_epoch = 0
-        action_loss_epoch = 0
-        dist_entropy_epoch = 0
+        metrics = torch.zeros(3, device=advantages.device)
+        count = 0
 
 
         for e in range(self.ppo_epoch):
@@ -79,23 +78,15 @@ class PPO():
                 else:
                     value_loss = 0.5 * (return_batch - values).pow(2).mean()
 
-                self.optimizer.zero_grad()
+                self.optimizer.zero_grad(set_to_none=True)
                 total_loss=value_loss * self.value_loss_coef + action_loss - dist_entropy * self.entropy_coef
                 total_loss.backward()
                 nn.utils.clip_grad_norm_(self.actor_critic.parameters(),
                                          self.max_grad_norm)
                 self.optimizer.step()
 
-                value_loss_epoch += value_loss.item()
-                action_loss_epoch += action_loss.item()
-                dist_entropy_epoch += dist_entropy.item()
-
-
-        num_updates = self.ppo_epoch * self.num_mini_batch
-
-        value_loss_epoch /= num_updates
-        action_loss_epoch /= num_updates
-        dist_entropy_epoch /= num_updates
-
-
-        return value_loss_epoch, action_loss_epoch, dist_entropy_epoch
+                metrics += torch.stack((value_loss.detach(), action_loss.detach(), dist_entropy.detach()))
+                count += 1
+        if count == 0:
+            raise RuntimeError("No PPO minibatches")
+        return tuple((metrics/count).cpu().tolist())
