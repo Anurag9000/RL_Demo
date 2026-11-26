@@ -106,7 +106,7 @@ def main():
 	torch.manual_seed(algo_args.seed)
 	torch.cuda.manual_seed_all(algo_args.seed)
 	if algo_args.cuda:
-		if algo_args.cuda_deterministic:
+		if algo_args.cuda_deterministic or algo_args.waffle_require_measured:
 			# reproducible but slower
 			torch.backends.cudnn.benchmark = False
 			torch.backends.cudnn.deterministic = True

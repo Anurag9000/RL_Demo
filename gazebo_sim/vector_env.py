@@ -250,6 +250,8 @@ class GazeboVecEnv(VecEnv):
         self.n=args.num_processes
         self.h=config.sim.human_num
         self.rng=np.random.default_rng(args.seed+100003*int(os.environ.get('RANK','0')))
+        if args.waffle_gazebo_detector_device=='learner':
+            args.waffle_gazebo_detector_device=str(self.device)
         self.profile=config.fidelity
         validate_gazebo_profile(self.profile,args.waffle_require_measured)
         scene_tensors(self.profile,config.sim.arena_size,self.h,config.robot.radius,torch.device('cpu'),

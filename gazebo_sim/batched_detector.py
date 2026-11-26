@@ -70,8 +70,12 @@ class DetectorPool:
         d=self.settings
         if self.device.type=='cuda':
             torch.cuda.set_device(self.device)
-        wrapper=self.factory(self.weights,model=d['model'],gpu=self.device.type=='cuda',
-                       stride=d['stride'],panoramic_scan=geometry.panoramic)
+        benchmark=torch.backends.cudnn.benchmark
+        try:
+            wrapper=self.factory(self.weights,model=d['model'],gpu=self.device.type=='cuda',
+                           stride=d['stride'],panoramic_scan=geometry.panoramic)
+        finally:
+            torch.backends.cudnn.benchmark=benchmark
         self.model=wrapper._model.eval()
         self.model.requires_grad_(False)
         if d['model']=='DR-SPAAM' and not hasattr(self.model.gate,'_memory'):

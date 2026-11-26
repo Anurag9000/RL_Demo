@@ -14,8 +14,13 @@ class DetectorEngine:
         self.model=model
         self.confidence,self.max_range=confidence,max_range
         self.geometry=geometry
-        self.detector=Detector(weights,model=model,gpu=device.startswith('cuda'),
-                               stride=stride,panoramic_scan=geometry.panoramic)
+        import torch
+        benchmark=torch.backends.cudnn.benchmark
+        try:
+            self.detector=Detector(weights,model=model,gpu=device.startswith('cuda'),
+                                   stride=stride,panoramic_scan=geometry.panoramic)
+        finally:
+            torch.backends.cudnn.benchmark=benchmark
         self.detector.set_laser_fov(geometry.fov_deg)
 
     def reset(self):

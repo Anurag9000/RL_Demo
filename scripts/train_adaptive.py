@@ -142,11 +142,11 @@ def device_env(a,slot):
     for key in ('RANK','LOCAL_RANK','WORLD_SIZE','LOCAL_WORLD_SIZE','MASTER_ADDR','MASTER_PORT'):
         env.pop(key,None)
     env.pop('WAFFLE_RANK_CPUSETS',None)
-    from gazebo_sim.hardware import candidate_cpuset
+    from gazebo_sim.hardware import candidate_cpuset,candidate_gpu
     spec=candidate_cpuset(slot)
     if spec:
         env['WAFFLE_RANK_CPUSETS']=spec
-    env.update(CUDA_DEVICE_ORDER='PCI_BUS_ID',CUDA_VISIBLE_DEVICES='' if slot.startswith('cpu:') else slot,
+    env.update(CUDA_DEVICE_ORDER='PCI_BUS_ID',CUDA_VISIBLE_DEVICES=candidate_gpu(slot),
                OMP_NUM_THREADS=str(a.threads),MKL_NUM_THREADS=str(a.threads),MPLBACKEND='Agg')
     return env
 

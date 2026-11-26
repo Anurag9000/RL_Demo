@@ -71,6 +71,14 @@ def worker_command(cmd,env,index):
     return prefix+cmd
 
 
+def candidate_gpu(slot):
+    import json
+    if slot.startswith('cpu:'):
+        return ''
+    mapping=json.loads(os.environ.get('WAFFLE_CANDIDATE_GPU_UUIDS','{}'))
+    return mapping.get(slot,slot)
+
+
 def candidate_cpuset(slot):
     # Explicit device-to-cpuset map supplied by the hardware planner.
     import json

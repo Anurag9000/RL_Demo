@@ -279,7 +279,7 @@ def get_args(argv=None):
     parser.add_argument('--waffle-gazebo-worker',default='build/gazebo/waffle_gazebo_worker')
     parser.add_argument('--waffle-gazebo-logs',default='gazebo_runs/workers')
     parser.add_argument('--waffle-gazebo-timeout',type=float,default=120.)
-    parser.add_argument('--waffle-gazebo-detector-device',default='cpu')
+    parser.add_argument('--waffle-gazebo-detector-device',default='cpu',help='cpu, cuda:N, or learner (rank-local device)')
     parser.add_argument('--waffle-gazebo-model-sha',default=None,help=argparse.SUPPRESS)
     parser.add_argument('--waffle-gazebo-worker-sha',default=None,help=argparse.SUPPRESS)
     parser.add_argument('--waffle-safety-sha',default=None,help=argparse.SUPPRESS)
