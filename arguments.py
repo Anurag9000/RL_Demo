@@ -248,6 +248,13 @@ def get_args(argv=None):
     parser.add_argument('--gst-adjacent-mask', action='store_true',
                         help='Use training-consistent adjacent visibility masks for GST displacements')
     parser.add_argument('--cuda-graph-ppo', action='store_true')
+    parser.add_argument('--waffle-native-action', action='store_true',
+                        help='Train latent forward speed and yaw rate instead of Cartesian velocity')
+    parser.add_argument('--waffle-init-cartesian', action='store_true',
+                        help='Transfer compatible checkpoint layers and reset native action head')
+    parser.add_argument('--waffle-angular-speed', type=float, default=1.82)
+    parser.add_argument('--waffle-safety-calibration', default=None,
+                        help='Measured safety gate JSON; simulation uses its clearance parameters')
     args = parser.parse_args(argv)
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()

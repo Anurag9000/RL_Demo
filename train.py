@@ -24,6 +24,10 @@ def main():
 	"""
 	# read arguments
 	algo_args = get_args()
+	if algo_args.waffle_native_action and not algo_args.waffle_pi:
+		raise ValueError('Native actions require Waffle profile')
+	if algo_args.waffle_init_cartesian and (not algo_args.resume or not algo_args.waffle_native_action or algo_args.waffle_eval_episodes):
+		raise ValueError('Cartesian initialization is a native training-only transfer option')
 
 	if algo_args.algo != 'ppo' or algo_args.seq_length != algo_args.num_steps:
 		raise ValueError("Use PPO and match seq_length to num_steps")
@@ -162,10 +166,16 @@ def main():
 	if algo_args.resume:
 		load_path = algo_args.load_path
 		from waffle_pi.checkpoints import load_weights
+		from waffle_pi.native import check_checkpoint,profile_contract
+		check_checkpoint(load_path,algo_args.waffle_native_action and not algo_args.waffle_init_cartesian,
+			profile_contract(algo_args) if algo_args.waffle_native_action and not algo_args.waffle_init_cartesian else None)
 		actor_critic.load_state_dict(load_weights(load_path,'cpu'), strict=True)
 		print("Loaded the following checkpoint:", load_path)
 
 
+	if algo_args.waffle_native_action and (not algo_args.resume or algo_args.waffle_init_cartesian):
+		from waffle_pi.native import reset_head
+		reset_head(actor_critic)
 	# allow the usage of multiple GPUs to increase the number of examples processed simultaneously
 	actor_critic.to(device)
 	if algo_args.freeze_human_attention:

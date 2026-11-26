@@ -37,6 +37,10 @@ jobs:
         run: |
           python train.py --waffle-pi --waffle-live-orca --no-cuda --resume --fast-training --masked-gru --gae-backend scan --num-processes 4 --num-mini-batch 2 --num-steps 4 --seq_length 4 --ppo-epoch 1 --num-env-steps 16 --waffle-timeout 20 --waffle-pool-count 32 --load-path trained_models/GST_predictor_rand/checkpoints/41665.pt --output_dir /tmp/waffle-ci-train
           test -s /tmp/waffle-ci-train/checkpoints/00000.pt
+      - name: Native Waffle action training smoke
+        run: |
+          python train.py --waffle-pi --waffle-native-action --waffle-init-cartesian --waffle-live-orca --no-cuda --resume --fast-training --masked-gru --gae-backend scan --num-processes 4 --num-mini-batch 2 --num-steps 4 --seq_length 4 --ppo-epoch 1 --num-env-steps 16 --waffle-pool-count 32 --load-path trained_models/GST_predictor_rand/checkpoints/41665.pt --output_dir /tmp/waffle-native-ci
+          test -s /tmp/waffle-native-ci/checkpoints/00000.pt
       - name: Two-rank Gloo PPO smoke
         run: |
           torchrun --standalone --nproc_per_node=2 train.py --waffle-pi --waffle-live-orca --no-cuda --resume --fast-training --masked-gru --gae-backend scan --num-processes 2 --num-mini-batch 1 --num-steps 4 --seq_length 4 --ppo-epoch 1 --num-env-steps 16 --waffle-timeout 20 --waffle-pool-count 32 --load-path trained_models/GST_predictor_rand/checkpoints/41665.pt --output_dir /tmp/waffle-ci-ddp

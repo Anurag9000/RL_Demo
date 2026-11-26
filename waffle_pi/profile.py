@@ -8,6 +8,15 @@ def configure(config, args):
     if args.env_name != 'CrowdSimPredRealGST-v0' or not args.sort_humans:
         raise ValueError("Waffle profile requires GST and sorted observations")
     config.waffle_pi = True
+    if args.waffle_native_action:
+        from .native import COMMISSION_V,COMMISSION_W,safety_parameters
+        if not (args.waffle_live_orca or args.waffle_replay):
+            raise ValueError("Native action training requires a tensor simulator")
+        args.waffle_speed=min(args.waffle_speed,COMMISSION_V)
+        args.waffle_angular_speed=min(args.waffle_angular_speed,COMMISSION_W)
+        config.waffle_safety=safety_parameters(args.waffle_safety_calibration,args.waffle_radius)
+    elif args.waffle_init_cartesian or args.waffle_safety_calibration:
+        raise ValueError("Native transfer and simulated gate require native action mode")
     if args.waffle_calibration:
         with open(args.waffle_calibration) as handle:
             calibration=json.load(handle)
@@ -24,7 +33,8 @@ def configure(config, args):
     if (args.waffle_actuation_delay or args.waffle_dynamics_randomization) and not (args.waffle_live_orca or args.waffle_replay):
         raise ValueError("Actuation delay and dynamics randomization require tensor simulator")
     config.waffle_limits = DriveLimits(max_linear=args.waffle_speed,
-        max_wheel=args.waffle_speed/0.033, motor_tau=args.waffle_motor_tau,
+        max_angular=args.waffle_angular_speed,
+        max_wheel=0.26/0.033 if args.waffle_native_action else args.waffle_speed/0.033, motor_tau=args.waffle_motor_tau,
         wheel_accel=args.waffle_wheel_accel)
     config.action_space.kinematics = 'unicycle'
     config.robot.v_pref = args.waffle_speed

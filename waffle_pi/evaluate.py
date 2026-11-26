@@ -33,6 +33,8 @@ def run(args):
         model=Policy(env.observation_space.spaces,env.action_space,
                      base=config.robot.policy,base_kwargs=args).to(device)
         from .checkpoints import load_weights
+        from .native import check_checkpoint,profile_contract
+        check_checkpoint(args.load_path,args.waffle_native_action,profile_contract(args) if args.waffle_native_action else None)
         model.load_state_dict(load_weights(args.load_path,device),strict=True)
         model.eval()
         obs=env.reset()
@@ -42,6 +44,7 @@ def run(args):
         outcomes,rewards=Counter(),[]
         total=torch.zeros(b,device=device)
         steps=0
+        interventions=0
         start=time.perf_counter()
         limit=args.waffle_eval_episodes*(int(config.env.time_limit/config.env.time_step)+5)
         with torch.no_grad():
@@ -54,6 +57,8 @@ def run(args):
                 done=torch.as_tensor(done,device=device,dtype=torch.bool)
                 masks=(~done).float().unsqueeze(-1)
                 if tensor:
+                    if args.waffle_native_action:
+                        interventions+=int(env.venv.intervened.sum().item())
                     codes=env.venv.outcome
                     finished=list(zip(codes[done].cpu().tolist(),total[done].cpu().tolist()))
                     for code,value in finished[:args.waffle_eval_episodes-len(rewards)]:
@@ -70,6 +75,7 @@ def run(args):
                 'collision_rate':outcomes['Collision']/len(rewards),
                 'timeout_rate':outcomes['Timeout']/len(rewards),
                 'mean_reward':sum(rewards)/len(rewards),'seed':args.seed,
+                'gate_intervention_fraction':interventions/(steps*b) if args.waffle_native_action else None,
                 'backend':'live_tensor' if args.waffle_live_orca else 'replay' if args.waffle_replay else 'reference',
                 'transitions_per_sec':steps*b/elapsed,'elapsed_s':elapsed}
         print(json.dumps(result,indent=2))

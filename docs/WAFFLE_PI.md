@@ -348,3 +348,35 @@ setup costs are included in per-run wall time, excluded from steady-state
 phase timings. Use `--repeat 3` to measure variability. `--device cpu` supports
 eager and scan presets. Select by held-out success/collision rates and time to
 reward after throughput tuning; different batch sizes change PPO learning.
+
+
+## Native Waffle policy (primary retraining route)
+
+The original Cartesian adapter is now a baseline only. Select
+`--waffle-native-action --waffle-live-orca` to train a forward-speed/yaw-rate
+policy under the physical commissioning gate's 0.10 m/s and 0.50 rad/s caps.
+The two Gaussian latent coordinates map to v=vmax*max(0,tanh(z0)) and
+w=wmax*tanh(z1). Store the latent sample and its original log probability
+in PPO, not the transformed or gated command. The model retains all shapes.
+`--waffle-init-cartesian --resume` loads the original randomized checkpoint and
+resets its action mean and log standard deviation; GST is frozen, all policy
+feature layers train unless --freeze-human-attention is explicitly used.
+
+```sh
+python train.py --waffle-pi --waffle-native-action --waffle-init-cartesian --waffle-live-orca --resume --fast-training --masked-gru --gae-backend scan --load-path trained_models/GST_predictor_rand/checkpoints/41665.pt --output_dir trained_models/native_waffle --num-processes 256 --num-mini-batch 16 --num-env-steps 1000000
+```
+
+The native backend models all-around stopping clearance from ideal disk and
+square-wall ranges before the motor transition, with measured-speed clearance
+and command delay. `--waffle-safety-calibration` accepts the same parameter
+schema as the physical gate. Defaults are unmeasured conservative examples.
+Actual scan coverage, stale messages, moving human stopping guarantees, and
+arbitrary laboratory maps are not modeled; the real gate remains unchanged.
+Use `--waffle-calibration` for measured actuator parameters separately.
+For native evaluation use --waffle-native-action, the trained checkpoint,
+and matching profile flags, WITHOUT --waffle-init-cartesian. The checkpoint's
+adjacent run_args.json is required to prevent silent action reinterpretation.
+For ROS shadow inference pass --waffle-native-action and matching --speed,
+--angular-speed, --radius, --sensor-range, --humans and GST mask settings.
+Keep the run_args.json with checkpoints. Do not arm the robot based on
+simulation results. A native-policy smoke test is added to CI.

@@ -24,6 +24,7 @@ from nav_msgs.msg import Odometry
 from tf2_ros import Buffer, TransformListener
 from .tracking import Tracker, TrajectoryHistory
 from .dynamics import DriveLimits, command_twist
+from .native import native_twist,check_checkpoint,COMMISSION_V,COMMISSION_W
 
 
 def rotation(q):
@@ -56,6 +57,11 @@ class Shadow(Node):
                 'detected_human_num':box((1,))}
         self.model=Policy(obs_spaces,box((2,)),base='selfAttn_merge_srnn',base_kwargs=policy_args).to(self.device)
         from .checkpoints import load_weights,load_gst_args
+        check_checkpoint(opts.checkpoint,opts.waffle_native_action,
+            dict(waffle_speed=opts.speed,waffle_angular_speed=opts.angular_speed,
+                 waffle_radius=opts.radius,waffle_sensor_range=opts.sensor_range,
+                 waffle_humans=opts.humans,gst_adjacent_mask=opts.gst_adjacent_mask)
+            if opts.waffle_native_action else None)
         self.model.load_state_dict(load_weights(opts.checkpoint,self.device),strict=True)
         self.model.eval()
         gst_args=load_gst_args(Path(opts.gst_dir)/'checkpoint'/'args.pickle')
@@ -189,8 +195,10 @@ class Shadow(Node):
                  'detected_human_num':mask.sum().clamp_min(1).float().reshape(1,1)}
             _,action,_,self.hidden=self.model.act(obs,self.hidden,self.masks,deterministic=True)
             self.masks.fill_(1.)
-            limits=DriveLimits(max_linear=self.opts.speed,max_wheel=self.opts.speed/0.033)
-            v,w=command_twist(action[0].cpu().tolist(),heading,limits)
+            limits=DriveLimits(max_linear=self.opts.speed,max_angular=self.opts.angular_speed,
+                               max_wheel=.26/.033 if self.opts.waffle_native_action else self.opts.speed/.033)
+            raw=action[0].cpu().tolist()
+            v,w=native_twist(raw,limits) if self.opts.waffle_native_action else command_twist(raw,heading,limits)
             if now+0.25<time.monotonic():
                 raise RuntimeError("Inference deadline exceeded")
             self.publish(v,w)
@@ -211,8 +219,15 @@ def main():
     parser.add_argument('--sensor-range',type=float,default=3.)
     parser.add_argument('--detection-topic',default='/dr_spaam_detections')
     parser.add_argument('--gst-adjacent-mask',action='store_true')
+    parser.add_argument('--waffle-native-action',action='store_true')
+    parser.add_argument('--angular-speed',type=float,default=1.82)
     parser.add_argument('--enable-requests',action='store_true')
     opts,ros_args=parser.parse_known_args()
+    if opts.waffle_native_action:
+        opts.speed=min(opts.speed,COMMISSION_V)
+        opts.angular_speed=min(opts.angular_speed,COMMISSION_W)
+    if not 0<opts.angular_speed<=1.82:
+        raise ValueError('Invalid angular speed')
     if not 1<=opts.humans<=20 or not 0<opts.speed<=.26 or not 0<opts.radius or not 0<opts.sensor_range<=5:
         raise ValueError("Invalid Waffle configuration")
     old=sys.argv

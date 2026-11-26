@@ -7,7 +7,7 @@ import numpy as np
 import torch
 from rl.vec_env import VecEnv
 from rl.vec_env.vec_pretext_normalize import VecPretextNormalize
-from .batched import step, wheel_targets, advance
+from .batched import step, wheel_targets, advance, native_targets, approximate_gate
 from .perception import Perception
 
 
@@ -99,7 +99,10 @@ class ReplayVecEnv(VecEnv):
             'detected_human_num': box((1,))})
         super().__init__(self.n, space, box((2,)))
         self.motion = step
-        self.targets = wheel_targets
+        self.native = args.waffle_native_action
+        self.targets = native_targets if self.native else wheel_targets
+        self.gate = approximate_gate
+        self.intervened = torch.zeros(self.n,device=device,dtype=torch.bool)
         self.advance = advance
         self.delay = args.waffle_actuation_delay
         self.randomization = args.waffle_dynamics_randomization
@@ -111,8 +114,10 @@ class ReplayVecEnv(VecEnv):
             if not hasattr(torch, 'compile'):
                 raise RuntimeError("Compiled dynamics requires PyTorch 2.x")
             self.motion = torch.compile(step, fullgraph=True)
-            if self.delay or self.randomization:
-                self.targets=torch.compile(wheel_targets,fullgraph=True)
+            if self.native or self.delay or self.randomization:
+                self.targets=torch.compile(self.targets,fullgraph=True)
+                if self.native:
+                    self.gate=torch.compile(self.gate,fullgraph=True)
                 self.advance=torch.compile(advance,fullgraph=True)
         self.ids = torch.zeros(self.n, device=device, dtype=torch.long)
         self.t = torch.zeros_like(self.ids)
@@ -201,11 +206,14 @@ class ReplayVecEnv(VecEnv):
         prev_humans = self._frame()
         old_dist = torch.linalg.vector_norm(self.goal-old[:,:2],dim=-1)
         limits,dt=self.cfg.waffle_limits,self.cfg.env.time_step
-        if self.delay or self.randomization:
-            target=self.targets(self.pose,self.actions,limits)
+        if self.native or self.delay or self.randomization:
+            target=self.targets(self.actions,limits) if self.native else self.targets(self.pose,self.actions,limits)
             self.command_history[self.command_cursor].copy_(target)
             self.command_cursor=(self.command_cursor+1)%(self.delay+1)
             target=self.command_history[self.command_cursor]
+            if self.native:
+                target,self.intervened=self.gate(self.pose,self.wheels,target,prev_humans,
+                    self.cfg.sim.arena_size,limits,self.cfg.waffle_safety)
             self.pose,self.wheels,self.velocity,dtheta=self.advance(
                 self.pose,self.wheels,target,limits,dt,self.tau_scale,self.accel_scale)
         else:
