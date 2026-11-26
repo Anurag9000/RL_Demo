@@ -481,3 +481,22 @@ counts only active quota transitions for safety intervention fractions. This
 avoids preferentially scoring the fastest-terminating episodes in a batch.
 The validation seed is deliberately reused for selection, so repeated successes
 are not statistically independent; the separate test seed is not used for training.
+
+## Surveyed scene and shared scan snapshots
+
+Fidelity profiles can include a `scene` object containing `arena_half_extent_m`,
+`rectangles_m` (closed axis-aligned [xmin,ymin,xmax,ymax] solids) and `scenarios`.
+Each scenario has `robot_start` [x,y,heading], `robot_goal` [x,y], and `humans`
+with `start`, `radius`, `speed`, and cyclic `waypoints` (at least two, equal
+length across people and cases). All positions are in the same surveyed frame.
+Include explicit scenarios for every curriculum crowd size. Start and waypoint
+clearances and route segments are checked. Human static contact is conservatively
+rejected, not solved with obstacle ORCA; narrow passages may produce deadlocks.
+This is not yet general occupancy-map import or a complete pedestrian model.
+Measured mode requires a scene and calibrated detector bins covering sensor range.
+The simulated detector consumes the same cached noisy scan hit eligibility and
+acquisition-time pedestrian geometry as the simulated safety gate, instead of a
+second ideal scan. It remains a statistical detector, not actual neural inference.
+The policy runner requires the identical fidelity-profile hash for fidelity-trained
+checkpoints and a measured profile in request mode. The physical safety gate
+remains independent. Never infer physical safety from a profile hash.

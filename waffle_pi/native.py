@@ -57,5 +57,8 @@ def safety_parameters(path,radius):
 
 
 def profile_contract(args):
-    return {k:getattr(args,k) for k in ('waffle_speed','waffle_angular_speed',
+    result={k:getattr(args,k) for k in ('waffle_speed','waffle_angular_speed',
         'waffle_radius','waffle_sensor_range','waffle_humans','gst_adjacent_mask')}
+    if getattr(args,'waffle_fidelity_sha',None):
+        result['waffle_fidelity_sha']=args.waffle_fidelity_sha
+    return result

@@ -7,6 +7,7 @@ class Perception:
     def __init__(self,args,b,n,device,rng):
         self.args,self.device,self.rng=args,device,rng
         self.fidelity=None
+        self.drive=None
         self.bias=torch.zeros(b,2,device=device)
         self.dropped=torch.zeros(b,n,device=device,dtype=torch.bool)
         self.delay=args.waffle_detection_delay
@@ -33,14 +34,15 @@ class Perception:
         scan=center-.064*torch.stack((pose[:,2].cos(),pose[:,2].sin()),-1)
         if self.fidelity is not None:
             from .fidelity import laser_origin
-            scan=laser_origin(pose,self.fidelity['laser'])
+            scan=laser_origin(self.drive.scan_pose,self.fidelity['laser'])
+            humans=self.drive.scan_humans
         rel=humans[...,:2]-scan[:,None,:]
         dist=torch.linalg.vector_norm(rel,dim=-1)
         visible=dist<=sensor_range
         if self.fidelity is not None:
             from .fidelity import raycast
             laser=self.fidelity['laser']
-            ranges,ids=raycast(pose,humans,a.waffle_arena,laser)
+            ranges,ids=self.drive.scan,self.drive.hits
             # Geometric hit eligibility; not an actual DR-SPAAM inference.
             hit=(ids[:,:,None]==torch.arange(humans.shape[1],device=pose.device)[None,None,:])
             visible&=(hit&(ranges[:,:,None]>=laser['range_min'])&(ranges[:,:,None]<=laser['range_max'])).any(1)
@@ -70,7 +72,7 @@ class Perception:
                 std=torch.as_tensor(b['std_m'],device=pose.device)
                 # Detector residuals specified in laser-local axes.
                 noise=torch.randn(measured.shape,device=pose.device,generator=self.rng)*std+bias
-                angle=pose[:,2:]+self.fidelity['laser']['yaw']
+                angle=self.drive.scan_pose[:,2:]+self.fidelity['laser']['yaw']
                 c,s=angle.cos(),angle.sin()
                 dx,dy=noise.unbind(-1)
                 world=torch.stack((c*dx-s*dy,s*dx+c*dy),-1)

@@ -158,6 +158,8 @@ class FidelityDrive:
         self.scan=torch.full((n,self.laser['rays']),float('inf'),device=device)
         self.scan_elapsed=torch.full((n,),float('inf'),device=device)
         self.hits=torch.full_like(self.scan,-1,dtype=torch.long)
+        self.scan_pose=torch.zeros(n,3,device=device)
+        self.scan_humans=None
 
     def reset(self,done):
         self.queue.masked_fill_(done[None,:,None],0.)
@@ -178,6 +180,19 @@ class FidelityDrive:
             valid&=torch.rand(ranges.shape,device=ranges.device,generator=self.rng)>=self.laser['drop_probability']
         return torch.where(valid,ranges.clamp_min(0.),float('inf')),torch.where(valid,ids,-1)
 
+    def update_scan(self,pose,humans,arena,sample):
+        if self.scan_humans is None:
+            self.scan_humans=torch.zeros_like(humans)
+        ranges,ids=self.sample_scan(pose,humans,arena)
+        self.scan=torch.where(sample[:,None],ranges,self.scan)
+        self.hits=torch.where(sample[:,None],ids,self.hits)
+        self.scan_pose=torch.where(sample[:,None],pose,self.scan_pose)
+        self.scan_humans=torch.where(sample[:,None,None],humans,self.scan_humans)
+        self.scan_elapsed=torch.where(sample,torch.zeros_like(self.scan_elapsed),self.scan_elapsed)
+
+    def ensure_scan(self,pose,humans,arena):
+        self.update_scan(pose,humans,arena,torch.isinf(self.scan_elapsed))
+
     def advance(self,pose,wheels,target,before,after,arena,limits,params,tau_scale,accel_scale,robot_radius):
         initial_heading=pose[:,2]
         rotation=torch.zeros_like(initial_heading)
@@ -190,10 +205,7 @@ class FidelityDrive:
             self.scan_elapsed+=self.dt
             sample=self.scan_elapsed>=1/self.laser['hz']-1e-7
             # Per-world phase; compute full batch and replace only due scans.
-            ranges,ids=self.sample_scan(pose,humans,arena)
-            self.scan=torch.where(sample[:,None],ranges,self.scan)
-            self.hits=torch.where(sample[:,None],ids,self.hits)
-            self.scan_elapsed=torch.where(sample,torch.zeros_like(self.scan_elapsed),self.scan_elapsed)
+            self.update_scan(pose,humans,arena,sample)
             self.queue[self.cursor].copy_(target)
             self.cursor=(self.cursor+1)%len(self.queue)
             cmd=self.queue[self.cursor]

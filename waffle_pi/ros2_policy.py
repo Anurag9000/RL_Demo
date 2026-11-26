@@ -57,11 +57,18 @@ class Shadow(Node):
                 'detected_human_num':box((1,))}
         self.model=Policy(obs_spaces,box((2,)),base='selfAttn_merge_srnn',base_kwargs=policy_args).to(self.device)
         from .checkpoints import load_weights,load_gst_args
-        check_checkpoint(opts.checkpoint,opts.waffle_native_action,
+        manifest=check_checkpoint(opts.checkpoint,opts.waffle_native_action,
             dict(waffle_speed=opts.speed,waffle_angular_speed=opts.angular_speed,
                  waffle_radius=opts.radius,waffle_sensor_range=opts.sensor_range,
                  waffle_humans=opts.humans,gst_adjacent_mask=opts.gst_adjacent_mask)
             if opts.waffle_native_action else None)
+        if manifest.get('waffle_fidelity_sha'):
+            from .fidelity import read_profile
+            if not opts.fidelity_profile:
+                raise ValueError('Checkpoint requires its fidelity profile')
+            _,digest=read_profile(opts.fidelity_profile,opts.enable_requests)
+            if digest!=manifest['waffle_fidelity_sha']:
+                raise ValueError('Deployment fidelity profile hash mismatch')
         self.model.load_state_dict(load_weights(opts.checkpoint,self.device),strict=True)
         self.model.eval()
         gst_args=load_gst_args(Path(opts.gst_dir)/'checkpoint'/'args.pickle')
@@ -221,6 +228,7 @@ def main():
     parser.add_argument('--gst-adjacent-mask',action='store_true')
     parser.add_argument('--waffle-native-action',action='store_true')
     parser.add_argument('--angular-speed',type=float,default=1.82)
+    parser.add_argument('--fidelity-profile')
     parser.add_argument('--enable-requests',action='store_true')
     opts,ros_args=parser.parse_known_args()
     if opts.waffle_native_action:

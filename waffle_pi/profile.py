@@ -28,6 +28,10 @@ def configure(config, args):
         if args.waffle_require_measured and not args.waffle_safety_calibration:
             raise ValueError('Separate measured safety record required')
         config.fidelity,args.waffle_fidelity_sha=read_profile(args.waffle_fidelity_profile,args.waffle_require_measured)
+        if args.waffle_require_measured and not config.fidelity.get('scene'):
+            raise ValueError('Measured mode requires explicit surveyed scenarios')
+        if args.waffle_require_measured and (not config.fidelity.get('detector_bins') or config.fidelity['detector_bins'][-1]['range_m'][1]<args.waffle_sensor_range):
+            raise ValueError('Measured detector bins must cover policy range')
         if args.waffle_sensor_range>config.fidelity['laser']['range_max']:
             raise ValueError('Policy sensor range exceeds physical laser range')
         laser=config.fidelity['laser']

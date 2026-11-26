@@ -20,6 +20,10 @@ class ReplayVecEnv(VecEnv):
         self.cfg, self.device, self.n = config, device, args.num_processes
         self.h = config.sim.human_num
         self.live = args.waffle_live_orca
+        self.scene=None
+        if args.waffle_fidelity_profile:
+            from .scene import scene_tensors
+            self.scene=scene_tensors(config.fidelity,config.sim.arena_size,self.h,config.robot.radius,device)
         self.args = args
         self.rng = torch.Generator(device=device).manual_seed(args.seed+int(os.environ.get('RANK','0'))*100003)
         if self.live:
@@ -44,8 +48,10 @@ class ReplayVecEnv(VecEnv):
         self.fidelity=None
         if args.waffle_fidelity_profile:
             from .fidelity import FidelityDrive
-            self.fidelity=FidelityDrive(config.fidelity,self.n,device,self.rng)
+            self.fidelity=FidelityDrive(config.fidelity,self.n,device,self.rng,
+                self.scene['rectangles'] if self.scene is not None else None)
             self.perception.fidelity=config.fidelity
+            self.perception.drive=self.fidelity
 
     def _load_pool(self,args):
         config,device=self.cfg,self.device
@@ -93,6 +99,10 @@ class ReplayVecEnv(VecEnv):
         self.human_start=torch.zeros_like(self.human_pos)
         self.human_radius=torch.zeros(self.n,self.h,device=dev)
         self.human_speed=torch.zeros_like(self.human_radius)
+        if self.scene is not None:
+            self.starts,self.goals=self.scene['starts'],self.scene['goals']
+            self.bank_pos,self.bank_radius,self.bank_speed=self.scene['pos'],self.scene['radius'],self.scene['speed']
+            self.route_index=torch.zeros(self.n,self.h,device=dev,dtype=torch.long)
 
     def _setup_spaces_and_state(self,config,args,device):
         def box(shape, dtype=np.float32):
@@ -156,6 +166,9 @@ class ReplayVecEnv(VecEnv):
             self.human_vel=torch.where(mask,0.,self.human_vel)
             self.human_radius=torch.where(done[:,None],self.bank_radius[self.ids],self.human_radius)
             self.human_speed=torch.where(done[:,None],self.bank_speed[self.ids],self.human_speed)
+            if self.scene is not None:
+                self.route_index.masked_fill_(done[:,None],0)
+                self.human_goal=torch.where(mask,self.scene['routes'][self.ids,:,0],self.human_goal)
 
     def _frame(self):
         if self.live:
@@ -169,10 +182,17 @@ class ReplayVecEnv(VecEnv):
         pos,vel,rad=self.human_pos,self.human_vel,self.human_radius
         # Stable out-and-back goals instead of robot-dependent teleportation.
         reached=torch.linalg.vector_norm(self.human_goal-pos,dim=-1)<rad
-        self.human_goal=torch.where(reached[...,None],-self.human_goal,self.human_goal)
+        if self.scene is not None:
+            routes=self.scene['routes'][self.ids]
+            self.route_index=(self.route_index+reached.long())%routes.shape[2]
+            self.human_goal=routes.gather(2,self.route_index[...,None,None].expand(-1,-1,1,2)).squeeze(2)
+        else:
+            self.human_goal=torch.where(reached[...,None],-self.human_goal,self.human_goal)
         delta=self.human_goal-pos
         preferred=delta/torch.linalg.vector_norm(delta,dim=-1,keepdim=True).clamp_min(1.)
         speed=self.human_speed
+        if self.fidelity is not None:
+            preferred=preferred*speed[...,None]
         if self.args.waffle_reactive_humans:
             pos=torch.cat((pos,old[:,None,:2]),1)
             vel=torch.cat((vel,old_velocity[:,None,:]),1)
@@ -185,11 +205,16 @@ class ReplayVecEnv(VecEnv):
         new=self.human_pos+self.human_vel*cfg.env.time_step
         bound=cfg.sim.arena_size-self.human_radius[...,None]
         new=torch.maximum(-bound,torch.minimum(bound,new))
+        if self.scene is not None:
+            from .scene import constrain_human_step
+            new=constrain_human_step(self.human_pos,new,self.human_radius,cfg.sim.arena_size,self.scene['rectangles'])
         self.human_vel=(new-self.human_pos)/cfg.env.time_step
         self.human_pos=new
 
     def _observe(self):
         humans = self._frame()
+        if self.fidelity is not None:
+            self.fidelity.ensure_scan(self.pose,humans,self.cfg.sim.arena_size)
         estimated,rel,visible = self.perception.observe(
             self.pose,humans,self.cfg.waffle_limits,self.cfg.robot.radius,self.cfg.robot.sensor_range)
         radius = torch.full_like(self.pose[:,:1], self.cfg.robot.radius)
