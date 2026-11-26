@@ -380,3 +380,26 @@ For ROS shadow inference pass --waffle-native-action and matching --speed,
 --angular-speed, --radius, --sensor-range, --humans and GST mask settings.
 Keep the run_args.json with checkpoints. Do not arm the robot based on
 simulation results. A native-policy smoke test is added to CI.
+
+
+## Concurrent independent PPO portfolio
+
+Use a single batched learner on one GPU initially. For several GPUs, run
+independent candidates (not shared gradients), each with its own frozen GST,
+native simulator, PPO optimizer and seed. The scheduler runs at most one
+candidate per listed GPU, starts another as soon as a slot frees up, then
+evaluates every successful candidate on a common held-out seed.
+
+```sh
+python -m scripts.train_portfolio --output experiments/native_portfolio --gpus 0 1 --envs 256 --minibatches 16 --seeds 11 29 47 --lrs 0.00004 0.0001 --entropies 0 0.01 --transitions 1000000 --eval-episodes 100
+```
+
+On CPU use --cpu-workers 2 --envs 16 --minibatches 4; no CUDA needed.
+Set the actual number of GPUs explicitly; this command assumes two GPUs.
+The portfolio saves per-candidate training and evaluation logs, checkpoints,
+results.json, and ranking.json. It rejects candidates exceeding the selected
+simulated collision fraction before ranking by success and other metrics.
+These are independent full-budget trials, not population-based training,
+early stopping, or successive halving. A common selection seed is not a
+final untouched test set; evaluate the chosen policy with further independent
+seeds and the calibrated physical profile. No policy is automatically deployed.
