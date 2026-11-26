@@ -52,12 +52,17 @@ class ReplayVecEnv(VecEnv):
         if self.eval_scene and args.waffle_require_measured and args.waffle_eval_episodes<len(self.starts):
             raise ValueError('Evaluation budget must cover all surveyed scenarios')
         self.fidelity=None
+        self.neural=None
         if args.waffle_fidelity_profile:
             from .fidelity import FidelityDrive
             self.fidelity=FidelityDrive(config.fidelity,self.n,device,self.rng,
                 self.scene['rectangles'] if self.scene is not None else None)
             self.perception.fidelity=config.fidelity
             self.perception.drive=self.fidelity
+            if args.waffle_detector_weights:
+                from .neural_perception import NeuralPerception
+                self.neural=NeuralPerception(args,config.fidelity,self.n,self.h,device)
+                self.fidelity.on_scan=self.neural.on_scan
 
     def _load_pool(self,args):
         config,device=self.cfg,self.device
@@ -160,6 +165,8 @@ class ReplayVecEnv(VecEnv):
         self.wheels = torch.where(done[:,None],0.,self.wheels)
         self.velocity = torch.where(done[:,None],0.,self.velocity)
         self.perception.reset(done)
+        if self.neural is not None:
+            self.neural.reset(done)
         if self.fidelity is not None:
             self.fidelity.reset(done)
         self.command_history.masked_fill_(done[None,:,None],0.)
@@ -227,13 +234,17 @@ class ReplayVecEnv(VecEnv):
             self.fidelity.ensure_scan(self.pose,humans,self.cfg.sim.arena_size)
         estimated,rel,visible = self.perception.observe(
             self.pose,humans,self.cfg.waffle_limits,self.cfg.robot.radius,self.cfg.robot.sensor_range)
+        extra={}
+        if self.neural is not None:
+            rel,visible,history,valid=self.neural.observe(estimated,self.perception.bias,self.cfg.robot.sensor_range)
+            extra=dict(gst_history=history,gst_history_mask=valid)
         radius = torch.full_like(self.pose[:,:1], self.cfg.robot.radius)
         speed = torch.full_like(radius,self.cfg.robot.v_pref)
         node = torch.cat((estimated,radius,self.goal,speed,self.pose[:,2:]),-1)
         return dict(robot_node=node[:,None,:], temporal_edges=self.velocity[:,None,:],
                     spatial_edges=rel.repeat(1,1,6), visible_masks=visible,
                     detected_human_num=visible.sum(-1,keepdim=True).clamp_min(1).float(),
-                    slot_reset=self.slot_reset.clone())
+                    slot_reset=self.slot_reset.clone(),**extra)
 
     def reset(self):
         self._reset(torch.ones(self.n,device=self.device,dtype=torch.bool))
@@ -255,7 +266,8 @@ class ReplayVecEnv(VecEnv):
             target=self.targets(self.actions,limits)
             self.pose,self.wheels,self.velocity,dtheta,self.intervened,faith_clearance,static_clearance,path=self.fidelity.advance(
                 old,self.wheels,target,prev_humans,self._frame(),self.cfg.sim.arena_size,
-                limits,self.cfg.waffle_safety,self.tau_scale,self.accel_scale,self.cfg.robot.radius)
+                limits,self.cfg.waffle_safety,self.tau_scale,self.accel_scale,self.cfg.robot.radius,
+                perception_fault=self.neural.fault if self.neural is not None else None)
         elif self.native or self.delay or self.randomization:
             target=self.targets(self.actions,limits) if self.native else self.targets(self.pose,self.actions,limits)
             self.command_history[self.command_cursor].copy_(target)

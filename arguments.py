@@ -272,6 +272,8 @@ def get_args(argv=None):
     parser.add_argument('--waffle-require-measured', action='store_true')
     parser.add_argument('--waffle-fidelity-sha', default=None, help=argparse.SUPPRESS)
     parser.add_argument('--waffle-scene-split', choices=['train','validation','test'],default='train')
+    parser.add_argument('--waffle-detector-weights',default=None,help='Actual DR-SPAAM inference on simulated scans')
+    parser.add_argument('--waffle-detector-sha',default=None,help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()

@@ -21,6 +21,8 @@ def configure(config, args):
         raise ValueError('Validation/test scenarios may not be used for training')
     if args.waffle_require_measured and args.waffle_eval_episodes and args.waffle_scene_split=='train':
         raise ValueError('Measured evaluation requires a held-out scene split')
+    if args.waffle_detector_weights and not args.waffle_fidelity_profile:
+        raise ValueError('Neural perception requires fidelity mode')
     if args.waffle_require_measured and not args.waffle_fidelity_profile:
         raise ValueError('Measured fidelity profile required')
     if args.waffle_fidelity_profile:
@@ -38,6 +40,19 @@ def configure(config, args):
             raise ValueError('Measured detector bins must cover policy range')
         if args.waffle_sensor_range>config.fidelity['laser']['range_max']:
             raise ValueError('Policy sensor range exceeds physical laser range')
+        if args.waffle_detector_weights:
+            import hashlib
+            from pathlib import Path
+            settings=config.fidelity.get('detector')
+            if not settings:
+                raise ValueError('Neural perception requires detector settings in fidelity profile')
+            args.waffle_detector_sha=hashlib.sha256(Path(args.waffle_detector_weights).read_bytes()).hexdigest()
+            if settings.get('weights_sha256')!=args.waffle_detector_sha:
+                raise ValueError('Detector checkpoint hash mismatch')
+            if args.waffle_noise or args.waffle_dropout or args.waffle_detection_delay:
+                raise ValueError('Neural detector replaces statistical detector noise/dropout/delay')
+            if args.num_processes>16:
+                raise ValueError('Neural scan backend initially supports at most 16 independent detector streams')
         if config.fidelity.get('reward'):
             from .quality import validate_reward
             validate_reward(config.fidelity['reward'])

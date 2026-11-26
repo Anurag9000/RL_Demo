@@ -160,12 +160,15 @@ class FidelityDrive:
         self.hits=torch.full_like(self.scan,-1,dtype=torch.long)
         self.scan_pose=torch.zeros(n,3,device=device)
         self.scan_humans=None
+        self.clock=torch.zeros(n,device=device,dtype=torch.float64)
+        self.on_scan=None
 
     def reset(self,done):
         self.queue.masked_fill_(done[None,:,None],0.)
         self.scan.masked_fill_(done[:,None],float('inf'))
         self.hits.masked_fill_(done[:,None],-1)
         self.scan_elapsed.masked_fill_(done,float('inf'))
+        self.clock.masked_fill_(done,0.)
 
     def twist(self,wheels):
         ground=wheels*self.radius
@@ -189,11 +192,13 @@ class FidelityDrive:
         self.scan_pose=torch.where(sample[:,None],pose,self.scan_pose)
         self.scan_humans=torch.where(sample[:,None,None],humans,self.scan_humans)
         self.scan_elapsed=torch.where(sample,torch.zeros_like(self.scan_elapsed),self.scan_elapsed)
+        if self.on_scan is not None:
+            self.on_scan(self.scan,self.scan_pose,self.clock,sample)
 
     def ensure_scan(self,pose,humans,arena):
         self.update_scan(pose,humans,arena,torch.isinf(self.scan_elapsed))
 
-    def advance(self,pose,wheels,target,before,after,arena,limits,params,tau_scale,accel_scale,robot_radius):
+    def advance(self,pose,wheels,target,before,after,arena,limits,params,tau_scale,accel_scale,robot_radius,perception_fault=None):
         initial_heading=pose[:,2]
         rotation=torch.zeros_like(initial_heading)
         blocked_any=torch.zeros_like(initial_heading,dtype=torch.bool)
@@ -202,7 +207,6 @@ class FidelityDrive:
         path=torch.zeros_like(clearance)
         for k in range(self.steps):
             humans=before+(after-before)*(k/self.steps)
-            self.scan_elapsed+=self.dt
             sample=self.scan_elapsed>=1/self.laser['hz']-1e-7
             # Per-world phase; compute full batch and replace only due scans.
             self.update_scan(pose,humans,arena,sample)
@@ -210,6 +214,9 @@ class FidelityDrive:
             self.cursor=(self.cursor+1)%len(self.queue)
             cmd=self.queue[self.cursor]
             cmd,blocked=clearance_gate(self.scan,self.twist(wheels),cmd,limits,params,self.laser)
+            if perception_fault is not None:
+                cmd=cmd.masked_fill(perception_fault[:,None],0.)
+                blocked|=perception_fault
             blocked_any|=blocked
             new=motor_step(wheels,cmd,self.dt,self.tau*tau_scale[:,None],
                            self.accel*accel_scale[:,None],self.brake*accel_scale[:,None],self.gain,self.deadband)
@@ -233,6 +240,8 @@ class FidelityDrive:
             pose=torch.cat((xy,((pose[:,2]+dtheta)%(2*torch.pi))[:,None]),-1)
             path+=d.abs()
             wheels=new
+            self.scan_elapsed+=self.dt
+            self.clock+=self.dt
         v=self.twist(wheels)[:,0]
         vel=v[:,None]*torch.stack((pose[:,2].cos(),pose[:,2].sin()),-1)
         return pose,wheels,vel,rotation,blocked_any,clearance,static_clearance,path

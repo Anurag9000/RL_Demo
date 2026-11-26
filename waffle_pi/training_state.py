@@ -82,6 +82,8 @@ def load(path,model,agent,args,device):
             continue
         if old.get(key)!=value:
             raise ValueError('Continuation profile mismatch: '+key)
+    if old.get('waffle_detector_sha')!=args.waffle_detector_sha and not args.curriculum_transition:
+        raise ValueError('Detector checkpoint changed without explicit curriculum transition')
     if old.get('waffle_fidelity_sha')!=args.waffle_fidelity_sha:
         raise ValueError('Fidelity profile changed during continuation')
     for key in FIXED:

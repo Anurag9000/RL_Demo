@@ -526,3 +526,24 @@ experimental justification; do not assume one arbitrary reward is optimal.
 Measured adaptive runs disallow BF16 and compilation presets initially; compare
 numerical and policy-quality parity before using acceleration. Select by measured
 performance, not throughput or a single point estimate of success.
+
+## Actual detector-in-the-loop fidelity path
+
+`--waffle-detector-weights PATH` (adaptive scheduler: `--detector-weights PATH`)
+uses the same DR-SPAAM inference and scan geometry engine as ROS 2.
+The fidelity profile needs a `detector` object with model (DR-SPAAM or DROW3),
+stride, confidence, max_range and weights_sha256. Install the upstream detector
+and trusted checkpoint separately. One recurrent detector instance per world,
+up to 16 worlds initially; use fewer if memory is limited. The actual noisy
+scan stream is passed to the detector on scan acquisition. The policy-time
+tracker and GST timestamp history use deployment implementations. Failed or
+duplicate detections and tracker overflow block movement in simulation, even
+when delayed commands remain queued. Statistical detector noise/dropout/delay
+flags must be zero in this mode. It is slow and intended for validation and
+fine-tuning rather than throughput records; PPO does not retrain DR-SPAAM.
+
+The shared association path has a fixture test; actual upstream inference,
+weights and ROS execution require external installation. Disk scans lack leg
+shapes, reflectivity, scan distortion and actual measurement jitter. Detector
+compute/network latency and recurrent policy resets at fault ticks still differ
+from ROS. This path cannot establish exact sensor or physical parity alone.

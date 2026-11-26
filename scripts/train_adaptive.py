@@ -122,6 +122,8 @@ def common(a,stage,slot):
         cmd+=['--waffle-fidelity-profile',a.fidelity_profile]
     if a.require_measured:
         cmd+=['--waffle-require-measured']
+    if a.detector_weights:
+        cmd+=['--waffle-detector-weights',a.detector_weights]
     if a.freeze_human_attention:
         cmd+=['--freeze-human-attention']
     if a.gst_adjacent_mask:
@@ -342,6 +344,7 @@ def main():
     p.add_argument('--occlusion',action='store_true')
     p.add_argument('--reactive',action='store_true')
     p.add_argument('--fidelity-profile')
+    p.add_argument('--detector-weights',help='Slow actual neural perception in each simulated world')
     p.add_argument('--require-measured',action='store_true')
     p.add_argument('--confidence-selection',action='store_true')
     p.add_argument('--calibration')

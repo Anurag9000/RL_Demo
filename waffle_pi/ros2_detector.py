@@ -15,6 +15,7 @@ from rclpy.qos import qos_profile_sensor_data
 from geometry_msgs.msg import Pose,PoseArray
 from sensor_msgs.msg import LaserScan
 from .scan_geometry import ScanGeometry
+from .detector_engine import DetectorEngine
 
 
 class DetectorNode(Node):
@@ -28,16 +29,8 @@ class DetectorNode(Node):
         self.get_logger().info('Detector is perception-only; waiting for LaserScan')
 
     def initialize(self,geometry):
-        from dr_spaam.detector import Detector
-        if self.args.device.startswith('cuda'):
-            import torch
-            if not torch.cuda.is_available():
-                raise RuntimeError("Requested CUDA detector but CUDA unavailable")
-            torch.cuda.set_device(torch.device(self.args.device).index or 0)
-        self.detector=Detector(self.args.weights,model=self.args.model,
-                               gpu=self.args.device.startswith('cuda'),
-                               stride=self.args.stride,panoramic_scan=geometry.panoramic)
-        self.detector.set_laser_fov(geometry.fov_deg)
+        self.detector=DetectorEngine(self.args.weights,self.args.model,self.args.device,
+                                     self.args.stride,self.args.confidence,self.args.max_range,geometry)
         self.geometry=geometry
 
     def on_scan(self,msg):
@@ -50,7 +43,6 @@ class DetectorNode(Node):
             if self.last_stamp is not None and stamp<=self.last_stamp:
                 raise ValueError("Repeated or out-of-order scan")
             geometry=ScanGeometry.from_metadata(len(msg.ranges),msg.angle_min,msg.angle_max,msg.angle_increment)
-            scan=geometry.preprocess(msg.ranges,msg.range_min,msg.range_max)
             if self.detector is None:
                 self.initialize(geometry)
             elif geometry!=self.geometry:
@@ -59,15 +51,9 @@ class DetectorNode(Node):
             if (self.last_stamp is not None and stamp-self.last_stamp>self.args.memory_gap
                     and self.args.model=='DR-SPAAM'):
                 # The pinned upstream model uses a spatial attention memory.
-                self.detector._model.gate.reset()
+                self.detector.reset()
             self.last_stamp=stamp
-            xy,conf,_=self.detector(scan)
-            xy=np.asarray(xy,dtype=np.float32).reshape(-1,2)
-            conf=np.asarray(conf,dtype=np.float32).reshape(-1)
-            if len(xy)!=len(conf) or not np.isfinite(xy).all() or not np.isfinite(conf).all():
-                raise ValueError("Invalid detector output")
-            xy=geometry.detections_to_ros(xy[conf>=self.args.confidence])
-            xy=xy[np.linalg.norm(xy,axis=-1)<=self.args.max_range]
+            xy=self.detector.detect(msg.ranges,msg.range_min,msg.range_max)
             if (time.monotonic()-start>self.args.deadline
                     or self.get_clock().now().nanoseconds/1e9-stamp>self.args.max_age):
                 raise RuntimeError("Detector inference exceeded freshness/deadline")
