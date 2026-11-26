@@ -40,7 +40,33 @@ compare against the unchanged main branch for baseline reproduction.
 Tests: python -m unittest discover -s tests
 
 Still needed: measured perception and dynamics, wall geometry, physical ROS
-adapter and independent watchdog/collision monitor, fully GPU-resident
-simulator, trajectory replay parity, compiled neural training and DDP. Do not
+adapter and independent watchdog/collision monitor, trajectory replay parity, compiled neural training and DDP. Do not
 run the TurtleBot2i ROS adapter on the Waffle Pi. No speed or real-world
 performance is claimed before benchmarks and supervised validation.
+
+## Experimental GPU trajectory replay
+
+Generate a pool using the existing native RVO2 solver on independent CPU
+workers. Each trajectory retains its matching robot start/goal.
+
+```sh
+python train.py --waffle-pi --waffle-build-pool pools/train.npz --waffle-pool-count 1024 --num-processes 8
+python train.py --waffle-pi --waffle-replay pools/train.npz --resume --fast-training --load-path trained_models/GST_predictor_rand/checkpoints/41665.pt --output_dir trained_models/waffle_replay --num-processes 256 --num-mini-batch 16 --num-env-steps 500000
+```
+
+The replay backend keeps the pool, dynamics, observations, GST and PPO
+rollouts on the training device. No live ORCA solve or worker IPC occurs
+during replay. Optional --waffle-compile-dynamics needs a separately validated
+PyTorch 2.x environment. Test on small batches first; benchmark end-to-end
+steps/sec and time to a held-out target, not just robot dynamics throughput.
+Pool construction is CPU-parallel and memory scales with scenario count.
+Use different seeds for held-out evaluation; evaluate against live ORCA too.
+
+**Important:** replay is an approximate training backend, not exact original
+ORCA equivalence: upstream human respawns and goal samples depend on robot
+position, which is stationary during precomputation. It also introduces
+square wall collisions and post-transition reward/termination. It does not
+simulate sensor occlusion, tracking errors, actual floor geometry or
+swept collision checks. No real hardware use is authorized by this model.
+Keep the live Waffle CPU path as the reference. Disable
+--use-proper-time-limits for replay. GST remains unchanged.

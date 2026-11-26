@@ -35,6 +35,10 @@ def main():
 		from waffle_pi.evaluate import run
 		return run(algo_args)
 
+	if algo_args.waffle_build_pool:
+		from waffle_pi.trajectory_pool import build
+		return build(algo_args)
+
 	# create a directory for saving the logs and weights
 	if not os.path.exists(algo_args.output_dir):
 		os.makedirs(algo_args.output_dir)
@@ -90,7 +94,11 @@ def main():
 
 
 	# Create a wrapped, monitored VecEnv
-	envs = make_vec_envs(env_name, algo_args.seed, algo_args.num_processes,
+	if algo_args.waffle_replay:
+		from waffle_pi.replay import make_replay
+		envs = make_replay(config, algo_args, device)
+	else:
+		envs = make_vec_envs(env_name, algo_args.seed, algo_args.num_processes,
 						 algo_args.gamma, None, device, False, config=env_config, ax=ax, pretext_wrapper=config.env.use_wrapper)
 
 
@@ -149,6 +157,8 @@ def main():
 	rollouts.to(device)
 
 	episode_rewards = deque(maxlen=100)
+	if algo_args.waffle_replay:
+		running_rewards = torch.zeros(algo_args.num_processes, device=device)
 
 	start = time.time()
 	num_updates = int(
@@ -161,6 +171,9 @@ def main():
 			network_utils.update_linear_schedule(
 				agent.optimizer, j, num_updates,
 				agent.optimizer.lr if algo_args.algo == "acktr" else algo_args.lr)
+
+		if algo_args.waffle_replay:
+			completed_rewards, completed_masks = [], []
 
 		# step the environment for a few times
 		for step in range(algo_args.num_steps):
@@ -191,18 +204,23 @@ def main():
 			obs, reward, done, infos = envs.step(action)
 
 
-			for info in infos:
-				if 'episode' in info.keys():
-					episode_rewards.append(info['episode']['r'])
-
-			# If done then clean the history of observations.
-			masks = torch.FloatTensor(
-				[[0.0] if done_ else [1.0] for done_ in done])
-			bad_masks = torch.FloatTensor(
-				[[0.0] if 'bad_transition' in info.keys() else [1.0]
-				 for info in infos])
+			if algo_args.waffle_replay:
+				running_rewards = running_rewards + reward.squeeze(-1)
+				completed_rewards.append(running_rewards)
+				completed_masks.append(done)
+				running_rewards = torch.where(done, 0., running_rewards)
+				masks = (~done).float().unsqueeze(-1)
+				bad_masks = torch.ones_like(masks)
+			else:
+				for info in infos:
+					if 'episode' in info.keys():
+						episode_rewards.append(info['episode']['r'])
+				masks = torch.FloatTensor([[0.] if d else [1.] for d in done])
+				bad_masks = torch.FloatTensor([[0.] if 'bad_transition' in info else [1.] for info in infos])
 			rollouts.insert(obs, recurrent_hidden_states, action,
 							action_log_prob, value, reward, masks, bad_masks)
+		if algo_args.waffle_replay:
+			episode_rewards.extend(torch.stack(completed_rewards)[torch.stack(completed_masks)].cpu().tolist())
 		# store the stepped experience to buffer
 		with torch.no_grad():
 			rollouts_obs = {}

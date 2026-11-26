@@ -120,8 +120,8 @@ class VecPretextNormalize(VecEnvWrapper):
         if getattr(self.config, 'waffle_pi', False):
             finished = torch.as_tensor(done, device=self.device, dtype=torch.bool)
             for history, mask in zip(self.traj_buffer, self.mask_buffer):
-                history[finished] = -999.
-                mask[finished] = False
+                history.masked_fill_(finished[:, None, None], -999.)
+                mask.masked_fill_(finished[:, None, None], False)
         self.traj_buffer.append(human_pos)
         self.mask_buffer.append(O['visible_masks'].unsqueeze(-1).clone())
         # [obs_seq_len, nenv, max_human_num, 2] -> [nenv, max_human_num, obs_seq_len, 2]
@@ -175,7 +175,7 @@ class VecPretextNormalize(VecEnvWrapper):
         # only take mu_x and mu_y
         out_mask = out_mask.repeat(1, 1, self.config.sim.predict_steps * 2)
         new_spatial_edges = out_traj[:, :, :, :2].reshape(self.num_envs, self.max_human_num, -1)
-        O['spatial_edges'][:, :, 2:][out_mask] = new_spatial_edges[out_mask]
+        O['spatial_edges'][:, :, 2:] = torch.where(out_mask, new_spatial_edges, O['spatial_edges'][:, :, 2:])
 
         # sort all humans by distance to robot
         # [nenv, human_num]

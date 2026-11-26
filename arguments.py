@@ -218,6 +218,10 @@ def get_args():
     parser.add_argument('--freeze-human-attention', action='store_true')
     parser.add_argument('--fast-training', action='store_true')
     parser.add_argument('--waffle-eval-episodes', type=int, default=0)
+    parser.add_argument('--waffle-replay', default=None, help='Precomputed crowd trajectory .npz pool')
+    parser.add_argument('--waffle-build-pool', default=None, help='Generate a crowd trajectory pool at this .npz path')
+    parser.add_argument('--waffle-pool-count', type=int, default=1024)
+    parser.add_argument('--waffle-compile-dynamics', action='store_true')
     args = parser.parse_args()
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()
