@@ -547,3 +547,30 @@ weights and ROS execution require external installation. Disk scans lack leg
 shapes, reflectivity, scan distortion and actual measurement jitter. Detector
 compute/network latency and recurrent policy resets at fault ticks still differ
 from ROS. This path cannot establish exact sensor or physical parity alone.
+
+## Independent measured system identification
+
+`python -m waffle_pi.identify KIND fit.csv holdout.csv result.json` fits model
+parameters using one recording and reports error on a different recording.
+The CLI rejects identical file content and records SHA-256 of both datasets.
+Kinds and CSV columns:
+
+- wheel: t_s,target_l_rad_s,target_r_rad_s,wheel_l_rad_s,wheel_r_rad_s;
+  `--dt 0.05` must match actual uniform sampling. Fit per-wheel response,
+  acceleration, braking, gain, deadband and shared sampled command delay.
+- geometry: wheel_l_rad_s,wheel_r_rad_s,truth_v_m_s,truth_w_rad_s. Truth must
+  be independent external motion measurement, not computed from ROS odometry.
+- laser: truth_range_m,measured_range_m,valid. Use known visible in-range targets;
+  invalid measured values should be represented by a finite placeholder and
+  valid=0. Fit range bias, standard deviation and missed-return fraction.
+- detector: distance_m,detected,truth_x,truth_y,det_x,det_y. Use independently
+  labeled visible pedestrians in laser axes, with matched detection flag.
+  Include sufficient samples per range bin, and count false positives separately.
+
+Merge the reported motor/laser/detector_bins fields into a reviewed fidelity
+profile only after inspecting holdout residuals, excitation, operating range
+and measurement uncertainty. Retain fit and holdout logs and report hashes.
+The identifier never declares a profile measured or certifies a safety record.
+Wheel response alone cannot identify tyre slip, load or battery dynamics; use
+separate runs across actual floor and battery conditions. Do not generate
+unsupervised commands from calibration code. All scripts operate offline.

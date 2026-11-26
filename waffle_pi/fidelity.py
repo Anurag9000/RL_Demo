@@ -44,6 +44,8 @@ def read_profile(path,require_measured=False):
         raise ValueError('Invalid laser metadata')
     if math.hypot(s['offset_x'],s['offset_y'])>.25 or not 0<=s['noise_std_m']<=.2 or not 0<=s['drop_probability']<=1:
         raise ValueError('Invalid laser error or extrinsics')
+    if not math.isfinite(s.get('range_bias_m',0.)) or abs(s.get('range_bias_m',0.))>.2:
+        raise ValueError('Invalid measured range bias')
     bins=data.get('detector_bins',[])
     end=0.
     for b in bins:
@@ -176,6 +178,7 @@ class FidelityDrive:
 
     def sample_scan(self,pose,humans,arena):
         ranges,ids=raycast(pose,humans,arena,self.laser,self.rectangles)
+        ranges=ranges+self.laser.get('range_bias_m',0.)
         if self.laser['noise_std_m']:
             ranges=ranges+torch.randn(ranges.shape,device=ranges.device,generator=self.rng)*self.laser['noise_std_m']
         valid=ranges<=self.laser['range_max']
