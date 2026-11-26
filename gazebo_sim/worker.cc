@@ -35,6 +35,10 @@
 #include <string>
 #include <vector>
 #include <iterator>
+#include <cstdlib>
+#include <limits>
+#include <sys/mman.h>
+#include <sys/stat.h>
 #ifdef __linux__
 #include <sys/prctl.h>
 #include <unistd.h>
@@ -231,6 +235,45 @@ class Drive final: public System, public ISystemPreUpdate, public ISystemPostUpd
   std::deque<std::pair<double,Pose>> odomHistory;
 };
 
+// One transaction at a time. The pipe reply publishes immutable offsets;
+// the parent copies before sending the next step. No floating-point loss
+// beyond the pre-existing Python float32 scan conversion.
+class ScanBuffer {
+ public:
+  static constexpr size_t capacity=256*4096;
+  ScanBuffer() {
+    const char *env=std::getenv("WAFFLE_SCAN_FD");
+    if(!env)return;
+    int fd=std::stoi(env);
+    struct stat st{};
+    if(fstat(fd,&st)!=0||st.st_size!=capacity*sizeof(float))
+      throw std::runtime_error("invalid shared scan buffer size");
+    void *p=mmap(nullptr,capacity*sizeof(float),PROT_READ|PROT_WRITE,MAP_SHARED,fd,0);
+    if(p==MAP_FAILED)throw std::runtime_error("shared scan mmap failed");
+    data=static_cast<float*>(p);
+  }
+  ~ScanBuffer(){if(data)munmap(data,capacity*sizeof(float));}
+  ScanBuffer(const ScanBuffer&)=delete;
+  ScanBuffer& operator=(const ScanBuffer&)=delete;
+  void begin(){used=0;}
+  void append(json &frame,const gz::msgs::LaserScan &s) {
+    if(!data) {
+      json ranges=json::array();
+      for(auto r:s.ranges())ranges.push_back(std::isfinite(r)?json(r):json(nullptr));
+      frame["ranges"]=std::move(ranges);
+      return;
+    }
+    size_t n=s.ranges_size();
+    if(n>4096||used+n>capacity)throw std::runtime_error("shared scan capacity exceeded");
+    frame["range_offset"]=used;
+    frame["range_count"]=n;
+    for(auto r:s.ranges())data[used++]=std::isfinite(r)?static_cast<float>(r):std::numeric_limits<float>::infinity();
+  }
+ private:
+  float *data=nullptr;
+  size_t used=0;
+};
+
 class Scans {
  public:
   void receive(const gz::msgs::LaserScan &scan) {
@@ -249,20 +292,22 @@ class Scans {
     if(!cv.wait_for(lock,std::chrono::seconds(10),valid))
       throw std::runtime_error("no timely Gazebo laser frame");
     json result=json::array();
+    buffer.begin();
     while(!frames.empty()&&stamp(frames.front())<=drive.simTime+dt) {
       auto s=std::move(frames.front());frames.pop_front();
       double t=stamp(s);
       if(t<=last)continue;
       last=t;
-      json ranges=json::array();
-      for(auto r:s.ranges())ranges.push_back(std::isfinite(r)?json(r):json(nullptr));
-      result.push_back({{"stamp",t},{"pose",drive.poseAt(t)},{"ranges",ranges},
+      json frame={{"stamp",t},{"pose",drive.poseAt(t)},
         {"min",s.range_min()},{"max",s.range_max()},{"angle_min",s.angle_min()},
-        {"angle_max",s.angle_max()},{"angle_step",s.angle_step()}});
+        {"angle_max",s.angle_max()},{"angle_step",s.angle_step()}};
+      buffer.append(frame,s);
+      result.push_back(std::move(frame));
     }
     return result;
   }
  private:
+  ScanBuffer buffer;
   std::mutex mu;
   std::condition_variable cv;
   std::deque<gz::msgs::LaserScan> frames;

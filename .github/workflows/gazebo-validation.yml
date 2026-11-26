@@ -39,9 +39,14 @@ jobs:
       - name: Native physics and LiDAR qualification
         run: |
           /usr/bin/python3 -m scripts.qualify_gazebo --model /tmp/turtlebot3_simulations/turtlebot3_gazebo/models/turtlebot3_waffle_pi/model.sdf --envs 1 --rounds 4 --output /tmp/gazebo-qualification
+      - name: Shared-memory scan qualification
+        run: |
+          WAFFLE_SCAN_TRANSPORT=shm /usr/bin/python3 -m scripts.qualify_gazebo --model /tmp/turtlebot3_simulations/turtlebot3_gazebo/models/turtlebot3_waffle_pi/model.sdf --envs 1 --rounds 4 --output /tmp/gazebo-shm-qualification
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: gazebo-qualification
-          path: /tmp/gazebo-qualification
+          path: |
+            /tmp/gazebo-qualification
+            /tmp/gazebo-shm-qualification
           if-no-files-found: ignore

@@ -6,7 +6,8 @@ The policy receives encoder odometry, shared detector and tracker output.
 One synchronous batch of on-policy decisions; failures abort, never fabricate
 observations or rewards. Physics stepping occurs concurrently across worlds.
 """
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor,as_completed
+import time
 import hashlib
 import math
 import os
@@ -47,6 +48,9 @@ class PerWorld:
         self.substeps=round(config.env.time_step/self.gate_dt)
         self.rng=np.random.default_rng(args.seed+100003*int(os.environ.get('RANK','0'))+index)
         self.episode=0
+        self.index=index
+        self.timing=dict(reset_s=0.,physics_ipc_s=0.,detector_s=0.,step_s=0.,steps=0,resets=0)
+        self.static_rect=torch.as_tensor(self.profile['scene']['rectangles_m'],dtype=torch.float32).reshape(-1,4)
         self.geometry=None
 
     def close(self):
@@ -55,6 +59,7 @@ class PerWorld:
             self.worker=None
 
     def reset(self,scenario):
+        start=time.perf_counter()
         self.close()
         self.episode+=1
         self.scenario=scenario
@@ -75,8 +80,9 @@ class PerWorld:
         if self.detector is not None:
             self.detector.reset()
         world,conf=write_case(self.root,self.args.waffle_gazebo_model,self.profile,scenario,int(self.rng.integers(2**31-1)))
-        self.worker=self.worker_factory(self.args.waffle_gazebo_worker,world,conf,
+        worker_args=(self.args.waffle_gazebo_worker,world,conf,
                         self.root/f'episode_{self.episode:06d}.log',self.args.waffle_gazebo_timeout)
+        self.worker=self.worker_factory(*worker_args,seed=self.index) if self.worker_factory is Worker else self.worker_factory(*worker_args)
         # Settle on the floor with zero commands. This is not an RL transition.
         warm=round(max(.5,2/self.laser['hz'])/self.g['physics_dt'])
         self.state=self.worker.step(warm,0.,0.,[[0.,0.]]*self.n,True)
@@ -85,7 +91,10 @@ class PerWorld:
         self.ingest(self.state)
         if self.scan is None:
             raise RuntimeError('No initial laser observation')
-        return self.observe()
+        obs=self.observe()
+        self.timing['reset_s']+=time.perf_counter()-start
+        self.timing['resets']+=1
+        return obs
 
     def ingest(self,state):
         for key,shape in [('truth',(3,)),('odom',(3,)),('twist',(2,)),('wheels',(2,)),('humans',(self.n,2))]:
@@ -97,7 +106,8 @@ class PerWorld:
             if stamp<=self.last_stamp:
                 raise RuntimeError('Nonmonotonic simulator scan')
             self.last_stamp=stamp
-            raw=np.array([float('inf') if x is None else x for x in frame['ranges']],np.float32)
+            values=frame['ranges']
+            raw=values.copy() if isinstance(values,np.ndarray) else np.array([float('inf') if x is None else x for x in values],np.float32)
             if len(raw)!=self.laser['rays'] or not math.isclose(frame['min'],self.laser['range_min'],abs_tol=1e-5) or not math.isclose(frame['max'],self.laser['range_max'],abs_tol=1e-5):
                 raise RuntimeError('Gazebo scan geometry differs from profile')
             if self.laser['drop_probability']:
@@ -112,7 +122,9 @@ class PerWorld:
                    self.args.waffle_gazebo_detector_device,d['stride'],d['confidence'],d['max_range'],geometry)
             self.scan=(raw,frame)
             try:
+                detector_start=time.perf_counter()
                 points=self.detector.detect(raw,frame['min'],frame['max'])
+                self.timing['detector_s']+=time.perf_counter()-detector_start
                 x,y,heading=frame['pose']
                 c,s=math.cos(heading),math.sin(heading)
                 sx,sy=self.laser['offset_x'],self.laser['offset_y']
@@ -171,6 +183,7 @@ class PerWorld:
         return cmd,blocked
 
     def step(self,latent,human_velocity):
+        start=time.perf_counter()
         requested=native_twist(latent,self.cfg.waffle_limits)
         prev=np.asarray(self.state['truth'])
         before=np.linalg.norm(prev[:2]-self.goal)
@@ -178,7 +191,7 @@ class PerWorld:
         path=turn=0.
         collision=intervened=False
         last_h=np.asarray(self.state['humans'])
-        rect=torch.as_tensor(self.profile['scene']['rectangles_m'],dtype=torch.float32).reshape(-1,4)
+        rect=self.static_rect
         for _ in range(self.substeps):
             cmd,blocked=self.guard(requested)
             if collision:
@@ -191,7 +204,9 @@ class PerWorld:
             new_h=constrain_human_step(old_h,old_h+vel*self.gate_dt,
                         torch.as_tensor(self.radius),self.cfg.sim.arena_size,rect)
             hv=((new_h-old_h)/self.gate_dt).tolist()
+            t0=time.perf_counter()
             state=self.worker.step(self.physics_iterations,*cmd,hv,blocked)
+            self.timing['physics_ipc_s']+=time.perf_counter()-t0
             self.state=state
             self.ingest(state)
             p=np.asarray(state['truth'])
@@ -223,7 +238,10 @@ class PerWorld:
             reward={1:self.cfg.reward.success_reward,2:self.cfg.reward.collision_penalty,3:0.}[outcome]
         metrics=dict(outcome=outcome,intervened=intervened,last_clearance=clearance,last_static_clearance=wall,
                      last_goal_distance=before,last_goal_distance_after=dist,last_path=path,last_turn=turn)
-        return self.observe(),reward,bool(outcome),metrics
+        obs=self.observe()
+        self.timing['step_s']+=time.perf_counter()-start
+        self.timing['steps']+=1
+        return obs,reward,bool(outcome),metrics
 
 
 class GazeboVecEnv(VecEnv):
@@ -243,10 +261,12 @@ class GazeboVecEnv(VecEnv):
         self.order=self.rng.permutation(len(self.cases))
         self.cursor=np.arange(self.n)
         self.case_ids=np.zeros(self.n,dtype=np.int64)
+        self.case_rng=[np.random.default_rng(np.random.SeedSequence([args.seed,int(os.environ.get('RANK','0')),i,971])) for i in range(self.n)]
         root=Path(args.waffle_gazebo_logs)
         root.mkdir(parents=True,exist_ok=True)
         self.root=Path(tempfile.mkdtemp(prefix='gazebo-',dir=root))
         self.pool=ThreadPoolExecutor(max_workers=self.n)
+        self.reset_pool=ThreadPoolExecutor(max_workers=min(self.n, max(1,int(os.environ.get('WAFFLE_RESET_THREADS',str(self.n))))))
         self.worlds=[PerWorld(config,args,self.device,self.root,i,worker_factory,detector_factory) for i in range(self.n)]
         def box(shape,dtype=np.float32):
             return spaces.Box(-np.inf,np.inf,shape=shape,dtype=dtype)
@@ -261,7 +281,7 @@ class GazeboVecEnv(VecEnv):
             index=int(self.order[self.cursor[i]%len(self.order)])
             self.cursor[i]+=self.n
         else:
-            index=int(self.rng.integers(len(self.cases)))
+            index=int(self.case_rng[i].integers(len(self.cases)))
         self.case_ids[i]=index
         return self.cases[index]
 
@@ -306,14 +326,27 @@ class GazeboVecEnv(VecEnv):
                        dt=self.cfg.env.time_step)[:,:self.h]
         else:
             human=orca_velocity(p,v,r,preferred,s,dt=self.cfg.env.time_step)
-        rows=list(self.pool.map(lambda x:x[0].step(x[1],x[2]),zip(self.worlds,actions,human.cpu().numpy())))
+        # Choose reset cases in index order in advance, using a separate RNG
+        # stream so completion ordering cannot change the episode distribution.
+        # Keep old case IDs for the terminal transition.
+        old_ids=self.case_ids.copy()
+        velocities=human.cpu().numpy()
+        pending={self.pool.submit(w.step,actions[i],velocities[i]):i for i,w in enumerate(self.worlds)}
+        rows=[None]*self.n
+        resets={}
+        # A world's next case is derived independently of scheduling order.
+        # Evaluation remains round-robin; training uses per-world case RNG.
+        for future in as_completed(pending):
+            i=pending[future]
+            rows[i]=future.result()
+            if rows[i][2]:
+                resets[i]=self.reset_pool.submit(self.worlds[i].reset,self._case(i))
         obs,rewards,done,metrics=map(list,zip(*rows))
-        self.last_scenario=torch.as_tensor(self.case_ids.copy(),device=self.device)
+        self.last_scenario=torch.as_tensor(old_ids,device=self.device)
         for key in metrics[0]:
             setattr(self,key,torch.as_tensor([m[key] for m in metrics],device=self.device))
-        resets=[(i,self._case(i)) for i,d in enumerate(done) if d]
-        for i,o in self.pool.map(lambda x:(x[0],self.worlds[x[0]].reset(x[1])),resets):
-            obs[i]=o
+        for i,future in resets.items():
+            obs[i]=future.result()
         self.policy_reset=torch.as_tensor([w.reset_recurrent for w in self.worlds],device=self.device,dtype=torch.bool)
         return self._tensor(obs),torch.as_tensor(rewards,device=self.device,dtype=torch.float32)[:,None],torch.as_tensor(done,device=self.device,dtype=torch.bool),None
 
@@ -321,8 +354,14 @@ class GazeboVecEnv(VecEnv):
         if self.closed:
             return
         self.closed=True
-        list(self.pool.map(lambda w:w.close(),self.worlds))
         self.pool.shutdown(wait=True)
+        self.reset_pool.shutdown(wait=True)
+        for w in self.worlds:
+            w.close()
+
+    def performance_report(self):
+        # Worker times overlap; totals are CPU/world-seconds, not wall time.
+        return {k:sum(w.timing[k] for w in self.worlds) for k in self.worlds[0].timing}
 
     def talk2Env_async(self,data):
         pass
