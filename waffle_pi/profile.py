@@ -17,6 +17,22 @@ def configure(config, args):
         config.waffle_safety=safety_parameters(args.waffle_safety_calibration,args.waffle_radius)
     elif args.waffle_init_cartesian or args.waffle_safety_calibration:
         raise ValueError("Native transfer and simulated gate require native action mode")
+    if args.waffle_require_measured and not args.waffle_fidelity_profile:
+        raise ValueError('Measured fidelity profile required')
+    if args.waffle_fidelity_profile:
+        from .fidelity import read_profile
+        if not (args.waffle_native_action and args.waffle_live_orca):
+            raise ValueError('Fidelity mode requires native live ORCA')
+        if args.waffle_calibration or args.waffle_actuation_delay or args.waffle_compile_dynamics:
+            raise ValueError('Fidelity profile owns actuator timing; do not combine with legacy calibration, delay or dynamics compilation')
+        if args.waffle_require_measured and not args.waffle_safety_calibration:
+            raise ValueError('Separate measured safety record required')
+        config.fidelity,args.waffle_fidelity_sha=read_profile(args.waffle_fidelity_profile,args.waffle_require_measured)
+        if args.waffle_sensor_range>config.fidelity['laser']['range_max']:
+            raise ValueError('Policy sensor range exceeds physical laser range')
+        laser=config.fidelity['laser']
+        if math.hypot(laser['offset_x'],laser['offset_y'])>config.waffle_safety['sensor_offset']+1e-6:
+            raise ValueError('Safety sensor offset must cover measured extrinsics')
     if args.waffle_calibration:
         with open(args.waffle_calibration) as handle:
             calibration=json.load(handle)

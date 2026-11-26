@@ -82,6 +82,8 @@ def load(path,model,agent,args,device):
             continue
         if old.get(key)!=value:
             raise ValueError('Continuation profile mismatch: '+key)
+    if old.get('waffle_fidelity_sha')!=args.waffle_fidelity_sha:
+        raise ValueError('Fidelity profile changed during continuation')
     for key in FIXED:
         if old.get(key)!=getattr(args,key):
             raise ValueError('Continuation learner mismatch: '+key)

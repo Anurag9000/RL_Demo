@@ -112,6 +112,10 @@ def common(a,stage,slot):
         cmd+=['--waffle-occlusion']
     if stage['reactive']:
         cmd+=['--waffle-reactive-humans']
+    if a.fidelity_profile:
+        cmd+=['--waffle-fidelity-profile',a.fidelity_profile]
+    if a.require_measured:
+        cmd+=['--waffle-require-measured']
     if a.freeze_human_attention:
         cmd+=['--freeze-human-attention']
     if a.gst_adjacent_mask:
@@ -330,6 +334,8 @@ def main():
     p.add_argument('--detection-delay',type=int,default=0)
     p.add_argument('--occlusion',action='store_true')
     p.add_argument('--reactive',action='store_true')
+    p.add_argument('--fidelity-profile')
+    p.add_argument('--require-measured',action='store_true')
     p.add_argument('--calibration')
     p.add_argument('--safety-calibration')
     p.add_argument('--freeze-human-attention',action='store_true')

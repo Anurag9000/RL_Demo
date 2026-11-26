@@ -268,6 +268,9 @@ def get_args(argv=None):
                         help='Target approximate KL for bounded learning-rate adaptation; zero disables')
     parser.add_argument('--lr-min', type=float, default=1e-6)
     parser.add_argument('--lr-max', type=float, default=3e-4)
+    parser.add_argument('--waffle-fidelity-profile', default=None)
+    parser.add_argument('--waffle-require-measured', action='store_true')
+    parser.add_argument('--waffle-fidelity-sha', default=None, help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()

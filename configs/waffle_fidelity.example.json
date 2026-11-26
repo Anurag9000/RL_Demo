@@ -1,0 +1,53 @@
+{
+  "schema": "waffle_fidelity_v1",
+  "status": "illustrative",
+  "hardware": {
+    "serial_or_lab_id": "",
+    "lds_model": "",
+    "firmware": "",
+    "floor": "",
+    "measurement_record": ""
+  },
+  "physics_dt": 0.05,
+  "motor": {
+    "tau_s": [
+      0.15,
+      0.15
+    ],
+    "accel_rad_s2": [
+      12,
+      12
+    ],
+    "brake_rad_s2": [
+      12,
+      12
+    ],
+    "gain": [
+      1,
+      1
+    ],
+    "radius_m": [
+      0.033,
+      0.033
+    ],
+    "deadband_rad_s": [
+      0,
+      0
+    ],
+    "track_m": 0.287,
+    "delay_s": 0
+  },
+  "laser": {
+    "rays": 360,
+    "angle_min": -3.141592653589793,
+    "range_min": 0.12,
+    "range_max": 3.5,
+    "hz": 5,
+    "offset_x": -0.064,
+    "offset_y": 0,
+    "yaw": 0,
+    "noise_std_m": 0,
+    "drop_probability": 0
+  },
+  "detector_bins": []
+}

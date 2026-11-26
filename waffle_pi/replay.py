@@ -41,6 +41,11 @@ class ReplayVecEnv(VecEnv):
                     raise RuntimeError('Compiled ORCA requires PyTorch 2.x')
                 self.orca = torch.compile(self.orca,fullgraph=True)
         self._setup_spaces_and_state(config,args,device)
+        self.fidelity=None
+        if args.waffle_fidelity_profile:
+            from .fidelity import FidelityDrive
+            self.fidelity=FidelityDrive(config.fidelity,self.n,device,self.rng)
+            self.perception.fidelity=config.fidelity
 
     def _load_pool(self,args):
         config,device=self.cfg,self.device
@@ -135,6 +140,8 @@ class ReplayVecEnv(VecEnv):
         self.wheels = torch.where(done[:,None],0.,self.wheels)
         self.velocity = torch.where(done[:,None],0.,self.velocity)
         self.perception.reset(done)
+        if self.fidelity is not None:
+            self.fidelity.reset(done)
         self.command_history.masked_fill_(done[None,:,None],0.)
         if self.randomization:
             factors=1.+(2.*torch.rand(2,self.n,device=self.device,generator=self.rng)-1.)*self.randomization
@@ -206,7 +213,13 @@ class ReplayVecEnv(VecEnv):
         prev_humans = self._frame()
         old_dist = torch.linalg.vector_norm(self.goal-old[:,:2],dim=-1)
         limits,dt=self.cfg.waffle_limits,self.cfg.env.time_step
-        if self.native or self.delay or self.randomization:
+        if self.fidelity is not None:
+            self._advance_humans(old,old_velocity)
+            target=self.targets(self.actions,limits)
+            self.pose,self.wheels,self.velocity,dtheta,self.intervened,faith_clearance,static_clearance,path=self.fidelity.advance(
+                old,self.wheels,target,prev_humans,self._frame(),self.cfg.sim.arena_size,
+                limits,self.cfg.waffle_safety,self.tau_scale,self.accel_scale,self.cfg.robot.radius)
+        elif self.native or self.delay or self.randomization:
             target=self.targets(self.actions,limits) if self.native else self.targets(self.pose,self.actions,limits)
             self.command_history[self.command_cursor].copy_(target)
             self.command_cursor=(self.command_cursor+1)%(self.delay+1)
@@ -219,7 +232,8 @@ class ReplayVecEnv(VecEnv):
         else:
             self.pose,self.wheels,self.velocity,dtheta=self.motion(self.pose,self.wheels,self.actions,limits,dt)
         self.t = (self.t+1).clamp(max=self.horizon)
-        self._advance_humans(old,old_velocity)
+        if self.fidelity is None:
+            self._advance_humans(old,old_velocity)
         human = self._frame()
         # A replay slot may be respawned at a different position.
         displacement=torch.linalg.vector_norm(human[...,:2]-prev_humans[...,:2],dim=-1)
@@ -237,6 +251,9 @@ class ReplayVecEnv(VecEnv):
         clearance=(closest-torch.maximum(human[...,2],prev_humans[...,2])-self.cfg.robot.radius).amin(-1)
         dist = torch.linalg.vector_norm(self.goal-self.pose[:,:2],dim=-1)
         wall = self.pose[:,:2].abs().amax(-1)+self.cfg.robot.radius >= self.cfg.sim.arena_size
+        if self.fidelity is not None:
+            clearance=faith_clearance
+            wall=static_clearance<=0.
         collision = (clearance < 0.) | wall
         success = (dist < self.cfg.robot.radius) & ~collision
         timeout = (self.t>=self.horizon) & ~collision & ~success
@@ -250,6 +267,9 @@ class ReplayVecEnv(VecEnv):
         r = torch.where(timeout,0.,r)
         r = torch.where(success,self.cfg.reward.success_reward,r)
         r = torch.where(collision,self.cfg.reward.collision_penalty,r)
+        self.last_clearance=clearance
+        self.last_path=path if self.fidelity is not None else (self.pose[:,:2]-old[:,:2]).norm(dim=-1)
+        self.last_turn=dtheta.abs()
         self.outcome=torch.where(collision,2,torch.where(success,1,torch.where(timeout,3,0)))
         self._reset(done)
         return self._observe(),r[:,None],done,None
