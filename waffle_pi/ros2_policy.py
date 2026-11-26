@@ -61,7 +61,7 @@ class Shadow(Node):
         gst_args=load_gst_args(Path(opts.gst_dir)/'checkpoint'/'args.pickle')
         if gst_args.pred_seq_len!=5:
             raise ValueError("Expected five-step GST horizon")
-        self.gst=CrowdNavPredInterfaceMultiEnv(opts.gst_dir,self.device,gst_args,1)
+        self.gst=CrowdNavPredInterfaceMultiEnv(opts.gst_dir,self.device,gst_args,1,adjacent_mask=opts.gst_adjacent_mask)
         self.history=TrajectoryHistory(self.n,gst_args.obs_seq_len)
         self.hidden={'human_node_rnn':torch.zeros(1,1,policy_args.human_node_rnn_size,device=self.device),
                      'human_human_edge_rnn':torch.zeros(1,1,policy_args.human_human_edge_rnn_size,device=self.device)}
@@ -210,6 +210,7 @@ def main():
     parser.add_argument('--speed',type=float,default=.26)
     parser.add_argument('--sensor-range',type=float,default=3.)
     parser.add_argument('--detection-topic',default='/dr_spaam_detections')
+    parser.add_argument('--gst-adjacent-mask',action='store_true')
     parser.add_argument('--enable-requests',action='store_true')
     opts,ros_args=parser.parse_known_args()
     if not 1<=opts.humans<=20 or not 0<opts.speed<=.26 or not 0<opts.radius or not 0<opts.sensor_range<=5:

@@ -45,7 +45,7 @@ class VecPretextNormalize(VecEnvWrapper):
         from waffle_pi.checkpoints import load_gst_args
         self.args = load_gst_args(os.path.join(checkpoint_dir, 'args.pickle'))
 
-        self.predictor = CrowdNavPredInterfaceMultiEnv(load_path=load_path, device=self.device, config = self.args, num_env = self.num_envs)
+        self.predictor = CrowdNavPredInterfaceMultiEnv(load_path=load_path, device=self.device, config = self.args, num_env = self.num_envs, adjacent_mask=getattr(config.args,'gst_adjacent_mask',False))
 
         temperature_scheduler = Temp_Scheduler(self.args.num_epochs, self.args.init_temp, self.args.init_temp, temp_min=0.03)
         self.tau = temperature_scheduler.decay_whole_process(epoch=100)

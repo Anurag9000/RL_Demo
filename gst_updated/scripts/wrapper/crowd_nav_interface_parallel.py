@@ -20,13 +20,20 @@ def seq_to_graph(seq_, seq_rel, attn_mech='rel_conv'):
     A = seq_permute.unsqueeze(3)-seq_permute.unsqueeze(2) # (n_env, obs_seq_len, num_peds, 1, 2) - (n_env, obs_seq_len, 1, num_peds, 2)
     return V, A
 
+def displacement_mask(visibility,adjacent=False):
+    """Preserve released wrapper semantics unless adjacent mode is requested."""
+    right=visibility[:,:,1:] if adjacent else visibility[:,:,-1:]
+    return torch.cat((visibility[:,:,:1],visibility[:,:,:-1]*right),dim=2)
+
+
 class CrowdNavPredInterfaceMultiEnv(object):
 
-    def __init__(self, load_path, device, config, num_env):
+    def __init__(self, load_path, device, config, num_env, adjacent_mask=False):
         # *** Load model
         self.args = config
         self.device = device
         self.nenv = num_env
+        self.adjacent_mask = adjacent_mask
 
         # Uncomment if you want a fixed random seed.
         # torch.manual_seed(args_eval.random_seed)
@@ -76,8 +83,7 @@ class CrowdNavPredInterfaceMultiEnv(object):
         obs_traj = input_traj.permute(0,1,3,2) # (n_env, num_peds, 2, obs_seq_len)
         n_env, num_peds = obs_traj.shape[:2]
         loss_mask_obs = input_binary_mask[:,:,:,0] # (n_env, num_peds, obs_seq_len)
-        loss_mask_rel_obs = loss_mask_obs[:,:,:-1] * loss_mask_obs[:,:,-1:]
-        loss_mask_rel_obs = torch.cat((loss_mask_obs[:,:,:1], loss_mask_rel_obs), dim=2) # (n_env, num_peds, obs_seq_len)
+        loss_mask_rel_obs = displacement_mask(loss_mask_obs,self.adjacent_mask)
         loss_mask_rel_pred = (torch.ones((n_env, num_peds, self.args_eval.pred_seq_len), device=self.device) * loss_mask_rel_obs[:,:,-1:])
         loss_mask_rel = torch.cat((loss_mask_rel_obs, loss_mask_rel_pred), dim=2) # (n_env, num_peds, seq_len)
         loss_mask_pred = loss_mask_rel_pred

@@ -283,3 +283,41 @@ not a generated RVO2 pool. `--device cuda:0 --gae triton` tests the CUDA GAE
 path separately. No physical robot commands are sent. The GST config loader
 accepts the published argparse.Namespace format, and modern PyTorch loads
 weights in restricted mode. Keep legacy pickle/checkpoints from trusted sources.
+
+## DR-SPAAM ROS 2 detector adapter
+
+The new `waffle_pi.ros2_detector` uses the upstream
+[2D lidar person detector](https://github.com/RWTHVision/2D_lidar_person_detection)
+Python `Detector` API (inspected tree `d12e90225d52ba6c85d20061f1e7286d6a64aade`).
+Install upstream `dr_spaam` separately using its instructions and a trusted,
+compatible checkpoint (CPU-readable if using CPU). The adapter deliberately
+uses the newer API (`model`, `panoramic_scan`, `set_laser_fov`), not the older
+DR-SPAAM-Detector API. No external source code or weights were vendored.
+
+On the ROS 2 host, after starting the stock bringup and verifying `/scan`:
+
+```sh
+python -m waffle_pi.ros2_detector --weights /path/to/compatible_detector.pth --device cpu
+```
+
+It publishes `/dr_spaam_detections` as timestamped PoseArray. It validates scan
+geometry, removes a duplicated panorama endpoint, reverses positive-increment
+ROS scans for the DROW rightward-angle convention, and reflects/rotates centers
+back into the actual LaserScan frame. Invalid returns use the upstream far-range
+padding value. Failed/stale detection callbacks publish no false empty crowd.
+The detector's recurrent memory resets after a long scan gap. Initial loading
+or over-deadline inference is rejected; the policy stops on stale detections.
+Use `--input-topic /crowdnav/scan_filtered` only after measuring its effect on
+recall. All-invalid filtered scans are treated as unavailable, not empty.
+
+Verify detector output on recorded scans with known person positions and both
+sides of the robot. No ROS runtime, upstream detector weights or real LDS data
+were available for validation. `--confidence`, `--stride` and range need actual
+calibration; the default confidence is illustrative.
+
+Optional `--gst-adjacent-mask` (in both training/evaluation and ROS policy)
+fixes a released-wrapper inconsistency: a displacement is valid only when
+both consecutive positions are visible, as in GST's training dataset code.
+The default retains the released checkpoint's wrapper semantics for controlled
+zero-shot comparisons. Evaluate both before choosing; use matching flags in
+training and deployment, particularly for occlusion/dropout experiments.
