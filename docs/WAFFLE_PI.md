@@ -152,3 +152,39 @@ model is provided. The tensor backend uses a swept relative line segment
 for pedestrian collision checks (an approximation to curved robot motion),
 with discontinuity resets on replay respawns. It is still an experimental
 reward/geometry variant; compare separately against the reference simulator.
+
+## Calibration, evaluation and throughput
+
+Capture supervised low-speed calibration logs as CSV (seconds, m/s, rad/s):
+`t_s,cmd_v,cmd_w,meas_v,meas_w`. Include different velocity steps in both
+training and holdout portions. Do not use these commands to move the robot;
+record existing supervised measurements. Offline fit:
+
+```sh
+python -m waffle_pi.calibration motor measurements.csv calibration/motor.json
+```
+
+`--waffle-calibration calibration/motor.json` loads fitted tau, wheel acceleration
+and rounded actuation delay. This overrides the corresponding simulation flags;
+nonzero delay requires a tensor backend. The fit is not a braking-safety bound.
+`--waffle-dynamics-randomization 0.2` independently varies tau and acceleration
+per reset, within +/-20 percent, without exceeding wheel speed limits.
+Detector calibration CSV: `distance_m,detected,truth_x,truth_y,det_x,det_y`;
+use `python -m waffle_pi.calibration detector detections.csv calibration/detector.json`.
+Report false positives separately; manually select sensor noise/dropout flags
+from measured data. Do not confuse the example simulator values with measured ones.
+
+Run held-out evaluation with a distinct seed, using the same profile and backend:
+
+```sh
+python train.py --waffle-pi --waffle-live-orca --seed 90210 --num-processes 32 --waffle-eval-episodes 100 --load-path trained_models/GST_predictor_rand/checkpoints/41665.pt --waffle-eval-json eval/live_zero_shot.json
+```
+
+For throughput, add `--benchmark-updates 5 --benchmark-warmup 2` to a training
+command with a new output directory. It performs actual rollout, GST, GAE and
+PPO updates and saves `benchmark.json`, separating rollout, bootstrap/GAE and
+learner timings. This overrides the normal transition budget. It excludes log
+and checkpoint time, includes explicit phase synchronization, and excludes
+warmup updates from reported rates. Compare multiple environment/minibatch
+counts with the same seed, simulator and training configuration. Keep a held-out
+success/collision-rate target; maximizing steps/sec alone is insufficient.

@@ -7,7 +7,7 @@ import numpy as np
 import torch
 from rl.vec_env import VecEnv
 from rl.vec_env.vec_pretext_normalize import VecPretextNormalize
-from .batched import step
+from .batched import step, wheel_targets, advance
 from .perception import Perception
 
 
@@ -97,10 +97,21 @@ class ReplayVecEnv(VecEnv):
             'detected_human_num': box((1,))})
         super().__init__(self.n, space, box((2,)))
         self.motion = step
+        self.targets = wheel_targets
+        self.advance = advance
+        self.delay = args.waffle_actuation_delay
+        self.randomization = args.waffle_dynamics_randomization
+        self.command_history = torch.zeros(self.delay+1,self.n,2,device=device)
+        self.command_cursor = 0
+        self.tau_scale = torch.ones(self.n,device=device)
+        self.accel_scale = torch.ones_like(self.tau_scale)
         if args.waffle_compile_dynamics:
             if not hasattr(torch, 'compile'):
                 raise RuntimeError("Compiled dynamics requires PyTorch 2.x")
             self.motion = torch.compile(step, fullgraph=True)
+            if self.delay or self.randomization:
+                self.targets=torch.compile(wheel_targets,fullgraph=True)
+                self.advance=torch.compile(advance,fullgraph=True)
         self.ids = torch.zeros(self.n, device=device, dtype=torch.long)
         self.t = torch.zeros_like(self.ids)
         self.pose = torch.zeros(self.n,3,device=device)
@@ -117,6 +128,11 @@ class ReplayVecEnv(VecEnv):
         self.wheels = torch.where(done[:,None],0.,self.wheels)
         self.velocity = torch.where(done[:,None],0.,self.velocity)
         self.perception.reset(done)
+        self.command_history.masked_fill_(done[None,:,None],0.)
+        if self.randomization:
+            factors=1.+(2.*torch.rand(2,self.n,device=self.device,generator=self.rng)-1.)*self.randomization
+            self.tau_scale=torch.where(done,factors[0],self.tau_scale)
+            self.accel_scale=torch.where(done,factors[1],self.accel_scale)
         self.slot_reset = self.slot_reset | done[:,None]
         if self.live:
             mask=done[:,None,None]
@@ -182,8 +198,16 @@ class ReplayVecEnv(VecEnv):
         old_velocity = self.velocity
         prev_humans = self._frame()
         old_dist = torch.linalg.vector_norm(self.goal-old[:,:2],dim=-1)
-        self.pose,self.wheels,self.velocity,dtheta = self.motion(
-            self.pose,self.wheels,self.actions,self.cfg.waffle_limits,self.cfg.env.time_step)
+        limits,dt=self.cfg.waffle_limits,self.cfg.env.time_step
+        if self.delay or self.randomization:
+            target=self.targets(self.pose,self.actions,limits)
+            self.command_history[self.command_cursor].copy_(target)
+            self.command_cursor=(self.command_cursor+1)%(self.delay+1)
+            target=self.command_history[self.command_cursor]
+            self.pose,self.wheels,self.velocity,dtheta=self.advance(
+                self.pose,self.wheels,target,limits,dt,self.tau_scale,self.accel_scale)
+        else:
+            self.pose,self.wheels,self.velocity,dtheta=self.motion(self.pose,self.wheels,self.actions,limits,dt)
         self.t = (self.t+1).clamp(max=self.horizon)
         self._advance_humans(old,old_velocity)
         human = self._frame()

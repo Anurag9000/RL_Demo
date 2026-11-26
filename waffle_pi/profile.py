@@ -1,11 +1,28 @@
 """Provisional Waffle Pi simulation configuration."""
 from .dynamics import DriveLimits
+import json
+import math
 
 
 def configure(config, args):
     if args.env_name != 'CrowdSimPredRealGST-v0' or not args.sort_humans:
         raise ValueError("Waffle profile requires GST and sorted observations")
     config.waffle_pi = True
+    if args.waffle_calibration:
+        with open(args.waffle_calibration) as handle:
+            calibration=json.load(handle)
+        if calibration.get('schema')!='waffle_motor_fit_v1':
+            raise ValueError("Expected offline motor fit JSON")
+        args.waffle_motor_tau=float(calibration['motor_tau'])
+        args.waffle_wheel_accel=float(calibration['wheel_accel'])
+        delay=float(calibration['command_delay_s'])
+        if not math.isfinite(delay) or not 0<=delay<=.5:
+            raise ValueError("Invalid fitted command delay")
+        args.waffle_actuation_delay=int(round(delay/.25))
+    if not 0<=args.waffle_actuation_delay<=8 or not 0<=args.waffle_dynamics_randomization<=.5:
+        raise ValueError("Invalid command delay or dynamics randomization")
+    if (args.waffle_actuation_delay or args.waffle_dynamics_randomization) and not (args.waffle_live_orca or args.waffle_replay):
+        raise ValueError("Actuation delay and dynamics randomization require tensor simulator")
     config.waffle_limits = DriveLimits(max_linear=args.waffle_speed,
         max_wheel=args.waffle_speed/0.033, motor_tau=args.waffle_motor_tau,
         wheel_accel=args.waffle_wheel_accel)

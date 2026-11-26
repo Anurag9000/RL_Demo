@@ -237,6 +237,12 @@ def get_args():
     parser.add_argument('--waffle-dropout', type=float, default=0.)
     parser.add_argument('--waffle-pose-drift', type=float, default=0., help='Per-tick odometry drift scale, metres')
     parser.add_argument('--waffle-detection-delay', type=int, default=0, help='Fixed number of policy ticks')
+    parser.add_argument('--waffle-calibration', default=None, help='Offline motor-fit JSON')
+    parser.add_argument('--waffle-actuation-delay', type=int, default=0, help='Tensor simulator command delay in policy ticks')
+    parser.add_argument('--waffle-dynamics-randomization', type=float, default=0., help='Fractional tau/acceleration variation')
+    parser.add_argument('--waffle-eval-json', default=None)
+    parser.add_argument('--benchmark-updates', type=int, default=0)
+    parser.add_argument('--benchmark-warmup', type=int, default=2)
     args = parser.parse_args()
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()

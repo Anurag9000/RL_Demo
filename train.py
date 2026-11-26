@@ -208,8 +208,20 @@ def main():
 	if num_updates<1:
 		raise ValueError('Budget too small for one global rollout')
 
+	if algo_args.benchmark_updates<0 or algo_args.benchmark_warmup<0:
+		raise ValueError("Benchmark counts must be nonnegative")
+	if algo_args.benchmark_updates:
+		num_updates=algo_args.benchmark_warmup+algo_args.benchmark_updates
+		benchmark_rows=[]
+		def sync_clock():
+			if device.type=='cuda':
+				torch.cuda.synchronize(device)
+			return time.perf_counter()
+
 	# start the training loop
 	for j in range(num_updates):
+		if algo_args.benchmark_updates:
+			start_rollout=sync_clock()
 		# schedule learning rate if needed
 		if algo_args.use_linear_lr_decay:
 			network_utils.update_linear_schedule(
@@ -265,6 +277,8 @@ def main():
 							action_log_prob, value, reward, masks, bad_masks)
 		if tensor_env:
 			episode_rewards.extend(torch.stack(completed_rewards)[torch.stack(completed_masks)].cpu().tolist())
+		if algo_args.benchmark_updates:
+			end_rollout=sync_clock()
 		# store the stepped experience to buffer
 		with torch.no_grad(), torch.autocast(device_type=device.type,dtype=torch.bfloat16,enabled=algo_args.amp_bf16):
 			rollouts_obs = {}
@@ -281,7 +295,16 @@ def main():
 		rollouts.compute_returns(next_value, algo_args.use_gae, algo_args.gamma,
 								 algo_args.gae_lambda, algo_args.use_proper_time_limits,algo_args.gae_backend)
 
+		if algo_args.benchmark_updates:
+			end_gae=sync_clock()
 		value_loss, action_loss, dist_entropy = agent.update(rollouts)
+		if algo_args.benchmark_updates:
+			end_learner=sync_clock()
+			elapsed=torch.tensor([end_rollout-start_rollout,end_gae-end_rollout,end_learner-end_gae],device=device)
+			if world>1:
+				torch.distributed.all_reduce(elapsed,op=torch.distributed.ReduceOp.MAX)
+			if rank==0 and j>=algo_args.benchmark_warmup:
+				benchmark_rows.append(elapsed.cpu().tolist())
 
 		rollouts.after_update()
 
@@ -320,6 +343,17 @@ def main():
 			else:
 				df.to_csv(os.path.join(algo_args.output_dir, 'progress.csv'), mode='w', header=True, index=False)
 
+	if algo_args.benchmark_updates and rank==0:
+		rows=np.asarray(benchmark_rows)
+		seconds=float(rows.sum())
+		steps=len(rows)*algo_args.num_steps*algo_args.num_processes*world
+		result=dict(measured_updates=len(rows),global_transitions=steps,
+			transitions_per_sec=steps/seconds,rollout_s=float(rows[:,0].sum()),
+			gae_and_bootstrap_s=float(rows[:,1].sum()),learner_s=float(rows[:,2].sum()),
+			note='Excludes checkpoint/logging time and warmup; phase sync overhead included')
+		print(result)
+		with open(os.path.join(algo_args.output_dir,'benchmark.json'),'w') as handle:
+			json.dump(result,handle,indent=2)
 	envs.close()
 	if world>1:
 		torch.distributed.destroy_process_group()
