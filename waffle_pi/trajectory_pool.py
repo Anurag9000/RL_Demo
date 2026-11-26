@@ -14,11 +14,11 @@ _ENV = None
 _STEPS = None
 
 
-def _init():
+def _init(args):
     global _ENV, _STEPS
     from crowd_nav.configs.config import Config
     from crowd_sim.envs.crowd_sim_pred_real_gst import CrowdSimPredRealGST
-    cfg = Config()
+    cfg = Config(args)
     _ENV = CrowdSimPredRealGST()
     _ENV.configure(cfg)
     _ENV.phase = 'train'
@@ -44,7 +44,7 @@ def _scenario(seed):
 
 def build(args):
     from crowd_nav.configs.config import Config
-    cfg = Config()
+    cfg = Config(args)
     if not args.waffle_pi or cfg.robot.visible or cfg.sim.human_num_range:
         raise ValueError("Replay requires a Waffle profile and fixed non-reactive crowd")
     if args.waffle_pool_count < 1 or args.num_processes < 1:
@@ -54,7 +54,7 @@ def build(args):
         raise ValueError("Choose a new .npz pool file")
     out.parent.mkdir(parents=True, exist_ok=True)
     seeds = range(args.seed, args.seed+args.waffle_pool_count)
-    with mp.get_context('fork').Pool(args.num_processes, initializer=_init) as pool:
+    with mp.get_context('fork').Pool(args.num_processes, initializer=_init,initargs=(args,)) as pool:
         rows = list(pool.imap(_scenario, seeds, chunksize=4))
     starts, goals, humans = map(np.stack, zip(*rows))
     meta = json.dumps(dict(dt=cfg.env.time_step, timeout=cfg.env.time_limit,

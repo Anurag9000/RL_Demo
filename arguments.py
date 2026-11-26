@@ -3,7 +3,7 @@ import argparse
 import torch
 
 
-def get_args():
+def get_args(argv=None):
     parser = argparse.ArgumentParser(description='RL')
 
     # the saving directory for train.py
@@ -222,7 +222,33 @@ def get_args():
     parser.add_argument('--waffle-build-pool', default=None, help='Generate a crowd trajectory pool at this .npz path')
     parser.add_argument('--waffle-pool-count', type=int, default=1024)
     parser.add_argument('--waffle-compile-dynamics', action='store_true')
-    args = parser.parse_args()
+    parser.add_argument('--compile-policy', action='store_true')
+    parser.add_argument('--compile-gst', action='store_true')
+    parser.add_argument('--compile-mode', choices=['default','reduce-overhead','max-autotune'], default='default')
+    parser.add_argument('--masked-gru', action='store_true')
+    parser.add_argument('--amp-bf16', action='store_true')
+    parser.add_argument('--fused-adam', action='store_true')
+    parser.add_argument('--gae-backend', choices=['reference','scan','triton'], default='reference')
+    parser.add_argument('--tf32', action='store_true')
+    parser.add_argument('--waffle-live-orca', action='store_true')
+    parser.add_argument('--waffle-reactive-humans', action='store_true')
+    parser.add_argument('--waffle-occlusion', action='store_true')
+    parser.add_argument('--waffle-noise', type=float, default=0., help='Synthetic detection error scale, metres')
+    parser.add_argument('--waffle-dropout', type=float, default=0.)
+    parser.add_argument('--waffle-pose-drift', type=float, default=0., help='Per-tick odometry drift scale, metres')
+    parser.add_argument('--waffle-detection-delay', type=int, default=0, help='Fixed number of policy ticks')
+    parser.add_argument('--waffle-calibration', default=None, help='Offline motor-fit JSON')
+    parser.add_argument('--waffle-actuation-delay', type=int, default=0, help='Tensor simulator command delay in policy ticks')
+    parser.add_argument('--waffle-dynamics-randomization', type=float, default=0., help='Fractional tau/acceleration variation')
+    parser.add_argument('--waffle-eval-json', default=None)
+    parser.add_argument('--benchmark-updates', type=int, default=0)
+    parser.add_argument('--benchmark-warmup', type=int, default=2)
+    parser.add_argument('--cuda-graph-actor', action='store_true')
+    parser.add_argument('--cuda-graph-gst', action='store_true')
+    parser.add_argument('--gst-adjacent-mask', action='store_true',
+                        help='Use training-consistent adjacent visibility masks for GST displacements')
+    parser.add_argument('--cuda-graph-ppo', action='store_true')
+    args = parser.parse_args(argv)
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()
 

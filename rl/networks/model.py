@@ -50,8 +50,9 @@ class Policy(nn.Module):
         """Size of rnn_hx."""
         return self.base.recurrent_hidden_state_size
 
-    def forward(self, inputs, rnn_hxs, masks):
-        raise NotImplementedError
+    def forward(self, inputs, rnn_hxs, masks, action):
+        # DDP must call forward, not a method on the unwrapped module.
+        return self.evaluate_actions(inputs, rnn_hxs, masks, action)
 
     def act(self, inputs, rnn_hxs, masks, deterministic=False):
         if not hasattr(self, 'srnn'):

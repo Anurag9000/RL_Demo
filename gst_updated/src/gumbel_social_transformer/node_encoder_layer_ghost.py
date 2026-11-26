@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
-from src.gumbel_social_transformer.mha import VanillaMultiheadAttention
-from src.gumbel_social_transformer.utils import _get_activation_fn
+from gst_updated.src.gumbel_social_transformer.mha import VanillaMultiheadAttention
+from gst_updated.src.gumbel_social_transformer.utils import _get_activation_fn
 
 class NodeEncoderLayer(nn.Module):
     r"""Ghost version"""
@@ -48,7 +48,7 @@ class NodeEncoderLayer(nn.Module):
             attn_mask_ped = (attn_mask.sum(-1) > 0).float().unsqueeze(-1).to(device) # (bsz, nnode, 1)
             x = self.norm_node(x)
             x = x * attn_mask_ped
-            x_ghost = torch.zeros(bsz, 1, self.d_model).to(device)
+            x_ghost = torch.zeros(bsz,1,self.d_model,device=device)
             # add zero vector for ghost at every node encoder layer.
             x_w_ghost = torch.cat((x, x_ghost), dim=1) # (bsz, nnode+1, d_model) # x with ghost
             x_w_ghost_perm = x_w_ghost.permute(1,0,2) # (nnode+1, bsz, d_model)

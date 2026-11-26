@@ -21,6 +21,10 @@ We demonstrate that our method enables the robot to achieve good navigation perf
 <img src="/figures/open.png" width="450" />
 </p>
 
+## Waffle Pi experimental adaptation
+
+For tensor-only training, calibration, smoke tests and ROS shadow-mode instructions, see [docs/WAFFLE_PI.md](docs/WAFFLE_PI.md). The original setup below is retained for the legacy reference simulator.
+
 ## Setup
 1. In a conda environment or virtual environment with Python 3.x, install the required python package
 ```

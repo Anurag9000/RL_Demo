@@ -24,10 +24,8 @@ class VecPretextNormalize(VecEnvWrapper):
 
         self.config = config
         self.device=torch.device(self.config.training.device)
-        if test:
-            self.num_envs = 1
-        else:
-            self.num_envs = self.config.env.num_processes
+        self.num_envs = venv.num_envs
+        self.ring = getattr(config, 'waffle_pi', False)
 
         self.max_human_num = config.sim.human_num + config.sim.human_num_range
 
@@ -44,17 +42,29 @@ class VecPretextNormalize(VecEnvWrapper):
         if not os.path.isdir(load_path):
             raise RuntimeError('The result directory was not found.')
         checkpoint_dir = os.path.join(load_path, 'checkpoint')
-        with open(os.path.join(checkpoint_dir, 'args.pickle'), 'rb') as f:
-            self.args = pickle.load(f)
+        from waffle_pi.checkpoints import load_gst_args
+        self.args = load_gst_args(os.path.join(checkpoint_dir, 'args.pickle'))
 
-        self.predictor = CrowdNavPredInterfaceMultiEnv(load_path=load_path, device=self.device, config = self.args, num_env = self.num_envs)
+        self.predictor = CrowdNavPredInterfaceMultiEnv(load_path=load_path, device=self.device, config = self.args, num_env = self.num_envs, adjacent_mask=getattr(config.args,'gst_adjacent_mask',False))
 
         temperature_scheduler = Temp_Scheduler(self.args.num_epochs, self.args.init_temp, self.args.init_temp, temp_min=0.03)
         self.tau = temperature_scheduler.decay_whole_process(epoch=100)
 
         # handle different prediction and control frequency
-        self.pred_interval = int(self.config.data.pred_timestep//self.config.env.time_step)
+        ratio = self.config.data.pred_timestep/self.config.env.time_step
+        self.pred_interval = int(round(ratio))
+        if self.pred_interval < 1 or abs(ratio-self.pred_interval)>1e-6:
+            raise ValueError("GST timestep must be an integer multiple of control timestep")
         self.buffer_len = (self.args.obs_seq_len - 1) * self.pred_interval + 1
+        self.coefficients = 2. ** torch.arange(2, self.config.sim.predict_steps+2,device=self.device).reshape(1,1,-1)
+        self.predict = self.predictor.forward
+        if getattr(config.args,'compile_gst',False):
+            if not hasattr(torch,'compile'):
+                raise RuntimeError("GST compilation requires PyTorch 2.x")
+            self.predict = torch.compile(self.predict,mode=config.args.compile_mode)
+        if getattr(config.args,'cuda_graph_gst',False):
+            from waffle_pi.cuda_graph import StaticGraphCall
+            self.predict=StaticGraphCall(self.predict,self.device)
 
 
 
@@ -85,11 +95,16 @@ class VecPretextNormalize(VecEnvWrapper):
     def reset(self):
         # queue for inputs to the pred model
         # fill the queue with dummy values
-        self.traj_buffer = deque(list(-torch.ones((self.buffer_len, self.num_envs, self.max_human_num, 2), device=self.device)*999),
-                                 maxlen=self.buffer_len) # (n_env, num_peds, obs_seq_len, 2)
-        self.mask_buffer = deque(list(torch.zeros((self.buffer_len, self.num_envs, self.max_human_num, 1), dtype=torch.bool, device=self.device)),
-                                 maxlen=self.buffer_len) # (n_env, num_peds, obs_seq_len, 1)
+        if not self.ring:
+            self.traj_buffer = deque(list(torch.full((self.buffer_len,self.num_envs,self.max_human_num,2),-999.,device=self.device)),maxlen=self.buffer_len)
+            self.mask_buffer = deque(list(torch.zeros((self.buffer_len,self.num_envs,self.max_human_num,1),dtype=torch.bool,device=self.device)),maxlen=self.buffer_len)
 
+        if self.ring:
+            self.history = torch.full((self.num_envs,self.max_human_num,self.buffer_len,2),-999.,device=self.device)
+            self.valid = torch.zeros((self.num_envs,self.max_human_num,self.buffer_len,1),dtype=torch.bool,device=self.device)
+            self.cursor = 0
+            self.indices = [(torch.arange(self.buffer_len,device=self.device)+i)%self.buffer_len
+                            for i in range(self.buffer_len)]
         self.step_counter = 0
 
         # for calculating the displacement of human positions
@@ -116,24 +131,26 @@ class VecPretextNormalize(VecEnvWrapper):
         # find humans' absolute positions
         human_pos = O['robot_node'][:, :, :2] + O['spatial_edges'][:, :, :2]
 
-        # insert the new ob to deque
-        if getattr(self.config, 'waffle_pi', False):
-            finished = torch.as_tensor(done, device=self.device, dtype=torch.bool)
-            for history, mask in zip(self.traj_buffer, self.mask_buffer):
-                history.masked_fill_(finished[:, None, None], -999.)
-                mask.masked_fill_(finished[:, None, None], False)
-        self.traj_buffer.append(human_pos)
-        self.mask_buffer.append(O['visible_masks'].unsqueeze(-1).clone())
-        # [obs_seq_len, nenv, max_human_num, 2] -> [nenv, max_human_num, obs_seq_len, 2]
-        in_traj = torch.stack(list(self.traj_buffer)).permute(1, 2, 0, 3)
-        in_mask = torch.stack(list(self.mask_buffer)).permute(1, 2, 0, 3).float()
-
-        # index select the input traj and input mask for GST
-        in_traj = in_traj[:, :, ::self.pred_interval]
-        in_mask = in_mask[:, :, ::self.pred_interval]
-
-        # forward predictor model
-        out_traj, out_mask = self.predictor.forward(input_traj=in_traj, input_binary_mask=in_mask)
+        if self.ring:
+            finished = torch.as_tensor(done,device=self.device,dtype=torch.bool).reshape(-1)
+            clear = finished[:,None]
+            if 'slot_reset' in O:
+                clear = clear | O['slot_reset'].bool()
+            self.history.masked_fill_(clear[:,:,None,None],-999.)
+            self.valid.masked_fill_(clear[:,:,None,None],False)
+            visible = O['visible_masks'].bool()
+            self.history[:,:,self.cursor] = torch.where(visible[...,None],human_pos,-999.)
+            self.valid[:,:,self.cursor,0] = visible
+            self.cursor = (self.cursor+1)%self.buffer_len
+            indices = self.indices[self.cursor][::self.pred_interval]
+            in_traj = self.history.index_select(2,indices)
+            in_mask = self.valid.index_select(2,indices).float()
+        else:
+            self.traj_buffer.append(human_pos)
+            self.mask_buffer.append(O['visible_masks'].unsqueeze(-1).clone())
+            in_traj = torch.stack(list(self.traj_buffer)).permute(1,2,0,3)[:,:,::self.pred_interval]
+            in_mask = torch.stack(list(self.mask_buffer)).permute(1,2,0,3).float()[:,:,::self.pred_interval]
+        out_traj, out_mask = self.predict(in_traj,in_mask)
         out_mask = out_mask.bool()
 
         # add penalties if the robot collides with predicted future pos of humans
@@ -148,8 +165,7 @@ class VecPretextNormalize(VecEnvWrapper):
         # mask out invalid predictions
         # [nenv, human_num, predict_steps] AND [nenv, human_num, 1]
         collision_idx = torch.logical_and(collision_idx, out_mask)
-        coefficients = 2. ** torch.arange(2, self.config.sim.predict_steps + 2, device=self.device).reshape(
-            (1, 1, self.config.sim.predict_steps))  # 4, 8, 16, 32, 64
+        coefficients = self.coefficients  # 4, 8, 16, 32, 64
 
         # [1, 1, predict_steps]
         collision_penalties = self.config.reward.collision_penalty / coefficients
@@ -180,6 +196,8 @@ class VecPretextNormalize(VecEnvWrapper):
         # sort all humans by distance to robot
         # [nenv, human_num]
         hr_dist_cur = torch.linalg.norm(O['spatial_edges'][:, :, :2], dim=-1)
+        if self.ring:
+            hr_dist_cur = hr_dist_cur.masked_fill(~O['visible_masks'].bool(),float('inf'))
         sorted_idx = torch.argsort(hr_dist_cur, dim=1)
         # sorted_idx = sorted_idx.unsqueeze(-1).repeat(1, 1, 2*(self.config.sim.predict_steps+1))
         O['spatial_edges'] = torch.gather(O['spatial_edges'], 1, sorted_idx.unsqueeze(-1).expand_as(O['spatial_edges']))
@@ -194,7 +212,7 @@ class VecPretextNormalize(VecEnvWrapper):
 
         }
 
-        self.last_pos = copy.deepcopy(human_pos)
+        self.last_pos = human_pos.detach()
         self.step_counter = self.step_counter + 1
 
         return obs, rews

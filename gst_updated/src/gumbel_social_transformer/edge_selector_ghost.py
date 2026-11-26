@@ -2,8 +2,8 @@
 import torch
 import torch.nn as nn
 from torch.nn.functional import softmax
-from src.gumbel_social_transformer.mha import VanillaMultiheadAttention
-from src.gumbel_social_transformer.utils import _get_activation_fn, gumbel_softmax
+from gst_updated.src.gumbel_social_transformer.mha import VanillaMultiheadAttention
+from gst_updated.src.gumbel_social_transformer.utils import _get_activation_fn, gumbel_softmax
 
 class EdgeSelector(nn.Module):
     r"""Ghost version."""
@@ -55,17 +55,17 @@ class EdgeSelector(nn.Module):
         """
         bsz, nnode, d_motion = x.shape
         assert d_motion == self.d_motion
-        attn_mask = attn_mask.to("cpu")
+        attn_mask = attn_mask.to(x.device)
         attn_mask_ped = (attn_mask.sum(-1) > 0).float().unsqueeze(-1) # (bsz, nnode, 1)
         x = x * attn_mask_ped.to(device)
-        x_ghost = torch.zeros(bsz, 1, d_motion).to(device)
+        x_ghost = x.new_zeros((bsz,1,d_motion))
         x_neighbor = torch.cat((x, x_ghost), dim=1) # (bsz, nnode+1, d_motion)
-        x_neighbor = torch.ones(bsz,nnode+1,nnode,d_motion).to(device)*x_neighbor.view(bsz,nnode+1,1,d_motion) # row -> neighbor
-        x_target = torch.ones(bsz,nnode+1,nnode,d_motion).to(device)*x.view(bsz,1,nnode,d_motion) # col -> target
+        x_neighbor = x_neighbor.view(bsz,nnode+1,1,d_motion).expand(-1,-1,nnode,-1) # row -> neighbor
+        x_target = x.view(bsz,1,nnode,d_motion).expand(-1,nnode+1,-1,-1) # col -> target
         x_neighbor_target = torch.cat((x_neighbor, x_target), dim=-1) # (bsz,nnode+1,nnode,2*d_motion)
 
         A = A * attn_mask.permute(0,2,1).unsqueeze(-1).to(device) # (bsz, neighbor_node, target_node, d_motion)
-        A_ghost = torch.zeros(bsz, 1, nnode, d_motion).to(device)
+        A_ghost = x.new_zeros((bsz,1,nnode,d_motion))
         A = torch.cat((A, A_ghost), dim=1) # (bsz,nnode+1,nnode,d_motion)
         A = torch.cat((x_neighbor_target, A), dim=-1) # (bsz,nnode+1,nnode,3*d_motion) # n_node==t_node+1==nnode+1
         A = self.augmented_edge_embedding(A) # (bsz,nnode+1,nnode,d_model)
@@ -74,7 +74,7 @@ class EdgeSelector(nn.Module):
         A_perm = A_perm.reshape(A_perm.shape[0]*A_perm.shape[1], A_perm.shape[2], A_perm.shape[3]) # (time_step*target_node, neighbor_node, d_model)
         A_perm = A_perm.permute(1,0,2) # (neighbor_node, time_step*target_node, d_model)
         
-        attn_mask_ghost = torch.ones(bsz, nnode, 1) # ghost exists all the time, not missing
+        attn_mask_ghost = attn_mask.new_ones((bsz,nnode,1)) # ghost exists all the time, not missing
         attn_mask = torch.cat((attn_mask, attn_mask_ghost), dim=2) #(bsz, nnode, nnode+1) # n_node==t_node+1==nnode+1
         attn_mask_neighbors = attn_mask.view(bsz, nnode, nnode+1, 1) * attn_mask.view(bsz, nnode, 1, nnode+1) # (bsz, nnode, nnode+1, nnode+1)
         attn_mask_neighbors = attn_mask_neighbors.view(bsz*nnode, nnode+1, nnode+1) # (time_step*target_node, neighbor_node, neighbor_node)

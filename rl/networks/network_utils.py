@@ -3,7 +3,6 @@ import os
 
 import torch.nn as nn
 
-from rl.networks.envs import VecNormalize
 
 
 # Get a render function
@@ -19,6 +18,7 @@ def get_render_func(venv):
 
 
 def get_vec_normalize(venv):
+    from rl.networks.envs import VecNormalize
     if isinstance(venv, VecNormalize):
         return venv
     elif hasattr(venv, 'venv'):

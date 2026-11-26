@@ -100,7 +100,19 @@ class RolloutStorage(object):
                         use_gae,
                         gamma,
                         gae_lambda,
-                        use_proper_time_limits=True):
+                        use_proper_time_limits=True, gae_backend='reference'):
+        if use_gae and gae_backend != 'reference':
+            self.value_preds[-1].copy_(next_value)
+            if gae_backend == 'scan':
+                from waffle_pi.fast_ops import gae_scan as calculate
+            elif gae_backend == 'triton':
+                from waffle_pi.triton_gae import gae_triton as calculate
+            else:
+                raise ValueError("Unknown GAE backend")
+            self.returns[:-1].copy_(calculate(self.rewards,self.value_preds,self.masks,
+                self.bad_masks,gamma,gae_lambda,use_proper_time_limits))
+            self.returns[-1].copy_(next_value)
+            return
         if use_proper_time_limits:
             if use_gae:
                 self.value_preds[-1] = next_value

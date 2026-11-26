@@ -2,7 +2,7 @@
 
 Input detection PoseArray must be a timestamped DR-SPAAM (or equivalent)
 person-center detection stream. TF2 converts it to odom. Goals must be
-given in odom. Verify perception, tracking, localization, timing and
+given in map or odom. Verify perception, tracking, localization, timing and
 safety externally before enabling command requests.
 """
 import argparse
@@ -13,7 +13,7 @@ import time
 from pathlib import Path
 import numpy as np
 import torch
-import gym
+from .spaces import spaces
 import rclpy
 from rclpy.node import Node
 from rclpy.time import Time
@@ -22,7 +22,7 @@ from rclpy.qos import qos_profile_sensor_data
 from geometry_msgs.msg import PoseArray, PoseStamped, TwistStamped
 from nav_msgs.msg import Odometry
 from tf2_ros import Buffer, TransformListener
-from .tracking import Tracker
+from .tracking import Tracker, TrajectoryHistory
 from .dynamics import DriveLimits, command_twist
 
 
@@ -44,24 +44,25 @@ class Shadow(Node):
         from gst_updated.scripts.wrapper.crowd_nav_interface_parallel import CrowdNavPredInterfaceMultiEnv
         self.opts=opts
         self.device=torch.device(opts.device)
+        if self.device.type=='cuda':
+            torch.cuda.set_device(self.device.index or 0)
         policy_args.num_processes=1
         policy_args.no_cuda=self.device.type=='cpu'
         self.n=opts.humans
         def box(shape):
-            return gym.spaces.Box(-np.inf,np.inf,shape=shape,dtype=np.float32)
-        spaces={'robot_node':box((1,7)),'temporal_edges':box((1,2)),
+            return spaces.Box(-np.inf,np.inf,shape=shape,dtype=np.float32)
+        obs_spaces={'robot_node':box((1,7)),'temporal_edges':box((1,2)),
                 'spatial_edges':box((self.n,12)),'visible_masks':box((self.n,)),
                 'detected_human_num':box((1,))}
-        self.model=Policy(spaces,box((2,)),base='selfAttn_merge_srnn',base_kwargs=policy_args).to(self.device)
-        self.model.load_state_dict(torch.load(opts.checkpoint,map_location=self.device),strict=True)
+        self.model=Policy(obs_spaces,box((2,)),base='selfAttn_merge_srnn',base_kwargs=policy_args).to(self.device)
+        from .checkpoints import load_weights,load_gst_args
+        self.model.load_state_dict(load_weights(opts.checkpoint,self.device),strict=True)
         self.model.eval()
-        with open(Path(opts.gst_dir)/'checkpoint'/'args.pickle','rb') as handle:
-            gst_args=pickle.load(handle)
+        gst_args=load_gst_args(Path(opts.gst_dir)/'checkpoint'/'args.pickle')
         if gst_args.pred_seq_len!=5:
             raise ValueError("Expected five-step GST horizon")
-        self.gst=CrowdNavPredInterfaceMultiEnv(opts.gst_dir,self.device,gst_args,1)
-        self.history=torch.full((1,self.n,gst_args.obs_seq_len,2),-999.,device=self.device)
-        self.valid=torch.zeros((1,self.n,gst_args.obs_seq_len,1),device=self.device)
+        self.gst=CrowdNavPredInterfaceMultiEnv(opts.gst_dir,self.device,gst_args,1,adjacent_mask=opts.gst_adjacent_mask)
+        self.history=TrajectoryHistory(self.n,gst_args.obs_seq_len)
         self.hidden={'human_node_rnn':torch.zeros(1,1,policy_args.human_node_rnn_size,device=self.device),
                      'human_human_edge_rnn':torch.zeros(1,1,policy_args.human_human_edge_rnn_size,device=self.device)}
         self.masks=torch.zeros(1,1,device=self.device)
@@ -86,16 +87,23 @@ class Shadow(Node):
         self.detections,self.det_at=msg,time.monotonic()
 
     def on_goal(self,msg):
-        if msg.header.frame_id!='odom':
-            self.get_logger().error('Goal must be transformed into odom first')
+        if msg.header.frame_id not in ('map','odom'):
+            self.get_logger().error('Goal must be in map or odom')
             self.goal=None
         else:
-            self.goal=np.array([msg.pose.position.x,msg.pose.position.y],np.float32)
+            self.goal=msg
         self.clear_history()
 
+    def goal_xy(self):
+        p=self.goal.pose.position
+        goal=np.array([p.x,p.y,p.z],dtype=float)
+        if self.goal.header.frame_id!='odom':
+            tf=self.tf.lookup_transform('odom','map',Time(),timeout=Duration(seconds=0.)).transform
+            goal=rotation(tf.rotation)@goal+np.array([tf.translation.x,tf.translation.y,tf.translation.z])
+        return goal[:2].astype(np.float32)
+
     def clear_history(self):
-        self.history.fill_(-999.)
-        self.valid.zero_()
+        self.history.clear()
         self.masks.zero_()
         self.tracker=Tracker(self.n)
 
@@ -128,14 +136,17 @@ class Shadow(Node):
                 # Do not insert duplicate detections as new trajectory samples.
                 self.publish(0.,0.)
                 return
+            if stamp-self.last_stamp>.5:
+                self.clear_history()
             self.last_stamp=stamp
             pos=self.odom.pose.pose.position
             xy=np.array([pos.x,pos.y],np.float32)
             rot=rotation(self.odom.pose.pose.orientation)
-            heading=math.atan2(rot[1,0],rot[0,0])
-            if not np.isfinite(xy).all() or not np.isfinite(self.goal).all():
+            heading=math.atan2(rot[1,0],rot[0,0])%(2*math.pi)
+            goal=self.goal_xy()
+            if not np.isfinite(xy).all() or not np.isfinite(goal).all():
                 raise ValueError("Non-finite pose/goal")
-            if np.linalg.norm(self.goal-xy)<self.opts.radius:
+            if np.linalg.norm(goal-xy)<self.opts.radius:
                 self.goal=None
                 self.clear_history()
                 self.publish(0.,0.)
@@ -147,27 +158,30 @@ class Shadow(Node):
             if frame!='odom':
                 tf=self.tf.lookup_transform('odom',frame,Time.from_msg(self.detections.header.stamp),timeout=Duration(seconds=0.0)).transform
                 points=points@rotation(tf.rotation).T+np.array([tf.translation.x,tf.translation.y,tf.translation.z])
-            reused=self.tracker.update(points[:,:2],stamp)
-            reuse=torch.as_tensor(reused,device=self.device)
-            self.history.masked_fill_(reuse[None,:,None,None],-999.)
-            self.valid.masked_fill_(reuse[None,:,None,None],0.)
-            self.history=torch.roll(self.history,-1,2)
-            self.valid=torch.roll(self.valid,-1,2)
+            points=points[:,:2]
+            if not np.isfinite(points).all():
+                raise ValueError('Invalid person detection coordinates')
+            points=points[np.linalg.norm(points-xy,axis=-1)<=self.opts.sensor_range]
+            reused=self.tracker.update(points,stamp)
+            if self.tracker.overflow:
+                raise RuntimeError("Unassociated detections exceed available track slots")
             rel=self.tracker.pos-xy
             seen=self.tracker.seen & (np.linalg.norm(rel,axis=-1)<=self.opts.sensor_range)
-            current=torch.as_tensor(self.tracker.pos,device=self.device)
+            self.history.append(stamp,self.tracker.pos,seen,reused)
+            history,history_mask=self.history.sample(stamp)
             mask=torch.as_tensor(seen,device=self.device)
-            self.history[0,:,-1]=torch.where(mask[:,None],current,-999.)
-            self.valid[0,:,-1,0]=mask.float()
-            pred,valid=self.gst.forward(self.history,self.valid)
+            pred,valid=self.gst.forward(torch.as_tensor(history,device=self.device),
+                                        torch.as_tensor(history_mask,device=self.device))
             relative=torch.as_tensor(rel,device=self.device)
             relative=torch.where(mask[:,None],relative,15.)
             features=relative.repeat(1,6)
             future=(pred[0,:,:,:2]-torch.as_tensor(xy,device=self.device)).reshape(self.n,10)
             features[:,2:]=torch.where(valid[0].bool(),future,features[:,2:])
-            order=torch.argsort(torch.linalg.vector_norm(relative,dim=-1))
+            order=torch.argsort(torch.linalg.vector_norm(relative,dim=-1).masked_fill(~mask,float('inf')))
             speed=self.odom.twist.twist.linear.x
-            robot=torch.tensor([pos.x,pos.y,self.opts.radius,*self.goal,self.opts.speed,heading],device=self.device,dtype=torch.float32)
+            if not math.isfinite(speed):
+                raise ValueError("Non-finite odometry velocity")
+            robot=torch.tensor([pos.x,pos.y,self.opts.radius,*goal,self.opts.speed,heading],device=self.device,dtype=torch.float32)
             obs={'robot_node':robot.reshape(1,1,7),
                  'temporal_edges':torch.tensor([speed*math.cos(heading),speed*math.sin(heading)],device=self.device,dtype=torch.float32).reshape(1,1,2),
                  'spatial_edges':features[order][None],
@@ -175,10 +189,10 @@ class Shadow(Node):
                  'detected_human_num':mask.sum().clamp_min(1).float().reshape(1,1)}
             _,action,_,self.hidden=self.model.act(obs,self.hidden,self.masks,deterministic=True)
             self.masks.fill_(1.)
-            if now+0.25<time.monotonic():
-                raise RuntimeError("Inference deadline exceeded")
             limits=DriveLimits(max_linear=self.opts.speed,max_wheel=self.opts.speed/0.033)
             v,w=command_twist(action[0].cpu().tolist(),heading,limits)
+            if now+0.25<time.monotonic():
+                raise RuntimeError("Inference deadline exceeded")
             self.publish(v,w)
         except Exception as exc:
             self.get_logger().warning('Policy unavailable: '+str(exc))
@@ -196,6 +210,7 @@ def main():
     parser.add_argument('--speed',type=float,default=.26)
     parser.add_argument('--sensor-range',type=float,default=3.)
     parser.add_argument('--detection-topic',default='/dr_spaam_detections')
+    parser.add_argument('--gst-adjacent-mask',action='store_true')
     parser.add_argument('--enable-requests',action='store_true')
     opts,ros_args=parser.parse_known_args()
     if not 1<=opts.humans<=20 or not 0<opts.speed<=.26 or not 0<opts.radius or not 0<opts.sensor_range<=5:
