@@ -77,6 +77,9 @@ def main():
 	config.args = algo_args
 	config.env.num_processes = algo_args.num_processes
 	config.training.device = str(device)
+	if rank==0:
+		with open(os.path.join(algo_args.output_dir,'run_args.json'),'w') as handle:
+			json.dump(dict(vars(algo_args),world_size=world),handle,indent=2)
 
 	# Shared policy initialization; distinct rollout seeds set after DDP broadcasts.
 	torch.manual_seed(algo_args.seed)

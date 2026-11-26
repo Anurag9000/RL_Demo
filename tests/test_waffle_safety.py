@@ -19,3 +19,11 @@ class TestSafety(unittest.TestCase):
             self.assertEqual(self.command(**kwargs),(0.,0.))
         for ranges in ((.2,),(.01,),(float('nan'),),(float('inf'),),()):
             self.assertEqual(self.command(ranges),(0.,0.))
+
+    def test_measured_speed_and_coverage(self):
+        from waffle_pi.safety import scan_coverage
+        import math
+        self.assertTrue(scan_coverage([2.]*360,math.pi/180,.12,3.5))
+        self.assertFalse(scan_coverage([2.]*180,math.pi/180,.12,3.5))
+        self.assertFalse(scan_coverage([float('inf')]*45+[2.]*315,math.pi/180,.12,3.5))
+        self.assertEqual(self.command((.53,),measured_speed=.26),(0.,0.))

@@ -105,4 +105,7 @@ class PPO():
                 count += 1
         if count == 0:
             raise RuntimeError("No PPO minibatches")
-        return tuple((metrics/count).cpu().tolist())
+        result=(metrics/count).cpu()
+        if not torch.isfinite(result).all():
+            raise RuntimeError('Non-finite PPO loss; no checkpoint written for this update')
+        return tuple(result.tolist())

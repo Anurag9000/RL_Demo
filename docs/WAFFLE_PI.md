@@ -188,3 +188,46 @@ and checkpoint time, includes explicit phase synchronization, and excludes
 warmup updates from reported rates. Compare multiple environment/minibatch
 counts with the same seed, simulator and training configuration. Keep a held-out
 success/collision-rate target; maximizing steps/sec alone is insufficient.
+
+## ROS 2 integration details
+
+Install SciPy in the external host Python environment for the gated Kalman/Hungarian
+tracker and map filter. Launch the stock TurtleBot3 bringup and map localization
+for your installed ROS distribution; do not start a second navigation controller
+publishing `/cmd_vel`. The host now accepts map- or odom-frame goal messages and
+uses timestamped TF2 for detection coordinates. GST histories are resampled at
+0.25 s only between valid observations; slot reuse clears prior identity history.
+Overflow, stale observations and inference deadlines produce zero requests.
+
+Optional static background filtering (raw `/scan` stays untouched):
+
+```sh
+python -m waffle_pi.map_filter --threshold 0.10
+```
+
+Configure a separately installed ROS 2 DR-SPAAM detector to subscribe to
+`/crowdnav/scan_filtered` (or `/scan` for a baseline) and publish timestamped
+`geometry_msgs/PoseArray` person centers to the topic passed as `--detection-topic`.
+Inspect the actual detector message type and remap/bridge if different. The filter
+uses occupancy-grid origin/orientation/resolution, scan angular metadata and TF2.
+It substitutes +inf for background ranges; verify detector invalid-return handling
+and false-negative rates near walls. Scan motion distortion is not deskewed.
+
+For initial data collection, use ROS bag recording of `/scan`, `/odom`, `/imu`,
+`/joint_states`, `/tf`, `/tf_static`, `/map`, detector output, shadow commands and
+the actual command topic. Export timestamp-aligned CSVs for offline calibration.
+Do not generate motor commands from the calibration script. Verify the LDS model,
+scan frequency and message types on your installation.
+
+The gate now also requires fresh odometry, adequate 360-degree scan coverage and
+uses measured speed in stopping clearance. Dry-run shows the gated diagnostic
+command and never publishes `/cmd_vel`. Arming requires an independently measured
+`waffle_safety_commissioning_v1` JSON with `footprint`, `sensor_offset`, `margin`,
+`latency`, `braking`, `supervised_validated` and `firmware_watchdog_tested` fields.
+No such record is generated or shipped. The latter flags are acknowledgements of
+actual tests, not evidence that the software itself is certified. Conservative
+minimum latency is 0.5 s. No human trials until actual braking, sensor blind spots,
+command-source exclusivity, Pi/process/network failure and OpenCR watchdog have
+been tested in a controlled empty area, with an independent physical stop procedure.
+ROS 1, exact LDS/DR-SPAAM installation, actual AMCL mapping, calibration and
+physical testing remain dependent on the robot's configuration and measurements.
