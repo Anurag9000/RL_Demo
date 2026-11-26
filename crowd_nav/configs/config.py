@@ -9,7 +9,7 @@ class BaseConfig(object):
 
 class Config(object):
     # for now, import all args from arguments.py
-    args = get_args()
+    args = get_args([])
 
     training = BaseConfig()
     training.device = "cuda:0" if args.cuda else "cpu"
@@ -165,7 +165,7 @@ class Config(object):
         for name,value in vars(type(self)).items():
             if isinstance(value,BaseConfig):
                 setattr(self,name,copy.deepcopy(value))
-        self.args = copy.deepcopy(type(self).args) if args is None else args
+        self.args = get_args() if args is None else args
         self.env.num_processes=self.args.num_processes
         self.training.device="cuda:0" if self.args.cuda else "cpu"
         if getattr(self.args, 'waffle_pi', False):

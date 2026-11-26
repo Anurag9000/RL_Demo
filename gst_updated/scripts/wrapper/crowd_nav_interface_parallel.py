@@ -35,7 +35,8 @@ class CrowdNavPredInterfaceMultiEnv(object):
         checkpoint_dir = join(load_path, 'checkpoint')
         self.model = st_model(self.args_eval, device=device).to(device)
         model_filename = 'epoch_'+str(self.args_eval.num_epochs)+'.pt'
-        model_checkpoint = torch.load(join(checkpoint_dir, model_filename), map_location=device)
+        from waffle_pi.checkpoints import load_weights
+        model_checkpoint = load_weights(join(checkpoint_dir, model_filename),device)
         self.model.load_state_dict(model_checkpoint['model_state_dict'])
         self.model.eval()
         self.model.requires_grad_(False)

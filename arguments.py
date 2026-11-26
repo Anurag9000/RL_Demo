@@ -3,7 +3,7 @@ import argparse
 import torch
 
 
-def get_args():
+def get_args(argv=None):
     parser = argparse.ArgumentParser(description='RL')
 
     # the saving directory for train.py
@@ -245,7 +245,7 @@ def get_args():
     parser.add_argument('--benchmark-warmup', type=int, default=2)
     parser.add_argument('--cuda-graph-actor', action='store_true')
     parser.add_argument('--cuda-graph-gst', action='store_true')
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()
 

@@ -1,9 +1,17 @@
+"""Core VecEnv API; legacy Gym/Baselines adapters imported only on demand."""
 from .vec_env import AlreadySteppingError, NotSteppingError, VecEnv, VecEnvWrapper, VecEnvObservationWrapper, CloudpickleWrapper
-from .dummy_vec_env import DummyVecEnv
-from .shmem_vec_env import ShmemVecEnv
-from .vec_frame_stack import VecFrameStack
 
-from .vec_normalize import VecNormalize
-from .vec_remove_dict_obs import VecExtractDictObs
+_LAZY = {'DummyVecEnv':'.dummy_vec_env','ShmemVecEnv':'.shmem_vec_env',
+         'VecFrameStack':'.vec_frame_stack','VecNormalize':'.vec_normalize',
+         'VecExtractDictObs':'.vec_remove_dict_obs'}
 
-__all__ = ['AlreadySteppingError', 'NotSteppingError', 'VecEnv', 'VecEnvWrapper', 'VecEnvObservationWrapper', 'CloudpickleWrapper', 'DummyVecEnv', 'ShmemVecEnv', 'VecFrameStack', 'VecNormalize', 'VecExtractDictObs']
+def __getattr__(name):
+    if name not in _LAZY:
+        raise AttributeError(name)
+    from importlib import import_module
+    value=getattr(import_module(_LAZY[name],__name__),name)
+    globals()[name]=value
+    return value
+
+__all__=['AlreadySteppingError','NotSteppingError','VecEnv','VecEnvWrapper',
+         'VecEnvObservationWrapper','CloudpickleWrapper',*_LAZY]

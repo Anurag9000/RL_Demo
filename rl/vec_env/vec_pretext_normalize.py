@@ -42,8 +42,8 @@ class VecPretextNormalize(VecEnvWrapper):
         if not os.path.isdir(load_path):
             raise RuntimeError('The result directory was not found.')
         checkpoint_dir = os.path.join(load_path, 'checkpoint')
-        with open(os.path.join(checkpoint_dir, 'args.pickle'), 'rb') as f:
-            self.args = pickle.load(f)
+        from waffle_pi.checkpoints import load_gst_args
+        self.args = load_gst_args(os.path.join(checkpoint_dir, 'args.pickle'))
 
         self.predictor = CrowdNavPredInterfaceMultiEnv(load_path=load_path, device=self.device, config = self.args, num_env = self.num_envs)
 

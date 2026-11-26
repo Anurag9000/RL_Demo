@@ -2,7 +2,7 @@
 import json
 import math
 import os
-import gym
+from .spaces import spaces
 import numpy as np
 import torch
 from rl.vec_env import VecEnv
@@ -91,11 +91,11 @@ class ReplayVecEnv(VecEnv):
 
     def _setup_spaces_and_state(self,config,args,device):
         def box(shape, dtype=np.float32):
-            return gym.spaces.Box(low=-np.inf, high=np.inf, shape=shape, dtype=dtype)
-        space = gym.spaces.Dict({
+            return spaces.Box(low=-np.inf, high=np.inf, shape=shape, dtype=dtype)
+        space = spaces.Dict({
             'robot_node': box((1,7)), 'temporal_edges': box((1,2)),
             'spatial_edges': box((self.h,12)),
-            'visible_masks': gym.spaces.Box(0,1,shape=(self.h,),dtype=np.bool_),
+            'visible_masks': spaces.Box(0,1,shape=(self.h,),dtype=np.bool_),
             'detected_human_num': box((1,))})
         super().__init__(self.n, space, box((2,)))
         self.motion = step

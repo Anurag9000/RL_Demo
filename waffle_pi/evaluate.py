@@ -8,7 +8,6 @@ import torch
 
 def run(args):
     from crowd_nav.configs.config import Config
-    from rl.networks.envs import make_vec_envs
     from rl.networks.model import Policy
     if not args.waffle_pi or args.waffle_eval_episodes < 1:
         raise ValueError("Use --waffle-pi and a positive evaluation count")
@@ -26,12 +25,15 @@ def run(args):
         from .replay import make_replay
         env=make_replay(config,args,device)
     else:
+        import crowd_sim
+        from rl.networks.envs import make_vec_envs
         env=make_vec_envs(args.env_name,args.seed,1,args.gamma,None,device,
                          True,config=config,pretext_wrapper=True)
     try:
         model=Policy(env.observation_space.spaces,env.action_space,
                      base=config.robot.policy,base_kwargs=args).to(device)
-        model.load_state_dict(torch.load(args.load_path,map_location=device),strict=True)
+        from .checkpoints import load_weights
+        model.load_state_dict(load_weights(args.load_path,device),strict=True)
         model.eval()
         obs=env.reset()
         hidden={'human_node_rnn':torch.zeros(b,1,args.human_node_rnn_size,device=device),

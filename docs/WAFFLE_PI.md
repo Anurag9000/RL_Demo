@@ -259,3 +259,27 @@ stay on device. Standalone GST training/visualization retains collect_info=True
 by default. Equality-based attention projection branching is replaced by
 object-identity branching to avoid GPU synchronization; mathematically equivalent
 projection paths can differ slightly numerically.
+
+## Modern isolated tensor-training environment
+
+The tensor path no longer imports native RVO2, legacy Gym, OpenAI Baselines,
+TensorFlow, or ROS. Use a separate Python 3.10/3.11 environment, install a
+compatible PyTorch 2.x wheel from pytorch.org (CPU or your CUDA version),
+then `python -m pip install -r requirements-waffle.txt`. The CPU reference
+simulator and native trajectory generation still require the original stack.
+Gymnasium is used only for space metadata; this is not a change to the
+project's internal four-return vectorized step API.
+
+Run from the repository root:
+
+```sh
+python -m scripts.smoke_waffle --device cpu --backend both --updates 2
+```
+
+This uses the released GST and randomized navigation checkpoints, checks finite
+observations and losses, executes real recurrent PPO updates, checks actor
+weights changed, and checks checkpoint round-trip. Replay uses a known fixture,
+not a generated RVO2 pool. `--device cuda:0 --gae triton` tests the CUDA GAE
+path separately. No physical robot commands are sent. The GST config loader
+accepts the published argparse.Namespace format, and modern PyTorch loads
+weights in restricted mode. Keep legacy pickle/checkpoints from trusted sources.

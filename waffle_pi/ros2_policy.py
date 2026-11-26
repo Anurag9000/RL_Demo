@@ -13,7 +13,7 @@ import time
 from pathlib import Path
 import numpy as np
 import torch
-import gym
+from .spaces import spaces
 import rclpy
 from rclpy.node import Node
 from rclpy.time import Time
@@ -50,15 +50,15 @@ class Shadow(Node):
         policy_args.no_cuda=self.device.type=='cpu'
         self.n=opts.humans
         def box(shape):
-            return gym.spaces.Box(-np.inf,np.inf,shape=shape,dtype=np.float32)
-        spaces={'robot_node':box((1,7)),'temporal_edges':box((1,2)),
+            return spaces.Box(-np.inf,np.inf,shape=shape,dtype=np.float32)
+        obs_spaces={'robot_node':box((1,7)),'temporal_edges':box((1,2)),
                 'spatial_edges':box((self.n,12)),'visible_masks':box((self.n,)),
                 'detected_human_num':box((1,))}
-        self.model=Policy(spaces,box((2,)),base='selfAttn_merge_srnn',base_kwargs=policy_args).to(self.device)
-        self.model.load_state_dict(torch.load(opts.checkpoint,map_location=self.device),strict=True)
+        self.model=Policy(obs_spaces,box((2,)),base='selfAttn_merge_srnn',base_kwargs=policy_args).to(self.device)
+        from .checkpoints import load_weights,load_gst_args
+        self.model.load_state_dict(load_weights(opts.checkpoint,self.device),strict=True)
         self.model.eval()
-        with open(Path(opts.gst_dir)/'checkpoint'/'args.pickle','rb') as handle:
-            gst_args=pickle.load(handle)
+        gst_args=load_gst_args(Path(opts.gst_dir)/'checkpoint'/'args.pickle')
         if gst_args.pred_seq_len!=5:
             raise ValueError("Expected five-step GST horizon")
         self.gst=CrowdNavPredInterfaceMultiEnv(opts.gst_dir,self.device,gst_args,1)

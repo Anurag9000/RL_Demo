@@ -11,13 +11,11 @@ import matplotlib.pyplot as plt
 from rl import ppo
 from rl.networks import network_utils
 from arguments import get_args
-from rl.networks.envs import make_vec_envs
 from rl.networks.model import Policy
 from rl.networks.storage import RolloutStorage
 
 
 from crowd_nav.configs.config import Config
-from crowd_sim import *
 
 
 def main():
@@ -134,6 +132,8 @@ def main():
 		from waffle_pi.replay import make_replay
 		envs = make_replay(config, algo_args, device)
 	else:
+		import crowd_sim  # register legacy Gym environments
+		from rl.networks.envs import make_vec_envs
 		envs = make_vec_envs(env_name, seed, algo_args.num_processes,
 						 algo_args.gamma, None, device, False, config=env_config, ax=ax, pretext_wrapper=config.env.use_wrapper)
 
@@ -157,7 +157,8 @@ def main():
 	# continue training from an existing model if resume = True
 	if algo_args.resume:
 		load_path = algo_args.load_path
-		actor_critic.load_state_dict(torch.load(load_path, map_location='cpu'), strict=True)
+		from waffle_pi.checkpoints import load_weights
+		actor_critic.load_state_dict(load_weights(load_path,'cpu'), strict=True)
 		print("Loaded the following checkpoint:", load_path)
 
 
@@ -349,7 +350,7 @@ def main():
 							   'loss/policy_entropy': dist_entropy, 'loss/policy_loss': action_loss,
 							   'loss/value_loss': value_loss})
 
-			if os.path.exists(os.path.join(algo_args.output_dir, 'progress.csv')) and j > 20:
+			if os.path.exists(os.path.join(algo_args.output_dir, 'progress.csv')):
 				df.to_csv(os.path.join(algo_args.output_dir, 'progress.csv'), mode='a', header=False, index=False)
 			else:
 				df.to_csv(os.path.join(algo_args.output_dir, 'progress.csv'), mode='w', header=True, index=False)
