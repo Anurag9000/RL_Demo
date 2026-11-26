@@ -41,7 +41,7 @@ def main():
 
 	from waffle_pi.distributed import setup
 	rank,world,device = setup(algo_args)
-	if world>1 and (not algo_args.waffle_pi or algo_args.compile_policy):
+	if world>1 and (not algo_args.waffle_pi or algo_args.compile_policy or not (algo_args.waffle_replay or algo_args.waffle_live_orca)):
 		raise ValueError("Distributed path requires Waffle mode; use eager DDP policy initially")
 	if algo_args.amp_bf16 and (device.type!='cuda' or not torch.cuda.is_bf16_supported()):
 		raise ValueError("BF16 requires a supported CUDA device")
@@ -117,7 +117,12 @@ def main():
 
 
 	# Create a wrapped, monitored VecEnv
-	if algo_args.waffle_replay:
+	tensor_env = bool(algo_args.waffle_replay or algo_args.waffle_live_orca)
+	if algo_args.waffle_live_orca and algo_args.waffle_replay:
+		raise ValueError("Choose either live tensor ORCA or replay")
+	if algo_args.waffle_reactive_humans and not algo_args.waffle_live_orca:
+		raise ValueError("Reactive humans require live tensor ORCA")
+	if tensor_env:
 		from waffle_pi.replay import make_replay
 		envs = make_replay(config, algo_args, device)
 	else:
@@ -194,7 +199,7 @@ def main():
 
 
 	episode_rewards = deque(maxlen=100)
-	if algo_args.waffle_replay:
+	if tensor_env:
 		running_rewards = torch.zeros(algo_args.num_processes, device=device)
 
 	start = time.time()
@@ -211,7 +216,7 @@ def main():
 				agent.optimizer, j, num_updates,
 				agent.optimizer.lr if algo_args.algo == "acktr" else algo_args.lr)
 
-		if algo_args.waffle_replay:
+		if tensor_env:
 			completed_rewards, completed_masks = [], []
 
 		# step the environment for a few times
@@ -243,7 +248,7 @@ def main():
 			obs, reward, done, infos = envs.step(action)
 
 
-			if algo_args.waffle_replay:
+			if tensor_env:
 				running_rewards = running_rewards + reward.squeeze(-1)
 				completed_rewards.append(running_rewards)
 				completed_masks.append(done)
@@ -258,7 +263,7 @@ def main():
 				bad_masks = torch.FloatTensor([[0.] if 'bad_transition' in info else [1.] for info in infos])
 			rollouts.insert(obs, recurrent_hidden_states, action,
 							action_log_prob, value, reward, masks, bad_masks)
-		if algo_args.waffle_replay:
+		if tensor_env:
 			episode_rewards.extend(torch.stack(completed_rewards)[torch.stack(completed_masks)].cpu().tolist())
 		# store the stepped experience to buffer
 		with torch.no_grad(), torch.autocast(device_type=device.type,dtype=torch.bfloat16,enabled=algo_args.amp_bf16):

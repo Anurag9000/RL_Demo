@@ -230,6 +230,13 @@ def get_args():
     parser.add_argument('--fused-adam', action='store_true')
     parser.add_argument('--gae-backend', choices=['reference','scan','triton'], default='reference')
     parser.add_argument('--tf32', action='store_true')
+    parser.add_argument('--waffle-live-orca', action='store_true')
+    parser.add_argument('--waffle-reactive-humans', action='store_true')
+    parser.add_argument('--waffle-occlusion', action='store_true')
+    parser.add_argument('--waffle-noise', type=float, default=0., help='Synthetic detection error scale, metres')
+    parser.add_argument('--waffle-dropout', type=float, default=0.)
+    parser.add_argument('--waffle-pose-drift', type=float, default=0., help='Per-tick odometry drift scale, metres')
+    parser.add_argument('--waffle-detection-delay', type=int, default=0, help='Fixed number of policy ticks')
     args = parser.parse_args()
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()

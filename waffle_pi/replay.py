@@ -1,11 +1,14 @@
 """Experimental tensor-resident Waffle Pi crowd replay backend."""
 import json
+import math
+import os
 import gym
 import numpy as np
 import torch
 from rl.vec_env import VecEnv
 from rl.vec_env.vec_pretext_normalize import VecPretextNormalize
 from .batched import step
+from .perception import Perception
 
 
 class ReplayVecEnv(VecEnv):
@@ -16,6 +19,29 @@ class ReplayVecEnv(VecEnv):
             raise ValueError("Replay currently treats episode horizon as terminal; disable proper-time-limits")
         self.cfg, self.device, self.n = config, device, args.num_processes
         self.h = config.sim.human_num
+        self.live = args.waffle_live_orca
+        self.args = args
+        self.rng = torch.Generator(device=device).manual_seed(args.seed+int(os.environ.get('RANK','0'))*100003)
+        if self.live:
+            self._make_live_bank()
+        else:
+            self._load_pool(args)
+        self.horizon = int(round(config.env.time_limit/config.env.time_step))
+        if not self.live and self.humans.shape[1]!=self.horizon+1:
+            raise ValueError("Replay trajectory length does not match configured horizon")
+        self.perception = Perception(args,self.n,self.h,device,self.rng)
+        self.slot_reset = torch.zeros(self.n,self.h,device=device,dtype=torch.bool)
+        self.outcome = torch.zeros(self.n,device=device,dtype=torch.long)
+        self.orca = None
+        if self.live:
+            from .orca_tensor import orca_velocity
+            self.orca = orca_velocity
+            if args.waffle_compile_dynamics:
+                self.orca = torch.compile(self.orca,fullgraph=True)
+        self._setup_spaces_and_state(config,args,device)
+
+    def _load_pool(self,args):
+        config,device=self.cfg,self.device
         with np.load(args.waffle_replay, allow_pickle=False) as pool:
             meta = json.loads(str(pool['metadata']))
             expected = dict(dt=config.env.time_step, timeout=config.env.time_limit,
@@ -31,8 +57,37 @@ class ReplayVecEnv(VecEnv):
                 or self.humans.shape[2:] != (self.h,3) or self.humans.shape[1] < 2
                 or not all(torch.isfinite(t).all().item() for t in (self.starts,self.goals,self.humans))):
             raise ValueError("Invalid trajectory pool")
-        self.horizon = self.humans.shape[1]-1
-        self.rng = torch.Generator(device=device).manual_seed(args.seed+int(__import__('os').environ.get('RANK','0'))*100003)
+    def _make_live_bank(self):
+        # Generate a finite bank of valid starts on GPU. Unlike replay, human
+        # states are updated online, with stable identities and no respawns.
+        # Deliberately different scenario distribution from upstream.
+        cfg,dev=self.cfg,self.device
+        k=max(32,self.args.waffle_pool_count)
+        ring=cfg.sim.arena_size-.45
+        robot_ring=min(1.65,ring-.35-cfg.robot.radius-.12)
+        if robot_ring<.75 or (self.h>1 and 2*ring*math.sin(math.pi/self.h)*.85<.70):
+            raise ValueError("Arena too small for nonoverlapping tensor ORCA starts")
+        phase=torch.rand(k,1,device=dev,generator=self.rng)*2*math.pi
+        slots=torch.arange(self.h,device=dev)[None]*2*math.pi/self.h
+        jitter=(torch.rand(k,self.h,device=dev,generator=self.rng)-.5)*.15*2*math.pi/self.h
+        angles=phase+slots+jitter
+        hp=ring*torch.stack((angles.cos(),angles.sin()),-1)
+        self.bank_radius=.25+.10*torch.rand(k,self.h,device=dev,generator=self.rng)
+        self.bank_speed=.5+torch.rand(k,self.h,device=dev,generator=self.rng)
+        self.bank_pos=hp
+        theta=torch.rand(k,device=dev,generator=self.rng)*2*math.pi
+        rp=robot_ring*torch.stack((theta.cos(),theta.sin()),-1)
+        heading=torch.rand(k,1,device=dev,generator=self.rng)*2*math.pi
+        self.starts=torch.cat((rp,heading),-1)
+        self.goals=-rp
+        self.human_pos=torch.zeros(self.n,self.h,2,device=dev)
+        self.human_vel=torch.zeros_like(self.human_pos)
+        self.human_goal=torch.zeros_like(self.human_pos)
+        self.human_start=torch.zeros_like(self.human_pos)
+        self.human_radius=torch.zeros(self.n,self.h,device=dev)
+        self.human_speed=torch.zeros_like(self.human_radius)
+
+    def _setup_spaces_and_state(self,config,args,device):
         def box(shape, dtype=np.float32):
             return gym.spaces.Box(low=-np.inf, high=np.inf, shape=shape, dtype=dtype)
         space = gym.spaces.Dict({
@@ -61,19 +116,59 @@ class ReplayVecEnv(VecEnv):
         self.goal = torch.where(done[:,None],self.goals[self.ids],self.goal)
         self.wheels = torch.where(done[:,None],0.,self.wheels)
         self.velocity = torch.where(done[:,None],0.,self.velocity)
+        self.perception.reset(done)
+        self.slot_reset = self.slot_reset | done[:,None]
+        if self.live:
+            mask=done[:,None,None]
+            self.human_pos=torch.where(mask,self.bank_pos[self.ids],self.human_pos)
+            self.human_start=torch.where(mask,self.bank_pos[self.ids],self.human_start)
+            self.human_goal=torch.where(mask,-self.bank_pos[self.ids],self.human_goal)
+            self.human_vel=torch.where(mask,0.,self.human_vel)
+            self.human_radius=torch.where(done[:,None],self.bank_radius[self.ids],self.human_radius)
+            self.human_speed=torch.where(done[:,None],self.bank_speed[self.ids],self.human_speed)
+
+    def _frame(self):
+        if self.live:
+            return torch.cat((self.human_pos,self.human_radius[...,None]),-1)
+        return self.humans[self.ids,self.t]
+
+    def _advance_humans(self,old,old_velocity):
+        if not self.live:
+            return
+        cfg=self.cfg
+        pos,vel,rad=self.human_pos,self.human_vel,self.human_radius
+        # Stable out-and-back goals instead of robot-dependent teleportation.
+        reached=torch.linalg.vector_norm(self.human_goal-pos,dim=-1)<rad
+        self.human_goal=torch.where(reached[...,None],-self.human_goal,self.human_goal)
+        delta=self.human_goal-pos
+        preferred=delta/torch.linalg.vector_norm(delta,dim=-1,keepdim=True).clamp_min(1.)
+        speed=self.human_speed
+        if self.args.waffle_reactive_humans:
+            pos=torch.cat((pos,old[:,None,:2]),1)
+            vel=torch.cat((vel,old_velocity[:,None,:]),1)
+            rad=torch.cat((rad,torch.full_like(rad[:,:1],cfg.robot.radius)),1)
+            preferred=torch.cat((preferred,old_velocity[:,None,:]),1)
+            speed=torch.cat((speed,torch.full_like(speed[:,:1],cfg.robot.v_pref)),1)
+        self.human_vel=self.orca(pos,vel,rad,preferred,speed,dt=cfg.env.time_step,
+                        horizon=cfg.orca.time_horizon,neighbor_dist=cfg.orca.neighbor_dist,
+                        margin=.01+cfg.orca.safety_space)[:,:self.h]
+        new=self.human_pos+self.human_vel*cfg.env.time_step
+        bound=cfg.sim.arena_size-self.human_radius[...,None]
+        new=torch.maximum(-bound,torch.minimum(bound,new))
+        self.human_vel=(new-self.human_pos)/cfg.env.time_step
+        self.human_pos=new
 
     def _observe(self):
-        humans = self.humans[self.ids,self.t]
-        rel = humans[...,:2]-self.pose[:,None,:2]
-        visible = (torch.linalg.vector_norm(rel,dim=-1)-humans[...,2]-self.cfg.robot.radius
-                   <= self.cfg.robot.sensor_range)
-        rel = torch.where(visible[...,None],rel,15.)
+        humans = self._frame()
+        estimated,rel,visible = self.perception.observe(
+            self.pose,humans,self.cfg.waffle_limits,self.cfg.robot.radius,self.cfg.robot.sensor_range)
         radius = torch.full_like(self.pose[:,:1], self.cfg.robot.radius)
         speed = torch.full_like(radius,self.cfg.robot.v_pref)
-        node = torch.cat((self.pose[:,:2],radius,self.goal,speed,self.pose[:,2:]),-1)
+        node = torch.cat((estimated,radius,self.goal,speed,self.pose[:,2:]),-1)
         return dict(robot_node=node[:,None,:], temporal_edges=self.velocity[:,None,:],
                     spatial_edges=rel.repeat(1,1,6), visible_masks=visible,
-                    detected_human_num=visible.sum(-1,keepdim=True).clamp_min(1).float())
+                    detected_human_num=visible.sum(-1,keepdim=True).clamp_min(1).float(),
+                    slot_reset=self.slot_reset.clone())
 
     def reset(self):
         self._reset(torch.ones(self.n,device=self.device,dtype=torch.bool))
@@ -84,13 +179,28 @@ class ReplayVecEnv(VecEnv):
 
     def step_wait(self):
         old = self.pose
+        old_velocity = self.velocity
+        prev_humans = self._frame()
         old_dist = torch.linalg.vector_norm(self.goal-old[:,:2],dim=-1)
         self.pose,self.wheels,self.velocity,dtheta = self.motion(
             self.pose,self.wheels,self.actions,self.cfg.waffle_limits,self.cfg.env.time_step)
         self.t = (self.t+1).clamp(max=self.horizon)
-        human = self.humans[self.ids,self.t]
-        d = torch.linalg.vector_norm(human[...,:2]-self.pose[:,None,:2],dim=-1)
-        clearance = (d-human[...,2]-self.cfg.robot.radius).amin(-1)
+        self._advance_humans(old,old_velocity)
+        human = self._frame()
+        # A replay slot may be respawned at a different position.
+        displacement=torch.linalg.vector_norm(human[...,:2]-prev_humans[...,:2],dim=-1)
+        self.slot_reset=displacement>1.6*self.cfg.env.time_step+.1
+        self.perception.history.masked_fill_(self.slot_reset[None,:,:,None],0.)
+        self.perception.masks.masked_fill_(self.slot_reset[None],False)
+        # Swept relative line segment for robot-human contact; conservative
+        # endpoint radius for teleported agents, no fictitious teleport sweep.
+        before=prev_humans[...,:2]-old[:,None,:2]
+        after=human[...,:2]-self.pose[:,None,:2]
+        change=after-before
+        t=(-(before*change).sum(-1)/change.square().sum(-1).clamp_min(1e-8)).clamp(0.,1.)
+        closest=torch.linalg.vector_norm(before+t[...,None]*change,dim=-1)
+        closest=torch.where(self.slot_reset,torch.linalg.vector_norm(after,dim=-1),closest)
+        clearance=(closest-torch.maximum(human[...,2],prev_humans[...,2])-self.cfg.robot.radius).amin(-1)
         dist = torch.linalg.vector_norm(self.goal-self.pose[:,:2],dim=-1)
         wall = self.pose[:,:2].abs().amax(-1)+self.cfg.robot.radius >= self.cfg.sim.arena_size
         collision = (clearance < 0.) | wall
@@ -106,6 +216,7 @@ class ReplayVecEnv(VecEnv):
         r = torch.where(timeout,0.,r)
         r = torch.where(success,self.cfg.reward.success_reward,r)
         r = torch.where(collision,self.cfg.reward.collision_penalty,r)
+        self.outcome=torch.where(collision,2,torch.where(success,1,torch.where(timeout,3,0)))
         self._reset(done)
         return self._observe(),r[:,None],done,None
 

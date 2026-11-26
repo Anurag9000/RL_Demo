@@ -128,3 +128,27 @@ DDP to avoid forking CPU workers after CUDA/NCCL initialization. The first-order
 model, replay reward, frozen GST, and action contract are unchanged.
 These paths require runtime smoke tests and throughput benchmarks; no speedup or
 CUDA graph capture is established merely by enabling the flags.
+
+## Live tensor ORCA (experimental)
+
+`--waffle-live-orca` generates a GPU-resident bank of collision-free initial
+circle layouts and advances people online with dense RVO2-style ORCA
+half-planes, speed-circle LP2 and infeasibility LP3. No trajectory pool or CPU
+worker process is needed. The solver loops only over constraints, not worlds
+or pedestrians. `--waffle-reactive-humans` adds the robot to human ORCA inputs
+as a reciprocal agent. There is no obstacle-line ORCA solver; pedestrians
+are bounded by the square arena. Goals switch to the opposite endpoint;
+no teleportation, and scenarios are not equivalent to the original generator.
+No claim of numerical RVO2 parity until the optional reference test passes.
+`--waffle-compile-dynamics` also compiles the live ORCA solver; compilation
+may be expensive for many humans. Start with four slots.
+
+For both tensor backends optional synthetic perception flags:
+`--waffle-occlusion --waffle-noise 0.03 --waffle-dropout 0.05 --waffle-detection-delay 1 --waffle-pose-drift 0.002`.
+These numbers are examples, not measured LDS characteristics. Occlusion uses
+center rays and disks, dropout is temporally correlated, delay is fixed in
+policy ticks, and pose drift is a random walk. No false-positive or leg-scan
+model is provided. The tensor backend uses a swept relative line segment
+for pedestrian collision checks (an approximation to curved robot motion),
+with discontinuity resets on replay respawns. It is still an experimental
+reward/geometry variant; compare separately against the reference simulator.
