@@ -41,7 +41,7 @@ def run_candidate(a,root,slot,job):
     env['MKL_NUM_THREADS']=str(a.threads)
     env['MPLBACKEND']='Agg'
     common=[sys.executable,'train.py','--waffle-pi','--waffle-native-action',
-            '--waffle-live-orca','--fast-training','--masked-gru',
+            '--fast-training','--masked-gru',
             '--gae-backend',a.gae,'--num-steps',str(a.steps),
             '--seq_length',str(a.steps),'--num-processes',str(a.envs),
             '--num-mini-batch',str(a.minibatches),'--waffle-humans',str(a.humans),
@@ -49,6 +49,14 @@ def run_candidate(a,root,slot,job):
             '--waffle-speed',str(a.speed),'--waffle-angular-speed',str(a.angular_speed),
             '--waffle-radius',str(a.radius),'--waffle-sensor-range',str(a.sensor_range),
             '--waffle-dynamics-randomization',str(a.dynamics_randomization)]
+    from gazebo_sim.cli import backend_flags
+    common+=backend_flags(a)
+    if a.fidelity_profile:
+        common+=['--waffle-fidelity-profile',a.fidelity_profile]
+    if a.detector_weights:
+        common+=['--waffle-detector-weights',a.detector_weights]
+    if a.require_measured:
+        common+=['--waffle-require-measured']
     if a.calibration:
         common+=['--waffle-calibration',a.calibration]
     if a.safety_calibration:
@@ -65,7 +73,9 @@ def run_candidate(a,root,slot,job):
     if freeze:
         train+=['--freeze-human-attention']
     if a.compile:
-        train+=['--compile-policy','--compile-gst','--waffle-compile-dynamics']
+        train+=['--compile-policy','--compile-gst']
+        if a.backend!='gazebo':
+            train+=['--waffle-compile-dynamics']
     if a.bf16:
         train+=['--amp-bf16','--fused-adam','--tf32']
     row['train_command']=train
@@ -85,6 +95,8 @@ def run_candidate(a,root,slot,job):
         evaluate=common+['--waffle-eval-episodes',str(a.eval_episodes),
                          '--seed',str(a.eval_seed),'--load-path',str(checkpoint),
                          '--waffle-eval-json',str(evaluation)]
+        if a.require_measured:
+            evaluate+=['--waffle-scene-split','validation']
         row['eval_command']=evaluate
         with (root/(label+'.eval.log')).open('w') as log:
             result=subprocess.run(evaluate,env=env,stdout=log,stderr=subprocess.STDOUT,timeout=a.timeout_s)
@@ -104,6 +116,12 @@ def run_candidate(a,root,slot,job):
 def main():
     p=argparse.ArgumentParser()
     p.add_argument('--output',required=True)
+    p.add_argument('--backend',choices=['gazebo','tensor'],default='gazebo')
+    from gazebo_sim.cli import add_flags
+    add_flags(p)
+    p.add_argument('--fidelity-profile')
+    p.add_argument('--detector-weights')
+    p.add_argument('--require-measured',action='store_true')
     p.add_argument('--gpus',type=int,nargs='+',default=None)
     p.add_argument('--cpu-workers',type=int,default=0)
     p.add_argument('--threads',type=int,default=1)
@@ -138,6 +156,11 @@ def main():
     p.add_argument('--bf16',action='store_true')
     p.add_argument('--timeout-s',type=int,default=14400)
     a=p.parse_args()
+    from gazebo_sim.cli import backend_flags
+    try:
+        backend_flags(a)
+    except ValueError as exc:
+        p.error(str(exc))
     if a.gpus is None and a.cpu_workers==0:
         a.gpus=[0]
     if (a.cpu_workers<0 or (a.cpu_workers and a.gpus) or

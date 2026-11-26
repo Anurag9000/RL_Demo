@@ -1,7 +1,7 @@
 name: Waffle tensor validation
 on:
   push:
-    branches: [waffle-pi-sim2real]
+    branches: [main, waffle-pi-sim2real]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -47,7 +47,7 @@ jobs:
           test -s /tmp/waffle-fidelity-ci/checkpoints/00000.pt
       - name: Adaptive PPO curriculum and PBT smoke
         run: |
-          python -m scripts.train_adaptive --output /tmp/waffle-adaptive-ci --cpu-workers 2 --mode pbt --envs 2 --minibatches 1 --steps 4 --epochs 1 --pool-count 32 --rung-updates 1 1 1 --humans 2 --seeds 11 29 --lrs 0.00004 --entropies 0.001 --episode-timeout 45 --eval-episodes 2 --test-episodes 2 --max-collision 1 --max-gate 1 --target-success 1 --target-streak 10
+          python -m scripts.train_adaptive --backend tensor --output /tmp/waffle-adaptive-ci --cpu-workers 2 --mode pbt --envs 2 --minibatches 1 --steps 4 --epochs 1 --pool-count 32 --rung-updates 1 1 1 --humans 2 --seeds 11 29 --lrs 0.00004 --entropies 0.001 --episode-timeout 45 --eval-episodes 2 --test-episodes 2 --max-collision 1 --max-gate 1 --target-success 1 --target-streak 10
           python - <<'PY'
           import json
           from pathlib import Path

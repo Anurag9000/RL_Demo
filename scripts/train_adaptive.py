@@ -99,7 +99,7 @@ def next_population(rows,a,rng):
 
 
 def common(a,stage,slot):
-    cmd=[sys.executable,'train.py','--waffle-pi','--waffle-native-action','--waffle-live-orca',
+    cmd=[sys.executable,'train.py','--waffle-pi','--waffle-native-action',
          '--fast-training','--masked-gru','--gae-backend',a.gae,
          '--num-processes',str(a.envs),'--num-mini-batch',str(a.minibatches),
          '--num-steps',str(a.steps),'--seq_length',str(a.steps),'--ppo-epoch',str(a.epochs),
@@ -112,6 +112,8 @@ def common(a,stage,slot):
          '--waffle-detection-delay',str(stage['detection_delay']),
          '--waffle-pose-drift',str(stage['pose_drift']),
          '--adaptive-kl',str(a.adaptive_kl),'--lr-min',str(a.lr_min),'--lr-max',str(a.lr_max)]
+    from gazebo_sim.cli import backend_flags
+    cmd+=backend_flags(a)
     if slot.startswith('cpu:'):
         cmd+=['--no-cuda']
     if stage['occlusion']:
@@ -185,7 +187,9 @@ def segment(a,root,slot,candidate,rung,stage_index,stage,budget):
     else:
         cmd+=['--resume','--waffle-init-cartesian','--load-path',a.checkpoint]
     if a.compile:
-        cmd+=['--compile-policy','--compile-gst','--waffle-compile-dynamics']
+        cmd+=['--compile-policy','--compile-gst']
+        if a.backend!='gazebo':
+            cmd+=['--waffle-compile-dynamics']
     if a.bf16:
         cmd+=['--amp-bf16','--fused-adam','--tf32']
     row['train_command']=cmd
@@ -296,6 +300,9 @@ def optimize(a,root,slots,candidates,worker=segment,final_eval=evaluate):
 def main():
     p=argparse.ArgumentParser()
     p.add_argument('--output',required=True)
+    p.add_argument('--backend',choices=['gazebo','tensor'],default='gazebo')
+    from gazebo_sim.cli import add_flags
+    add_flags(p)
     p.add_argument('--gpus',type=int,nargs='+')
     p.add_argument('--cpu-workers',type=int,default=0)
     p.add_argument('--threads',type=int,default=1)
@@ -356,6 +363,13 @@ def main():
     p.add_argument('--bf16',action='store_true')
     p.add_argument('--timeout-s',type=int,default=14400)
     a=p.parse_args()
+    from gazebo_sim.cli import backend_flags
+    try:
+        backend_flags(a)
+    except ValueError as exc:
+        p.error(str(exc))
+    if a.backend=='gazebo' and any((a.noise,a.dropout,a.randomization,a.pose_drift,a.detection_delay,a.occlusion,a.calibration)):
+        p.error('Gazebo uses its fidelity profile instead of tensor noise and dynamics flags')
     if a.require_measured:
         a.confidence_selection=True
         if a.compile or a.bf16:
