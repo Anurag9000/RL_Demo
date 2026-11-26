@@ -67,6 +67,16 @@ def main():
 		if not hasattr(torch,'compile'):
 			raise RuntimeError("Policy compilation requires PyTorch 2.x")
 
+	if algo_args.continue_state or algo_args.save_training_state:
+		if not algo_args.waffle_pi or world!=1 or algo_args.cuda_graph_ppo or algo_args.benchmark_updates or algo_args.use_linear_lr_decay:
+			raise ValueError('Learner state continuation currently requires single-rank Waffle training, fixed schedule and no captured learner')
+	if algo_args.continue_state and algo_args.resume:
+		raise ValueError('Use --continue-state instead of weights-only --resume')
+	if (algo_args.retune_optimizer or algo_args.curriculum_transition or algo_args.fresh_continuation_rng) and not algo_args.continue_state:
+		raise ValueError('Continuation modifiers require --continue-state')
+	if (not 0<algo_args.lr_min<=algo_args.lr_max or algo_args.adaptive_kl<0 or
+		(algo_args.adaptive_kl and (algo_args.cuda_graph_ppo or algo_args.use_linear_lr_decay or not algo_args.lr_min<=algo_args.lr<=algo_args.lr_max))):
+		raise ValueError('Invalid adaptive KL settings or incompatible schedule')
 	# create a directory for saving the logs and weights
 	if rank==0:
 		if algo_args.waffle_pi and os.path.exists(algo_args.output_dir):
@@ -199,6 +209,9 @@ def main():
 	if algo_args.cuda_graph_actor:
 		from waffle_pi.cuda_graph import StaticGraphCall
 		act=StaticGraphCall(actor_critic.act,device,amp_bf16=algo_args.amp_bf16)
+	import random
+	random.seed(seed)
+	np.random.seed(seed % (2**32))
 	torch.manual_seed(seed)
 	# create the ppo optimizer
 	agent = ppo.PPO(
@@ -211,10 +224,15 @@ def main():
 		lr=algo_args.lr,
 		eps=algo_args.eps,
 		max_grad_norm=algo_args.max_grad_norm,train_model=train_model,evaluate=evaluate,
-		amp_bf16=algo_args.amp_bf16,fused_adam=algo_args.fused_adam,cuda_graph_ppo=algo_args.cuda_graph_ppo)
+		amp_bf16=algo_args.amp_bf16,fused_adam=algo_args.fused_adam,cuda_graph_ppo=algo_args.cuda_graph_ppo,
+		adaptive_kl=algo_args.adaptive_kl,lr_min=algo_args.lr_min,lr_max=algo_args.lr_max)
 
 
 
+	previous_updates=previous_transitions=0
+	if algo_args.continue_state:
+		from waffle_pi.training_state import load
+		previous_updates,previous_transitions=load(algo_args.continue_state,actor_critic,agent,algo_args,device)
 	rollouts.to(device)
 	obs = envs.reset()
 	if isinstance(obs, dict):
@@ -344,6 +362,10 @@ def main():
 				os.mkdir(save_path)
 
 			torch.save(actor_critic.state_dict(), os.path.join(save_path, '%.5i'%j + ".pt"))
+			if algo_args.save_training_state or algo_args.continue_state:
+				from waffle_pi.training_state import save
+				save(os.path.join(algo_args.output_dir,'training_state.pt'),actor_critic,agent,algo_args,
+					previous_updates+j+1,previous_transitions+(j+1)*algo_args.num_steps*algo_args.num_processes*world,device)
 
 		if rank==0 and j % algo_args.log_interval == 0:
 			total_num_steps = (j + 1) * algo_args.num_processes * algo_args.num_steps * world
@@ -364,7 +386,8 @@ def main():
 			df = pd.DataFrame({'misc/nupdates': [j], 'misc/total_timesteps': [total_num_steps],
 							   'fps': int(total_num_steps / (end - start)), 'eprewmean': [np.mean(episode_rewards)],
 							   'loss/policy_entropy': dist_entropy, 'loss/policy_loss': action_loss,
-							   'loss/value_loss': value_loss})
+							   'loss/value_loss': value_loss, 'loss/approx_kl':agent.last_kl,
+							   'optimizer/lr':agent.optimizer.param_groups[0]['lr']})
 
 			if os.path.exists(os.path.join(algo_args.output_dir, 'progress.csv')):
 				df.to_csv(os.path.join(algo_args.output_dir, 'progress.csv'), mode='a', header=False, index=False)
@@ -386,6 +409,11 @@ def main():
 		print(result)
 		with open(os.path.join(algo_args.output_dir,'benchmark.json'),'w') as handle:
 			json.dump(result,handle,indent=2)
+	if rank==0 and (algo_args.save_training_state or algo_args.continue_state):
+		with open(os.path.join(algo_args.output_dir,'training_summary.json'),'w') as handle:
+			json.dump(dict(updates=previous_updates+num_updates,transitions=previous_transitions+num_updates*algo_args.num_steps*algo_args.num_processes*world,
+				segment_updates=num_updates,segment_transitions=num_updates*algo_args.num_steps*algo_args.num_processes*world,
+				lr=agent.optimizer.param_groups[0]['lr'],entropy_coef=agent.entropy_coef,clip_param=agent.clip_param),handle,indent=2)
 	envs.close()
 	if world>1:
 		torch.distributed.destroy_process_group()

@@ -255,6 +255,19 @@ def get_args(argv=None):
     parser.add_argument('--waffle-angular-speed', type=float, default=1.82)
     parser.add_argument('--waffle-safety-calibration', default=None,
                         help='Measured safety gate JSON; simulation uses its clearance parameters')
+    parser.add_argument('--save-training-state', action='store_true')
+    parser.add_argument('--continue-state', default=None,
+                        help='Restore full learner state; num-env-steps is an additional budget')
+    parser.add_argument('--retune-optimizer', action='store_true',
+                        help='On continuation explicitly use CLI lr, entropy and clip settings')
+    parser.add_argument('--curriculum-transition', action='store_true',
+                        help='Permit changed crowd capacity and scenario settings at a fresh rollout boundary')
+    parser.add_argument('--fresh-continuation-rng', action='store_true',
+                        help='Use a fresh random stream instead of restored learner RNG')
+    parser.add_argument('--adaptive-kl', type=float, default=0.,
+                        help='Target approximate KL for bounded learning-rate adaptation; zero disables')
+    parser.add_argument('--lr-min', type=float, default=1e-6)
+    parser.add_argument('--lr-max', type=float, default=3e-4)
     args = parser.parse_args(argv)
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()
