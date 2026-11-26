@@ -145,7 +145,7 @@ class Shadow(Node):
             if not frame:
                 raise ValueError("Missing detection frame")
             if frame!='odom':
-                tf=self.tf.lookup_transform('odom',frame,Time.from_msg(self.detections.header),timeout=Duration(seconds=0.0)).transform
+                tf=self.tf.lookup_transform('odom',frame,Time.from_msg(self.detections.header.stamp),timeout=Duration(seconds=0.0)).transform
                 points=points@rotation(tf.rotation).T+np.array([tf.translation.x,tf.translation.y,tf.translation.z])
             reused=self.tracker.update(points[:,:2],stamp)
             reuse=torch.as_tensor(reused,device=self.device)
