@@ -1,0 +1,4 @@
+[submodule "CrowdNav_Sim2Real_Turtlebot"]
+	path = CrowdNav_Sim2Real_Turtlebot
+	url = https://github.com/Shuijing725/CrowdNav_Sim2Real_Turtlebot.git
+	branch = master

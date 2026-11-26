@@ -47,6 +47,8 @@ This repository is organized in five parts:
 - `rl/` contains the code for the RL policy networks, wrappers for the prediction network, and ppo algorithm. 
 - `trained_models/` contains some pretrained models provided by us. 
 
+For the relationship between this checkout and the nested `CrowdNav_Sim2Real_Turtlebot` repository, including a file-by-file guide for where to make changes, see [`docs/REPOSITORY_RELATIONSHIP_GUIDE.md`](docs/REPOSITORY_RELATIONSHIP_GUIDE.md).
+
 Note that this repository does not include codes for training a trajectory prediction network. Please refer to from [this repo](https://github.com/tedhuang96/gst) instead.
 
 ## Run the code
