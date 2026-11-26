@@ -231,3 +231,13 @@ command-source exclusivity, Pi/process/network failure and OpenCR watchdog have
 been tested in a controlled empty area, with an independent physical stop procedure.
 ROS 1, exact LDS/DR-SPAAM installation, actual AMCL mapping, calibration and
 physical testing remain dependent on the robot's configuration and measurements.
+
+For a safe ROS shadow-only end-to-end gate check, remap the gate's input to
+shadow commands, without `--arm`:
+
+```sh
+python -m waffle_pi.ros2_safety_gate --ros-args -r /crowdnav/cmd_vel_requested:=/crowdnav/cmd_vel_shadow
+```
+
+Use `bash scripts/validate_waffle.sh` to syntax-check the checked-out source
+and run the unit tests. This is not a ROS integration or GPU training test.

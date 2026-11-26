@@ -37,6 +37,8 @@ class ReplayVecEnv(VecEnv):
             from .orca_tensor import orca_velocity
             self.orca = orca_velocity
             if args.waffle_compile_dynamics:
+                if not hasattr(torch,'compile'):
+                    raise RuntimeError('Compiled ORCA requires PyTorch 2.x')
                 self.orca = torch.compile(self.orca,fullgraph=True)
         self._setup_spaces_and_state(config,args,device)
 

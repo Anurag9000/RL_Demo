@@ -92,10 +92,9 @@ class VecPretextNormalize(VecEnvWrapper):
     def reset(self):
         # queue for inputs to the pred model
         # fill the queue with dummy values
-        self.traj_buffer = deque(list(-torch.ones((self.buffer_len, self.num_envs, self.max_human_num, 2), device=self.device)*999),
-                                 maxlen=self.buffer_len) # (n_env, num_peds, obs_seq_len, 2)
-        self.mask_buffer = deque(list(torch.zeros((self.buffer_len, self.num_envs, self.max_human_num, 1), dtype=torch.bool, device=self.device)),
-                                 maxlen=self.buffer_len) # (n_env, num_peds, obs_seq_len, 1)
+        if not self.ring:
+            self.traj_buffer = deque(list(torch.full((self.buffer_len,self.num_envs,self.max_human_num,2),-999.,device=self.device)),maxlen=self.buffer_len)
+            self.mask_buffer = deque(list(torch.zeros((self.buffer_len,self.num_envs,self.max_human_num,1),dtype=torch.bool,device=self.device)),maxlen=self.buffer_len)
 
         if self.ring:
             self.history = torch.full((self.num_envs,self.max_human_num,self.buffer_len,2),-999.,device=self.device)

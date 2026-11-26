@@ -29,7 +29,7 @@ def main():
 
 	if algo_args.algo != 'ppo' or algo_args.seq_length != algo_args.num_steps:
 		raise ValueError("Use PPO and match seq_length to num_steps")
-	if algo_args.num_mini_batch <= 0 or algo_args.num_processes % algo_args.num_mini_batch:
+	if algo_args.num_steps<=0 or algo_args.num_processes<=0 or algo_args.num_mini_batch<=0 or algo_args.num_processes % algo_args.num_mini_batch:
 		raise ValueError("num_processes must be divisible by num_mini_batch")
 	if algo_args.waffle_eval_episodes:
 		from waffle_pi.evaluate import run
@@ -73,8 +73,7 @@ def main():
 			json.dump(dict(vars(algo_args),world_size=world),handle,indent=2)
 
 
-	env_config = config = Config()
-	config.args = algo_args
+	env_config = config = Config(algo_args)
 	config.env.num_processes = algo_args.num_processes
 	config.training.device = str(device)
 	if rank==0:

@@ -12,7 +12,7 @@ def run(args):
     from rl.networks.model import Policy
     if not args.waffle_pi or args.waffle_eval_episodes < 1:
         raise ValueError("Use --waffle-pi and a positive evaluation count")
-    config=Config()
+    config=Config(args)
     tensor=bool(args.waffle_live_orca or args.waffle_replay)
     if args.waffle_live_orca and args.waffle_replay:
         raise ValueError("Select one tensor environment")

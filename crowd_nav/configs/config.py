@@ -1,3 +1,4 @@
+import copy
 import numpy as np
 from arguments import get_args
 
@@ -159,7 +160,14 @@ class Config(object):
     sim2real.fixed_time_interval = 0.1
     sim2real.use_fixed_time_interval = True
 
-    def __init__(self):
+    def __init__(self,args=None):
+        # Isolate mutable configuration sections from other instances.
+        for name,value in vars(type(self)).items():
+            if isinstance(value,BaseConfig):
+                setattr(self,name,copy.deepcopy(value))
+        self.args = copy.deepcopy(type(self).args) if args is None else args
+        self.env.num_processes=self.args.num_processes
+        self.training.device="cuda:0" if self.args.cuda else "cpu"
         if getattr(self.args, 'waffle_pi', False):
             from waffle_pi.profile import configure
             configure(self, self.args)
