@@ -154,15 +154,9 @@ class Agent(object):
             # py = self.py + np.sin(theta) * action.v * delta_t
 
             # differential drive
-            epsilon = 0.0001
-            if abs(action.r) < epsilon:
-                R = 0
-            else:
-                w = action.r/delta_t # action.r is delta theta
-                R = action.v/w
-
-            px = self.px - R * np.sin(self.theta) + R * np.sin(self.theta + action.r)
-            py = self.py + R * np.cos(self.theta) - R * np.cos(self.theta + action.r)
+            distance = action.v * delta_t * np.sinc(action.r/(2*np.pi))
+            px = self.px + distance*np.cos(self.theta + action.r/2)
+            py = self.py + distance*np.sin(self.theta + action.r/2)
 
 
         return px, py

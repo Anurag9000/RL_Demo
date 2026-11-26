@@ -114,10 +114,17 @@ class CrowdSimPred(CrowdSimVarNum):
                                           axis=1)
             # get orca action
             action = self.robot.act(human_states.tolist())
+        elif getattr(self.config, 'waffle_pi', False):
+            from waffle_pi.dynamics import cartesian_to_wheels, advance_wheels, wheels_to_twist
+            limits = self.config.waffle_limits
+            target = cartesian_to_wheels(action, self.robot.theta, limits)
+            self.waffle_wheels = advance_wheels(self.waffle_wheels, target, self.time_step, limits)
+            v, w = wheels_to_twist(self.waffle_wheels, limits)
+            action = ActionRot(v, w*self.time_step)
         else:
             action = self.robot.policy.clip_action(action, self.robot.v_pref)
 
-        if self.robot.kinematics == 'unicycle':
+        if self.robot.kinematics == 'unicycle' and not getattr(self.config, 'waffle_pi', False):
             self.desiredVelocity[0] = np.clip(self.desiredVelocity[0] + action.v, -self.robot.v_pref, self.robot.v_pref)
             action = ActionRot(self.desiredVelocity[0], action.r)
 

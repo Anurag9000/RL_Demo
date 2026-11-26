@@ -117,8 +117,13 @@ class VecPretextNormalize(VecEnvWrapper):
         human_pos = O['robot_node'][:, :, :2] + O['spatial_edges'][:, :, :2]
 
         # insert the new ob to deque
+        if getattr(self.config, 'waffle_pi', False):
+            finished = torch.as_tensor(done, device=self.device, dtype=torch.bool)
+            for history, mask in zip(self.traj_buffer, self.mask_buffer):
+                history.masked_fill_(finished[:, None, None], -999.)
+                mask.masked_fill_(finished[:, None, None], False)
         self.traj_buffer.append(human_pos)
-        self.mask_buffer.append(O['visible_masks'].unsqueeze(-1))
+        self.mask_buffer.append(O['visible_masks'].unsqueeze(-1).clone())
         # [obs_seq_len, nenv, max_human_num, 2] -> [nenv, max_human_num, obs_seq_len, 2]
         in_traj = torch.stack(list(self.traj_buffer)).permute(1, 2, 0, 3)
         in_mask = torch.stack(list(self.mask_buffer)).permute(1, 2, 0, 3).float()
@@ -156,7 +161,10 @@ class VecPretextNormalize(VecEnvWrapper):
         reward_future, _ = torch.min(reward_future.reshape(self.num_envs, -1), dim=1)
         # print(reward_future)
         # seems that rews is on cpu
-        rews = rews + reward_future.reshape(self.num_envs, 1).cpu().numpy()
+        if getattr(self.config, 'waffle_pi', False):
+            reward_future = reward_future.masked_fill(finished, 0.)
+        reward_future = reward_future.reshape(self.num_envs, 1)
+        rews = rews + (reward_future.to(rews.device) if torch.is_tensor(rews) else reward_future.cpu().numpy())
 
         # get observation back to env
         robot_pos = O['robot_node'][:, :, :2].unsqueeze(1)
@@ -167,15 +175,16 @@ class VecPretextNormalize(VecEnvWrapper):
         # only take mu_x and mu_y
         out_mask = out_mask.repeat(1, 1, self.config.sim.predict_steps * 2)
         new_spatial_edges = out_traj[:, :, :, :2].reshape(self.num_envs, self.max_human_num, -1)
-        O['spatial_edges'][:, :, 2:][out_mask] = new_spatial_edges[out_mask]
+        O['spatial_edges'][:, :, 2:] = torch.where(out_mask, new_spatial_edges, O['spatial_edges'][:, :, 2:])
 
         # sort all humans by distance to robot
         # [nenv, human_num]
         hr_dist_cur = torch.linalg.norm(O['spatial_edges'][:, :, :2], dim=-1)
         sorted_idx = torch.argsort(hr_dist_cur, dim=1)
         # sorted_idx = sorted_idx.unsqueeze(-1).repeat(1, 1, 2*(self.config.sim.predict_steps+1))
-        for i in range(self.num_envs):
-            O['spatial_edges'][i] = O['spatial_edges'][i][sorted_idx[i]]
+        O['spatial_edges'] = torch.gather(O['spatial_edges'], 1, sorted_idx.unsqueeze(-1).expand_as(O['spatial_edges']))
+        if getattr(self.config, 'waffle_pi', False):
+            O['visible_masks'] = torch.gather(O['visible_masks'], 1, sorted_idx)
 
         obs={'robot_node':O['robot_node'],
             'spatial_edges':O['spatial_edges'],

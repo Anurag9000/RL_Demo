@@ -27,6 +27,18 @@ def main():
 	# read arguments
 	algo_args = get_args()
 
+	if algo_args.algo != 'ppo' or algo_args.seq_length != algo_args.num_steps:
+		raise ValueError("Use PPO and match seq_length to num_steps")
+	if algo_args.num_mini_batch <= 0 or algo_args.num_processes % algo_args.num_mini_batch:
+		raise ValueError("num_processes must be divisible by num_mini_batch")
+	if algo_args.waffle_eval_episodes:
+		from waffle_pi.evaluate import run
+		return run(algo_args)
+
+	if algo_args.waffle_build_pool:
+		from waffle_pi.trajectory_pool import build
+		return build(algo_args)
+
 	# create a directory for saving the logs and weights
 	if not os.path.exists(algo_args.output_dir):
 		os.makedirs(algo_args.output_dir)
@@ -82,7 +94,11 @@ def main():
 
 
 	# Create a wrapped, monitored VecEnv
-	envs = make_vec_envs(env_name, algo_args.seed, algo_args.num_processes,
+	if algo_args.waffle_replay:
+		from waffle_pi.replay import make_replay
+		envs = make_replay(config, algo_args, device)
+	else:
+		envs = make_vec_envs(env_name, algo_args.seed, algo_args.num_processes,
 						 algo_args.gamma, None, device, False, config=env_config, ax=ax, pretext_wrapper=config.env.use_wrapper)
 
 
@@ -99,17 +115,23 @@ def main():
 							  envs.observation_space.spaces,
 							  envs.action_space,
 							  algo_args.human_node_rnn_size,
-							  algo_args.human_human_edge_rnn_size)
+							  algo_args.human_human_edge_rnn_size,
+								  compact_edges=algo_args.fast_training and config.robot.policy == 'selfAttn_merge_srnn')
 
 	# continue training from an existing model if resume = True
 	if algo_args.resume:
-		load_path = config.training.load_path
-		actor_critic.load_state_dict(torch.load(load_path))
+		load_path = algo_args.load_path
+		actor_critic.load_state_dict(torch.load(load_path, map_location='cpu'), strict=True)
 		print("Loaded the following checkpoint:", load_path)
 
 
 	# allow the usage of multiple GPUs to increase the number of examples processed simultaneously
-	nn.DataParallel(actor_critic).to(device)
+	actor_critic.to(device)
+	if algo_args.freeze_human_attention:
+		for name in ('spatial_attn', 'spatial_linear'):
+			module = getattr(actor_critic.base, name, None)
+			if module is not None:
+				module.requires_grad_(False)
 
 	# create the ppo optimizer
 	agent = ppo.PPO(
@@ -135,6 +157,8 @@ def main():
 	rollouts.to(device)
 
 	episode_rewards = deque(maxlen=100)
+	if algo_args.waffle_replay:
+		running_rewards = torch.zeros(algo_args.num_processes, device=device)
 
 	start = time.time()
 	num_updates = int(
@@ -147,6 +171,9 @@ def main():
 			network_utils.update_linear_schedule(
 				agent.optimizer, j, num_updates,
 				agent.optimizer.lr if algo_args.algo == "acktr" else algo_args.lr)
+
+		if algo_args.waffle_replay:
+			completed_rewards, completed_masks = [], []
 
 		# step the environment for a few times
 		for step in range(algo_args.num_steps):
@@ -164,7 +191,7 @@ def main():
 					rollouts.masks[step])
 
 			# if we use real prediction, send predictions to env for rendering
-			if env_name == 'CrowdSimPredRealGST-v0' and env_config.env.use_wrapper:
+			if config.sim.render and env_name == 'CrowdSimPredRealGST-v0' and env_config.env.use_wrapper:
 				# [nenv, max_human_num, 2*(pred_steps+1)] -> [nenv, max_human_num, 2*pred_steps]
 				out_pred = rollouts_obs['spatial_edges'][:, :, 2:].to('cpu').numpy()
 				# send manager action to all processes
@@ -177,18 +204,23 @@ def main():
 			obs, reward, done, infos = envs.step(action)
 
 
-			for info in infos:
-				if 'episode' in info.keys():
-					episode_rewards.append(info['episode']['r'])
-
-			# If done then clean the history of observations.
-			masks = torch.FloatTensor(
-				[[0.0] if done_ else [1.0] for done_ in done])
-			bad_masks = torch.FloatTensor(
-				[[0.0] if 'bad_transition' in info.keys() else [1.0]
-				 for info in infos])
+			if algo_args.waffle_replay:
+				running_rewards = running_rewards + reward.squeeze(-1)
+				completed_rewards.append(running_rewards)
+				completed_masks.append(done)
+				running_rewards = torch.where(done, 0., running_rewards)
+				masks = (~done).float().unsqueeze(-1)
+				bad_masks = torch.ones_like(masks)
+			else:
+				for info in infos:
+					if 'episode' in info.keys():
+						episode_rewards.append(info['episode']['r'])
+				masks = torch.FloatTensor([[0.] if d else [1.] for d in done])
+				bad_masks = torch.FloatTensor([[0.] if 'bad_transition' in info else [1.] for info in infos])
 			rollouts.insert(obs, recurrent_hidden_states, action,
 							action_log_prob, value, reward, masks, bad_masks)
+		if algo_args.waffle_replay:
+			episode_rewards.extend(torch.stack(completed_rewards)[torch.stack(completed_masks)].cpu().tolist())
 		# store the stepped experience to buffer
 		with torch.no_grad():
 			rollouts_obs = {}

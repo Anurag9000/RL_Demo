@@ -206,6 +206,22 @@ def get_args():
     parser.add_argument('--sort_humans', type=bool, default=True)
 
 
+    parser.add_argument('--waffle-pi', action='store_true')
+    parser.add_argument('--waffle-speed', type=float, default=0.26)
+    parser.add_argument('--waffle-radius', type=float, default=0.25)
+    parser.add_argument('--waffle-sensor-range', type=float, default=3.)
+    parser.add_argument('--waffle-arena', type=float, default=2.5)
+    parser.add_argument('--waffle-humans', type=int, default=4)
+    parser.add_argument('--waffle-timeout', type=float, default=90.)
+    parser.add_argument('--waffle-motor-tau', type=float, default=0.15)
+    parser.add_argument('--waffle-wheel-accel', type=float, default=12.)
+    parser.add_argument('--freeze-human-attention', action='store_true')
+    parser.add_argument('--fast-training', action='store_true')
+    parser.add_argument('--waffle-eval-episodes', type=int, default=0)
+    parser.add_argument('--waffle-replay', default=None, help='Precomputed crowd trajectory .npz pool')
+    parser.add_argument('--waffle-build-pool', default=None, help='Generate a crowd trajectory pool at this .npz path')
+    parser.add_argument('--waffle-pool-count', type=int, default=1024)
+    parser.add_argument('--waffle-compile-dynamics', action='store_true')
     args = parser.parse_args()
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()

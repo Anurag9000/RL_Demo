@@ -49,15 +49,9 @@ class SpatialEdgeSelfAttn(nn.Module):
     def create_attn_mask(self, each_seq_len, seq_len, nenv, max_human_num):
         # mask with value of False means padding and should be ignored by attention
         # why +1: use a sentinel in the end to handle the case when each_seq_len = 18
-        if self.args.no_cuda:
-            mask = torch.zeros(seq_len * nenv, max_human_num + 1).cpu()
-        else:
-            mask = torch.zeros(seq_len*nenv, max_human_num+1).cuda()
-        mask[torch.arange(seq_len*nenv), each_seq_len.long()] = 1.
-        mask = torch.logical_not(mask.cumsum(dim=1))
-        # remove the sentinel
-        mask = mask[:, :-1].unsqueeze(-2) # seq_len*nenv, 1, max_human_num
-        return mask
+        lengths = each_seq_len.reshape(-1, 1)
+        slots = torch.arange(max_human_num, device=lengths.device)
+        return (slots < lengths).unsqueeze(1)
 
 
     def forward(self, inp, each_seq_len):
@@ -86,7 +80,7 @@ class SpatialEdgeSelfAttn(nn.Module):
         v=self.v_linear(input_emb)
 
         #z=self.multihead_attn(q, k, v, mask=attn_mask)
-        z,_=self.multihead_attn(q, k, v, key_padding_mask=torch.logical_not(attn_mask)) # if we use pytorch builtin function
+        z,_=self.multihead_attn(q, k, v, key_padding_mask=torch.logical_not(attn_mask), need_weights=False) # if we use pytorch builtin function
         z=torch.transpose(z, dim0=0, dim1=1) # if we use pytorch builtin function
         return z
 
@@ -132,15 +126,9 @@ class EdgeAttention_M(nn.Module):
     def create_attn_mask(self, each_seq_len, seq_len, nenv, max_human_num):
         # mask with value of False means padding and should be ignored by attention
         # why +1: use a sentinel in the end to handle the case when each_seq_len = 18
-        if self.args.no_cuda:
-            mask = torch.zeros(seq_len * nenv, max_human_num + 1).cpu()
-        else:
-            mask = torch.zeros(seq_len * nenv, max_human_num + 1).cuda()
-        mask[torch.arange(seq_len * nenv), each_seq_len.long()] = 1.
-        mask = torch.logical_not(mask.cumsum(dim=1))
-        # remove the sentinel
-        mask = mask[:, :-1].unsqueeze(-2)  # seq_len*nenv, 1, max_human_num
-        return mask
+        lengths = each_seq_len.reshape(-1, 1)
+        slots = torch.arange(max_human_num, device=lengths.device)
+        return (slots < lengths).unsqueeze(1)
 
     def att_func(self, temporal_embed, spatial_embed, h_spatials, attn_mask=None):
         seq_len, nenv, num_edges, h_size = h_spatials.size()  # [1, 12, 30, 256] in testing,  [12, 30, 256] in training
@@ -350,10 +338,7 @@ class selfAttn_merge_SRNN(nn.Module):
 
         dummy_human_mask = [0] * self.human_num
         dummy_human_mask[0] = 1
-        if self.args.no_cuda:
-            self.dummy_human_mask = Variable(torch.Tensor([dummy_human_mask]).cpu())
-        else:
-            self.dummy_human_mask = Variable(torch.Tensor([dummy_human_mask]).cuda())
+        self.register_buffer('dummy_human_mask', torch.tensor([dummy_human_mask], dtype=torch.float32), persistent=False)
 
 
 
@@ -376,7 +361,7 @@ class selfAttn_merge_SRNN(nn.Module):
         if not hasattr(self.args, 'sort_humans'):
             self.args.sort_humans = True
         if self.args.sort_humans:
-            detected_human_num = inputs['detected_human_num'].squeeze(-1).cpu().int()
+            detected_human_num = inputs['detected_human_num'].squeeze(-1).int()
         else:
             human_masks = reshapeT(inputs['visible_masks'], seq_length, nenv).float() # [seq_len, nenv, max_human_num]
             # if no human is detected (human_masks are all False, set the first human to True)
@@ -387,12 +372,7 @@ class selfAttn_merge_SRNN(nn.Module):
         masks = reshapeT(masks, seq_length, nenv)
 
 
-        if self.args.no_cuda:
-            all_hidden_states_edge_RNNs = Variable(
-                torch.zeros(1, nenv, 1+self.human_num, rnn_hxs['human_human_edge_rnn'].size()[-1]).cpu())
-        else:
-            all_hidden_states_edge_RNNs = Variable(
-                torch.zeros(1, nenv, 1+self.human_num, rnn_hxs['human_human_edge_rnn'].size()[-1]).cuda())
+        all_hidden_states_edge_RNNs = torch.zeros_like(rnn_hxs['human_human_edge_rnn']).unsqueeze(0)
 
         robot_states = torch.cat((temporal_edges, robot_node), dim=-1)
         robot_states = self.robot_linear(robot_states)
