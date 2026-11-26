@@ -162,7 +162,7 @@ class PerWorld:
     def guard(self,requested):
         raw,f=self.scan
         v,w=requested
-        fresh=(not self.fault and 0<=self.state['time']-f['stamp']<=.5
+        fresh=(not self.fault and self.points is not None and 0<=self.state['time']-f['stamp']<=.5
                and scan_coverage(raw,f['angle_step'],f['min'],f['max']))
         mv,mw=self.state['twist']
         cmd=safe_command(v,w,raw,f['min'],f['max'],fresh=fresh,armed=True,estop=False,
@@ -181,6 +181,8 @@ class PerWorld:
         rect=torch.as_tensor(self.profile['scene']['rectangles_m'],dtype=torch.float32).reshape(-1,4)
         for _ in range(self.substeps):
             cmd,blocked=self.guard(requested)
+            if collision:
+                cmd,blocked=(0.,0.),True
             intervened|=blocked
             # Human static obstacle rejection supplements contact physics.
             # This does not implement a general obstacle ORCA planner.

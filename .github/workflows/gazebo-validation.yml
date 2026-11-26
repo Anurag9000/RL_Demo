@@ -1,0 +1,47 @@
+
+name: Gazebo Harmonic native validation
+on:
+  push:
+    branches: [main, waffle-pi-sim2real]
+    paths: ['gazebo_sim/**','configs/waffle_gazebo.example.json','scripts/qualify_gazebo.py','.github/workflows/gazebo-validation.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: gazebo-validation-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  native:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      LIBGL_ALWAYS_SOFTWARE: '1'
+      QT_QPA_PLATFORM: offscreen
+      EGL_PLATFORM: surfaceless
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Gazebo Harmonic and compiler dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y curl gnupg lsb-release
+          sudo curl -fsSL https://packages.osrfoundation.org/gazebo.gpg -o /usr/share/keyrings/pkgs-osrf-archive-keyring.gpg
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/pkgs-osrf-archive-keyring.gpg] https://packages.osrfoundation.org/gazebo/ubuntu-stable $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/gazebo-stable.list
+          sudo apt-get update
+          sudo apt-get install -y gz-harmonic libgz-sim8-dev libgz-transport13-dev libgz-msgs10-dev nlohmann-json3-dev cmake g++ python3-numpy libegl1-mesa-dev mesa-utils libgl1-mesa-dri
+      - name: Compile native worker
+        run: |
+          cmake -S gazebo_sim -B build/gazebo -DCMAKE_BUILD_TYPE=Release
+          cmake --build build/gazebo -j2
+      - name: Fetch pinned official Waffle Pi model
+        run: |
+          git clone --filter=blob:none --no-checkout https://github.com/ROBOTIS-GIT/turtlebot3_simulations.git /tmp/turtlebot3_simulations
+          git -C /tmp/turtlebot3_simulations checkout 45633014a14e8f438495b532a723e4ad45cbbd31
+      - name: Native physics and LiDAR qualification
+        run: |
+          /usr/bin/python3 -m scripts.qualify_gazebo --model /tmp/turtlebot3_simulations/turtlebot3_gazebo/models/turtlebot3_waffle_pi/model.sdf --envs 1 --rounds 4 --output /tmp/gazebo-qualification
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gazebo-qualification
+          path: /tmp/gazebo-qualification
+          if-no-files-found: ignore
