@@ -62,9 +62,18 @@ jobs:
           test -s /tmp/waffle-ci-ddp/checkpoints/00000.pt
           torchrun --standalone --nproc_per_node=2 train.py --waffle-pi --waffle-live-orca --no-cuda --fast-training --masked-gru --gae-backend scan --num-processes 2 --num-mini-batch 1 --num-steps 4 --seq_length 4 --ppo-epoch 1 --num-env-steps 16 --waffle-timeout 20 --waffle-pool-count 32 --continue-state /tmp/waffle-ci-ddp/training_state.pt --output_dir /tmp/waffle-ci-ddp-continued
           python -c "import json; assert json.load(open('/tmp/waffle-ci-ddp-continued/training_summary.json'))['transitions']==32"
+      - name: Adaptive smoke failure diagnostics
+        if: failure()
+        run: |
+          if test -d /tmp/waffle-adaptive-ci; then
+            find /tmp/waffle-adaptive-ci -name '*.log' -print -exec tail -n 50 {} \;
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: waffle-cpu-smoke-results
-          path: smoke-results.json
+          path: |
+            smoke-results.json
+            /tmp/waffle-adaptive-ci/history.json
+            /tmp/waffle-adaptive-ci/result.json
           if-no-files-found: ignore

@@ -57,7 +57,8 @@ class Adaptive(unittest.TestCase):
         candidates=[dict(self.row(0,.9,0.),stage=-1,streak=0)]
         def worker(a,root,slot,c,rung,stage_index,stage,budget):
             return dict(c,status='ok',stage=stage_index,rung=rung,
-                        checkpoint='model.pt',streak=(c['streak']+1 if c['stage']==stage_index else 1))
+                        checkpoint='model.pt',evaluation=self.row(0,.9,0.)['evaluation'],
+                        streak=(c['streak']+1 if c['stage']==stage_index else 1))
         calls=[]
         def final(a,stage,slot,checkpoint,seed,episodes,out,log):
             calls.append((stage['humans'],seed,episodes))
