@@ -82,8 +82,8 @@ class GumbelSocialTransformer(nn.Module):
         else:
             # full connectivity
             bsz, nnode = attn_mask.shape[0], attn_mask.shape[1]
-            sampled_edges = torch.ones(bsz, nnode, 1, nnode).to(device) * attn_mask.unsqueeze(2)
-            edge_multinomial = torch.ones(bsz, nnode, 1, nnode).to(device) * attn_mask.unsqueeze(2) # fake edge_multinomial, meaningless
+            sampled_edges = torch.ones(bsz,nnode,1,nnode,device=device) * attn_mask.unsqueeze(2)
+            edge_multinomial = torch.ones(bsz,nnode,1,nnode,device=device) * attn_mask.unsqueeze(2) # fake edge_multinomial, meaningless
 
         attn_weights_list = []
         x = self.node_embedding(x)

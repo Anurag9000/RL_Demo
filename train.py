@@ -50,6 +50,12 @@ def main():
 	if algo_args.tf32 and device.type=='cuda':
 		torch.backends.cuda.matmul.allow_tf32=True
 		torch.backends.cudnn.allow_tf32=True
+	if (algo_args.cuda_graph_actor or algo_args.cuda_graph_gst) and device.type!='cuda':
+		raise ValueError("Explicit CUDA graphs require a CUDA training device")
+	if algo_args.cuda_graph_actor and (algo_args.compile_policy or world>1):
+		raise ValueError("Explicit actor graph is initially single-GPU and mutually exclusive with compile-policy")
+	if algo_args.cuda_graph_gst and (algo_args.compile_gst or world>1):
+		raise ValueError("Explicit GST graph is initially single-GPU and mutually exclusive with compile-gst")
 	if algo_args.compile_policy:
 		algo_args.masked_gru=True
 		if not hasattr(torch,'compile'):
@@ -175,6 +181,9 @@ def main():
 		act = torch.compile(act,mode=algo_args.compile_mode)
 		get_value = torch.compile(get_value,mode=algo_args.compile_mode)
 		evaluate = torch.compile(evaluate,mode=algo_args.compile_mode)
+	if algo_args.cuda_graph_actor:
+		from waffle_pi.cuda_graph import StaticGraphCall
+		act=StaticGraphCall(actor_critic.act,device,amp_bf16=algo_args.amp_bf16)
 	torch.manual_seed(seed)
 	# create the ppo optimizer
 	agent = ppo.PPO(

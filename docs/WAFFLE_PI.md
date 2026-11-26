@@ -241,3 +241,21 @@ python -m waffle_pi.ros2_safety_gate --ros-args -r /crowdnav/cmd_vel_requested:=
 
 Use `bash scripts/validate_waffle.sh` to syntax-check the checked-out source
 and run the unit tests. This is not a ROS integration or GPU training test.
+
+## Explicit CUDA Graph inference
+
+`--cuda-graph-actor --cuda-graph-gst` optionally captures fixed-shape actor
+rollout inference and GST inference separately using PyTorch CUDA Graphs.
+This is distinct from compiler-managed graph capture. Each graph uses
+preallocated input buffers and reused outputs; actor weights are updated
+in place by the ordinary PPO optimizer. Autocast weight caching is disabled
+inside capture to avoid stale weights. The two options are initially single-GPU
+only; do not combine each with its corresponding compile flag. Capture failures
+are reported rather than silently falling back. The graph flags are experimental
+and have not been run on CUDA hardware here. Optimizer-update graph capture is
+not implemented. The GST navigation wrapper now suppresses unused attention
+visualization CPU transfers, and GST edge-selector masks and temporary tensors
+stay on device. Standalone GST training/visualization retains collect_info=True
+by default. Equality-based attention projection branching is replaced by
+object-identity branching to avoid GPU synchronization; mathematically equivalent
+projection paths can differ slightly numerically.

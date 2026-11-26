@@ -54,12 +54,12 @@ class EdgeSelector(nn.Module):
         """
         bsz, nnode, d_motion = x.shape
         assert d_motion == self.d_motion
-        attn_mask = attn_mask.to("cpu")
+        attn_mask = attn_mask.to(x.device)
         attn_mask_ped = (attn_mask.sum(-1) > 0).float().unsqueeze(-1) # (bsz, nnode, 1)
         x = x * attn_mask_ped.to(device)
 
-        x_neighbor = torch.ones(bsz,nnode,nnode,d_motion).to(device)*x.view(bsz,nnode,1,d_motion) # row -> neighbor
-        x_target = torch.ones(bsz,nnode,nnode,d_motion).to(device)*x.view(bsz,1,nnode,d_motion) # col -> target
+        x_neighbor = x.view(bsz,nnode,1,d_motion).expand(-1,-1,nnode,-1) # row -> neighbor
+        x_target = x.view(bsz,1,nnode,d_motion).expand(-1,nnode,-1,-1) # col -> target
         x_neighbor_target = torch.cat((x_neighbor, x_target), dim=-1) # (bsz,nnode,nnode,2*d_motion)
 
         A = A * attn_mask.permute(0,2,1).unsqueeze(-1).to(device) # (bsz, neighbor_node, target_node, d_motion)

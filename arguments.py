@@ -243,6 +243,8 @@ def get_args():
     parser.add_argument('--waffle-eval-json', default=None)
     parser.add_argument('--benchmark-updates', type=int, default=0)
     parser.add_argument('--benchmark-warmup', type=int, default=2)
+    parser.add_argument('--cuda-graph-actor', action='store_true')
+    parser.add_argument('--cuda-graph-gst', action='store_true')
     args = parser.parse_args()
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()

@@ -75,10 +75,10 @@ def multi_head_attention_forward(
     scaling = float(head_dim) ** -0.5
 
     if not use_separate_proj_weight:
-        if (query is key or torch.equal(query, key)) and (key is value or torch.equal(key, value)):
+        if query is key and key is value:
             q, k, v = linear(query, in_proj_weight, in_proj_bias).chunk(3, dim=-1)
 
-        elif key is value or torch.equal(key, value):
+        elif key is value:
             _b = in_proj_bias
             _start = 0
             _end = embed_dim

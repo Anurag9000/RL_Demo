@@ -62,6 +62,9 @@ class VecPretextNormalize(VecEnvWrapper):
             if not hasattr(torch,'compile'):
                 raise RuntimeError("GST compilation requires PyTorch 2.x")
             self.predict = torch.compile(self.predict,mode=config.args.compile_mode)
+        if getattr(config.args,'cuda_graph_gst',False):
+            from waffle_pi.cuda_graph import StaticGraphCall
+            self.predict=StaticGraphCall(self.predict,self.device)
 
 
 
@@ -147,7 +150,7 @@ class VecPretextNormalize(VecEnvWrapper):
             self.mask_buffer.append(O['visible_masks'].unsqueeze(-1).clone())
             in_traj = torch.stack(list(self.traj_buffer)).permute(1,2,0,3)[:,:,::self.pred_interval]
             in_mask = torch.stack(list(self.mask_buffer)).permute(1,2,0,3).float()[:,:,::self.pred_interval]
-        out_traj, out_mask = self.predict(input_traj=in_traj, input_binary_mask=in_mask)
+        out_traj, out_mask = self.predict(in_traj,in_mask)
         out_mask = out_mask.bool()
 
         # add penalties if the robot collides with predicted future pos of humans

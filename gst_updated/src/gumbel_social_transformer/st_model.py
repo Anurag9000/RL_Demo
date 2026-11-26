@@ -268,7 +268,7 @@ class st_model(nn.Module):
         At_plus = At + (xt_plus.unsqueeze(3) - xt_plus.unsqueeze(2))
         return At_plus
 
-    def forward(self, x, A, attn_mask, loss_mask_rel, tau=1., hard=False, sampling=True, device='cuda:0'):
+    def forward(self, x, A, attn_mask, loss_mask_rel, tau=1., hard=False, sampling=True, device='cuda:0', collect_info=True):
         """
         Forward function.
         inputs:
@@ -326,16 +326,17 @@ class st_model(nn.Module):
             # ! xs, sampled_edges, edge_multinomial, attn_weights = self.gumbel_social_transformer(x[0], A[0], attn_mask, tau=tau, hard=hard, device=device)
             xs, sampled_edges, edge_multinomial, attn_weights = self.gumbel_social_transformer(x_reshaped, A_reshaped, attn_mask_reshaped, tau=tau, hard=hard, device=device)
             xs = xs.reshape(batch_size, self.args.obs_seq_len, num_peds, -1) # (batch, obs_seq_len, nnode, embedding_size)
-            info['sampled_edges'], info['edge_multinomial'], info['attn_weights'] = [], [], []
-            sampled_edges = sampled_edges.reshape(batch_size, self.args.obs_seq_len,
-                sampled_edges.shape[1], sampled_edges.shape[2], sampled_edges.shape[3])
-            edge_multinomial = edge_multinomial.reshape(batch_size, self.args.obs_seq_len,
-                edge_multinomial.shape[1], edge_multinomial.shape[2], edge_multinomial.shape[3])
-            attn_weights = attn_weights.reshape(attn_weights.shape[0], batch_size, self.args.obs_seq_len,
-                attn_weights.shape[2], attn_weights.shape[3], attn_weights.shape[4])
-            info['sampled_edges'].append(sampled_edges.detach().to("cpu"))
-            info['edge_multinomial'].append(edge_multinomial.detach().to("cpu"))
-            info['attn_weights'].append(attn_weights.detach().to("cpu")) 
+            if collect_info:
+                info['sampled_edges'], info['edge_multinomial'], info['attn_weights'] = [], [], []
+                sampled_edges = sampled_edges.reshape(batch_size,self.args.obs_seq_len,
+                    sampled_edges.shape[1],sampled_edges.shape[2],sampled_edges.shape[3])
+                edge_multinomial = edge_multinomial.reshape(batch_size,self.args.obs_seq_len,
+                    edge_multinomial.shape[1],edge_multinomial.shape[2],edge_multinomial.shape[3])
+                attn_weights = attn_weights.reshape(attn_weights.shape[0],batch_size,self.args.obs_seq_len,
+                    attn_weights.shape[2],attn_weights.shape[3],attn_weights.shape[4])
+                info['sampled_edges'].append(sampled_edges.detach().to("cpu"))
+                info['edge_multinomial'].append(edge_multinomial.detach().to("cpu"))
+                info['attn_weights'].append(attn_weights.detach().to("cpu"))
         else:
             raise RuntimeError("The spatial component is not found.")
         ## observation period: temporal
@@ -396,15 +397,16 @@ class st_model(nn.Module):
                         xs_tt, sampled_edges, edge_multinomial, attn_weights = \
                             self.gumbel_social_transformer(x_sample_reshaped, A_sample_reshaped, attn_mask_pred, \
                             tau=tau, hard=hard, device=device)
-                        sampled_edges = sampled_edges.reshape(batch_size, 1,
-                            sampled_edges.shape[1], sampled_edges.shape[2], sampled_edges.shape[3])
-                        edge_multinomial = edge_multinomial.reshape(batch_size, 1,
-                            edge_multinomial.shape[1], edge_multinomial.shape[2], edge_multinomial.shape[3])
-                        attn_weights = attn_weights.reshape(attn_weights.shape[0], batch_size, 1,
-                            attn_weights.shape[2], attn_weights.shape[3], attn_weights.shape[4])
-                        info['sampled_edges'].append(sampled_edges.detach().to("cpu"))
-                        info['edge_multinomial'].append(edge_multinomial.detach().to("cpu"))
-                        info['attn_weights'].append(attn_weights.detach().to("cpu"))
+                        if collect_info:
+                            sampled_edges=sampled_edges.reshape(batch_size,1,
+                                sampled_edges.shape[1],sampled_edges.shape[2],sampled_edges.shape[3])
+                            edge_multinomial=edge_multinomial.reshape(batch_size,1,
+                                edge_multinomial.shape[1],edge_multinomial.shape[2],edge_multinomial.shape[3])
+                            attn_weights=attn_weights.reshape(attn_weights.shape[0],batch_size,1,
+                                attn_weights.shape[2],attn_weights.shape[3],attn_weights.shape[4])
+                            info['sampled_edges'].append(sampled_edges.detach().to("cpu"))
+                            info['edge_multinomial'].append(edge_multinomial.detach().to("cpu"))
+                            info['attn_weights'].append(attn_weights.detach().to("cpu"))
                         # xs_tt: # (batch*unit_time, node, d_model)
                         # * temporal encoding at prediction step tt
                         loss_mask_rel_tt = loss_mask_rel_full_partial.reshape(-1,1) # (batch*num_peds,1)
@@ -440,12 +442,13 @@ class st_model(nn.Module):
                 corr_pred = torch.cat(corr_pred, dim=1) # (batch, pred_seq_len, node, 1)
                 gaussian_params_pred = (mu_pred, sx_pred, sy_pred, corr_pred)
                 # gaussian_params_pred = self.raw2gaussian(prob_raw_pred)
-                info['sampled_edges'] = torch.cat(info['sampled_edges'], dim=1) # (batch_size, seq_len-1, nnode <target>, nhead_edges, neighbor_node)
-                info['edge_multinomial'] = torch.cat(info['edge_multinomial'], dim=1) # (batch_size, seq_len-1, nnode <target>, nhead_edges, neighbor_node)
-                info['attn_weights'] = torch.cat(info['attn_weights'], dim=2) # (batch_size, nlayer, seq_len-1, nhead, nnode <target>, neighbor_node)
-                info['A_sample_pred'] = A_sample_pred # (batch, pred_seq_len, node, node, edge_feat)
-                info['loss_mask_rel_full_partial'] = loss_mask_rel_full_partial # (batch, num_peds)
-                info['loss_mask_per_pedestrian'] = loss_mask_per_pedestrian # (batch, num_peds)
+                if collect_info:
+                    info['sampled_edges']=torch.cat(info['sampled_edges'],dim=1)
+                    info['edge_multinomial']=torch.cat(info['edge_multinomial'],dim=1)
+                    info['attn_weights']=torch.cat(info['attn_weights'],dim=2)
+                    info['A_sample_pred']=A_sample_pred
+                    info['loss_mask_rel_full_partial']=loss_mask_rel_full_partial
+                    info['loss_mask_per_pedestrian']=loss_mask_per_pedestrian
                 # pack results
                 results = (gaussian_params_pred, x_sample_pred, info)
                 return results

@@ -94,7 +94,7 @@ class CrowdNavPredInterfaceMultiEnv(object):
         with torch.no_grad():
             v_obs, A_obs, attn_mask_obs, loss_mask_rel = \
                 v_obs.to(self.device), A_obs.to(self.device), attn_mask_obs.to(self.device), loss_mask_rel.to(self.device)
-            results = self.model(v_obs, A_obs, attn_mask_obs, loss_mask_rel, tau=0.03, hard=True, sampling=sampling, device=self.device)
+            results = self.model(v_obs, A_obs, attn_mask_obs, loss_mask_rel, tau=0.03, hard=True, sampling=sampling, device=self.device, collect_info=False)
             gaussian_params_pred, x_sample_pred, info = results
         mu, sx, sy, corr = gaussian_params_pred
         mu = mu.cumsum(1)
