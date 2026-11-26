@@ -48,12 +48,16 @@ def main():
 	if algo_args.tf32 and device.type=='cuda':
 		torch.backends.cuda.matmul.allow_tf32=True
 		torch.backends.cudnn.allow_tf32=True
-	if (algo_args.cuda_graph_actor or algo_args.cuda_graph_gst) and device.type!='cuda':
+	if (algo_args.cuda_graph_actor or algo_args.cuda_graph_gst or algo_args.cuda_graph_ppo) and device.type!='cuda':
 		raise ValueError("Explicit CUDA graphs require a CUDA training device")
 	if algo_args.cuda_graph_actor and (algo_args.compile_policy or world>1):
 		raise ValueError("Explicit actor graph is initially single-GPU and mutually exclusive with compile-policy")
 	if algo_args.cuda_graph_gst and (algo_args.compile_gst or world>1):
 		raise ValueError("Explicit GST graph is initially single-GPU and mutually exclusive with compile-gst")
+	if algo_args.cuda_graph_ppo:
+		if world>1 or algo_args.compile_policy or algo_args.use_linear_lr_decay:
+			raise ValueError("Captured PPO requires single GPU, eager policy and fixed learning rate")
+		algo_args.masked_gru=True
 	if algo_args.compile_policy:
 		algo_args.masked_gru=True
 		if not hasattr(torch,'compile'):
@@ -197,7 +201,7 @@ def main():
 		lr=algo_args.lr,
 		eps=algo_args.eps,
 		max_grad_norm=algo_args.max_grad_norm,train_model=train_model,evaluate=evaluate,
-		amp_bf16=algo_args.amp_bf16,fused_adam=algo_args.fused_adam)
+		amp_bf16=algo_args.amp_bf16,fused_adam=algo_args.fused_adam,cuda_graph_ppo=algo_args.cuda_graph_ppo)
 
 
 
@@ -225,6 +229,8 @@ def main():
 	if algo_args.benchmark_updates:
 		num_updates=algo_args.benchmark_warmup+algo_args.benchmark_updates
 		benchmark_rows=[]
+		if device.type=='cuda':
+			torch.cuda.reset_peak_memory_stats(device)
 		def sync_clock():
 			if device.type=='cuda':
 				torch.cuda.synchronize(device)
@@ -362,7 +368,11 @@ def main():
 		result=dict(measured_updates=len(rows),global_transitions=steps,
 			transitions_per_sec=steps/seconds,rollout_s=float(rows[:,0].sum()),
 			gae_and_bootstrap_s=float(rows[:,1].sum()),learner_s=float(rows[:,2].sum()),
-			note='Excludes checkpoint/logging time and warmup; phase sync overhead included')
+			note='Excludes checkpoint/logging time and warmup; phase sync overhead included',
+			device=str(device),torch_version=torch.__version__,world_size=world,
+			gpu_name=torch.cuda.get_device_name(device) if device.type=='cuda' else None,
+			peak_allocated_bytes=torch.cuda.max_memory_allocated(device) if device.type=='cuda' else None,
+			peak_reserved_bytes=torch.cuda.max_memory_reserved(device) if device.type=='cuda' else None)
 		print(result)
 		with open(os.path.join(algo_args.output_dir,'benchmark.json'),'w') as handle:
 			json.dump(result,handle,indent=2)

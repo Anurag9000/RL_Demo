@@ -247,6 +247,7 @@ def get_args(argv=None):
     parser.add_argument('--cuda-graph-gst', action='store_true')
     parser.add_argument('--gst-adjacent-mask', action='store_true',
                         help='Use training-consistent adjacent visibility masks for GST displacements')
+    parser.add_argument('--cuda-graph-ppo', action='store_true')
     args = parser.parse_args(argv)
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()

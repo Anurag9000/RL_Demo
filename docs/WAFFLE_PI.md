@@ -321,3 +321,30 @@ both consecutive positions are visible, as in GST's training dataset code.
 The default retains the released checkpoint's wrapper semantics for controlled
 zero-shot comparisons. Evaluate both before choosing; use matching flags in
 training and deployment, particularly for occlusion/dropout experiments.
+
+## Captured PPO learner and benchmark sweep
+
+`--cuda-graph-ppo` adds explicit single-GPU capture of the fixed-shape PPO
+minibatch forward, backward, gradient clipping and capturable Adam step.
+It enables masked GRU automatically, requires a fresh optimizer and fixed
+learning rate, and is incompatible with policy compilation or DDP. Warmup
+updates are undone in-place (parameters, Adam moments and counters), so only
+real minibatches contribute learning updates. Capture failures abort explicitly.
+The CUDA parity test checks parameter and Adam state evolution against eager
+updates. Neither that test nor actual GPU graph capture has run here.
+
+To compare supported configurations on the actual training workstation:
+
+```sh
+python -m scripts.benchmark_sweep --output benchmarks/waffle_gpu --device cuda --backend live --envs 64 128 256 512 --minibatches 4 16 --presets eager scan triton compile graph graph-bf16 --updates 5 --warmup 3
+```
+
+Start with `eager scan`; other presets require compatible CUDA/Triton/PyTorch
+versions and sufficient VRAM. The sweep executes isolated trainer subprocesses
+sequentially, records failures and timeout logs, and ranks measured successful
+runs by end-to-end transition throughput. It saves raw JSON, CSV rankings and
+individual checkpoints. Peak CUDA memory includes warmup/compilation. Compiler
+setup costs are included in per-run wall time, excluded from steady-state
+phase timings. Use `--repeat 3` to measure variability. `--device cpu` supports
+eager and scan presets. Select by held-out success/collision rates and time to
+reward after throughput tuning; different batch sizes change PPO learning.
