@@ -72,6 +72,8 @@ def configure(config, args):
                 raise ValueError('Measured Gazebo model or worker hash mismatch')
             if args.waffle_dynamics_randomization or args.waffle_pose_drift or args.waffle_occlusion:
                 raise ValueError('Gazebo owns physics and occlusion; put measured variations in its profile, not tensor flags')
+            if args.waffle_require_measured and os.environ.get('WAFFLE_BATCH_DETECTOR','0')=='1':
+                raise ValueError('Measured reference requires unbatched detector; qualify batch parity separately')
             if args.waffle_require_measured and (args.amp_bf16 or args.tf32 or args.compile_policy or args.compile_gst or args.cuda_graph_actor or args.cuda_graph_gst or args.cuda_graph_ppo):
                 raise ValueError('Measured reference uses eager FP32; accelerated experiments require separate parity qualification')
         if config.fidelity.get('reward'):

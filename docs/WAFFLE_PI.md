@@ -1,3 +1,5 @@
+> **Server optimization:** [H100_EPYC_TRAINING.md](H100_EPYC_TRAINING.md) describes the Gazebo-only hardware sweep and new optimization controls. Tensor baselines remain separate.
+
 > **Gazebo-first project direction:** See [GAZEBO_TRAINING.md](GAZEBO_TRAINING.md) for the primary official Waffle Pi Gazebo backend, native build, qualification, calibrated profile and training/evaluation. This document retains the earlier tensor and ROS baseline commands. For old adaptive/portfolio commands below add `--backend tensor` explicitly; benchmark commands must select `--backend live` or `--backend replay`. Do not use tensor throughput results as Gazebo results.
 
 # Waffle Pi experimental adaptation

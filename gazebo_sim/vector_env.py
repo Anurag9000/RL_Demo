@@ -247,6 +247,8 @@ class PerWorld:
 class GazeboVecEnv(VecEnv):
     def __init__(self,config,args,device,worker_factory=Worker,detector_factory=DetectorEngine):
         self.cfg,self.args,self.device=config,args,torch.device(device)
+        if self.device.type=='cuda' and self.device.index is None:
+            self.device=torch.device('cuda',torch.cuda.current_device())
         self.n=args.num_processes
         self.h=config.sim.human_num
         self.rng=np.random.default_rng(args.seed+100003*int(os.environ.get('RANK','0')))
@@ -355,8 +357,8 @@ class GazeboVecEnv(VecEnv):
                        dt=self.cfg.env.time_step)[:,:self.h]
         else:
             human=orca_velocity(p,v,r,preferred,s,dt=self.cfg.env.time_step)
-        # Choose reset cases in index order in advance, using a separate RNG
-        # stream so completion ordering cannot change the episode distribution.
+        # Independent per-world RNGs make episode selection invariant to
+        # completion order while letting reset overlap other worlds' steps.
         # Keep old case IDs for the terminal transition.
         old_ids=self.case_ids.copy()
         velocities=human.cpu().numpy()

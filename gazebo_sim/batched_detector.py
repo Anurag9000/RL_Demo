@@ -69,6 +69,8 @@ class DetectorPool:
         self.geometry=geometry
         d=self.settings
         if self.device.type=='cuda':
+            if self.device.index is None:
+                raise ValueError('Batched detector needs explicit rank-local CUDA index')
             torch.cuda.set_device(self.device)
         benchmark=torch.backends.cudnn.benchmark
         try:

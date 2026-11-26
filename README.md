@@ -1,3 +1,5 @@
+> **Dual EPYC 9354 / H100 NVL Gazebo retraining:** [hardware-aware training, benchmark and resource-selection guide](docs/H100_EPYC_TRAINING.md). The official Waffle Pi Gazebo path remains the primary simulator; measured fidelity and policy quality require qualification.
+
 # CrowdNav++
 This repository contains the codes for our paper titled "Intention Aware Robot Crowd Navigation with Attention-Based Interaction Graph" in ICRA 2023. 
 For more details, please refer to the [project website](https://sites.google.com/view/intention-aware-crowdnav/home) and [arXiv preprint](https://arxiv.org/abs/2203.01821).

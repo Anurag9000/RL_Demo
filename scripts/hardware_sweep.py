@@ -142,7 +142,21 @@ def summary(rows):
     single=[r for r in result if r['mode'] in ('single-all-cpus','single-local','single-local-second','ddp')]
     best=max(single,key=lambda r:r['policy_transitions_per_sec'],default=None)
     independent=max((r for r in result if r['mode']=='independent'),key=lambda r:r['aggregate_transitions_per_sec'],default=None)
-    return dict(configurations=result,fastest_single_policy=best,fastest_independent_search=independent,
+    tradeoffs=[]
+    for preset,envs in sorted({(r['preset'],r['global_envs']) for r in result}):
+        choices=[r for r in result if r['preset']==preset and r['global_envs']==envs]
+        solo=max((r for r in choices if r['mode'].startswith('single')),key=lambda r:r['policy_transitions_per_sec'],default=None)
+        ddp=next((r for r in choices if r['mode']=='ddp'),None)
+        duo=next((r for r in choices if r['mode']=='independent'),None)
+        if solo:
+            s=solo['policy_transitions_per_sec']
+            tradeoffs.append(dict(preset=preset,global_envs=envs,best_single=solo['mode'],
+                single_hours_20m=20e6/s/3600,
+                ddp_speedup=ddp['policy_transitions_per_sec']/s if ddp else None,
+                ddp_hours_20m=20e6/ddp['policy_transitions_per_sec']/3600 if ddp else None,
+                independent_search_throughput_ratio=duo['aggregate_transitions_per_sec']/s if duo else None,
+                independent_slowest_policy_hours_20m=20e6/duo['policy_transitions_per_sec']/3600 if duo else None))
+    return dict(configurations=result,matched_batch_tradeoffs=tradeoffs,fastest_single_policy=best,fastest_independent_search=independent,
                 note='Throughput only. Select by independent validation time-to-target before final training; no assumed equal sample efficiency across batch sizes.')
 
 

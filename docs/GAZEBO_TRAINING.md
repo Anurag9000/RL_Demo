@@ -245,3 +245,7 @@ detector inference, ROS integration and convergence are separate evidence.
 
 The stock Gazebo fixture remains available using waffle_pi.gazebo_world
 and scripts.probe_gazebo_pool for comparing against upstream DiffDrive.
+
+## Dual EPYC/H100 performance path
+
+See [H100_EPYC_TRAINING.md](H100_EPYC_TRAINING.md) for the new native shared-memory scan transport, overlapping resets, NUMA affinity, optional shared detector batching, pinned transfers, actual NCCL probe, matched-global-batch single/DDP comparison and independent candidate scheduling. These options retain Gazebo and the official Waffle Pi. Earlier statements about JSON-only communication and separate detector weights describe the reference path; the new options are not yet hardware-benchmarked. Measured mode uses an unbatched FP32 detector until parity is qualified.
