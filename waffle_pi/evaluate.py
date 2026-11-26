@@ -24,7 +24,7 @@ def run(args):
         model.eval()
         obs = env.reset()
         hidden = {'human_node_rnn':torch.zeros(1,1,args.human_node_rnn_size,device=device),
-                  'human_human_edge_rnn':torch.zeros(1,1,args.human_human_edge_rnn_size,device=device)}
+                  'human_human_edge_rnn':torch.zeros(1,config.sim.human_num+1,args.human_human_edge_rnn_size,device=device)}
         masks = torch.ones(1,1,device=device)
         outcomes, rewards, total = Counter(), [], 0.
         with torch.no_grad():

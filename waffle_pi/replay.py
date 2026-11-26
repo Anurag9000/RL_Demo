@@ -32,7 +32,7 @@ class ReplayVecEnv(VecEnv):
                 or not all(torch.isfinite(t).all().item() for t in (self.starts,self.goals,self.humans))):
             raise ValueError("Invalid trajectory pool")
         self.horizon = self.humans.shape[1]-1
-        self.rng = torch.Generator(device=device).manual_seed(args.seed)
+        self.rng = torch.Generator(device=device).manual_seed(args.seed+int(__import__('os').environ.get('RANK','0'))*100003)
         def box(shape, dtype=np.float32):
             return gym.spaces.Box(low=-np.inf, high=np.inf, shape=shape, dtype=dtype)
         space = gym.spaces.Dict({

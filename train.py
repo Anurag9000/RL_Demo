@@ -39,23 +39,46 @@ def main():
 		from waffle_pi.trajectory_pool import build
 		return build(algo_args)
 
-	# create a directory for saving the logs and weights
-	if not os.path.exists(algo_args.output_dir):
-		os.makedirs(algo_args.output_dir)
-	# if output_dir exists and overwrite = False
-	elif not algo_args.overwrite:
-		raise ValueError('output_dir already exists!')
+	from waffle_pi.distributed import setup
+	rank,world,device = setup(algo_args)
+	if world>1 and (not algo_args.waffle_pi or algo_args.compile_policy):
+		raise ValueError("Distributed path requires Waffle mode; use eager DDP policy initially")
+	if algo_args.amp_bf16 and (device.type!='cuda' or not torch.cuda.is_bf16_supported()):
+		raise ValueError("BF16 requires a supported CUDA device")
+	if algo_args.fused_adam and device.type!='cuda':
+		raise ValueError("Fused Adam requires CUDA")
+	if algo_args.tf32 and device.type=='cuda':
+		torch.backends.cuda.matmul.allow_tf32=True
+		torch.backends.cudnn.allow_tf32=True
+	if algo_args.compile_policy:
+		algo_args.masked_gru=True
+		if not hasattr(torch,'compile'):
+			raise RuntimeError("Policy compilation requires PyTorch 2.x")
 
-	save_config_dir = os.path.join(algo_args.output_dir, 'configs')
-	if not os.path.exists(save_config_dir):
-		os.makedirs(save_config_dir)
-	shutil.copy('crowd_nav/configs/config.py', save_config_dir)
-	shutil.copy('crowd_nav/configs/__init__.py', save_config_dir)
-	shutil.copy('arguments.py', algo_args.output_dir)
+	# create a directory for saving the logs and weights
+	if rank==0:
+		if algo_args.waffle_pi and os.path.exists(algo_args.output_dir):
+			raise ValueError("Waffle runs require a new output directory")
+		if not os.path.exists(algo_args.output_dir):
+			os.makedirs(algo_args.output_dir)
+		elif not algo_args.overwrite:
+			raise ValueError("output_dir already exists")
+		save_config_dir = os.path.join(algo_args.output_dir,'configs')
+		os.makedirs(save_config_dir,exist_ok=True)
+		shutil.copy('crowd_nav/configs/config.py',save_config_dir)
+		shutil.copy('crowd_nav/configs/__init__.py',save_config_dir)
+		shutil.copy('arguments.py',algo_args.output_dir)
+		import json
+		with open(os.path.join(algo_args.output_dir,'run_args.json'),'w') as handle:
+			json.dump(dict(vars(algo_args),world_size=world),handle,indent=2)
 
 
 	env_config = config = Config()
+	config.args = algo_args
+	config.env.num_processes = algo_args.num_processes
+	config.training.device = str(device)
 
+	# Shared policy initialization; distinct rollout seeds set after DDP broadcasts.
 	torch.manual_seed(algo_args.seed)
 	torch.cuda.manual_seed_all(algo_args.seed)
 	if algo_args.cuda:
@@ -71,7 +94,7 @@ def main():
 
 
 	torch.set_num_threads(algo_args.num_threads)
-	device = torch.device("cuda" if algo_args.cuda else "cpu")
+	seed = algo_args.seed + rank*100003
 
 
 	env_name = algo_args.env_name
@@ -98,7 +121,7 @@ def main():
 		from waffle_pi.replay import make_replay
 		envs = make_replay(config, algo_args, device)
 	else:
-		envs = make_vec_envs(env_name, algo_args.seed, algo_args.num_processes,
+		envs = make_vec_envs(env_name, seed, algo_args.num_processes,
 						 algo_args.gamma, None, device, False, config=env_config, ax=ax, pretext_wrapper=config.env.use_wrapper)
 
 
@@ -133,6 +156,19 @@ def main():
 			if module is not None:
 				module.requires_grad_(False)
 
+	train_model = None
+	if world>1:
+		from torch.nn.parallel import DistributedDataParallel
+		train_model = DistributedDataParallel(actor_critic,device_ids=[device.index] if device.type=='cuda' else None,
+			broadcast_buffers=False,find_unused_parameters=True)
+	act = actor_critic.act
+	get_value = actor_critic.get_value
+	evaluate = actor_critic.evaluate_actions
+	if algo_args.compile_policy:
+		act = torch.compile(act,mode=algo_args.compile_mode)
+		get_value = torch.compile(get_value,mode=algo_args.compile_mode)
+		evaluate = torch.compile(evaluate,mode=algo_args.compile_mode)
+	torch.manual_seed(seed)
 	# create the ppo optimizer
 	agent = ppo.PPO(
 		actor_critic,
@@ -143,10 +179,12 @@ def main():
 		algo_args.entropy_coef,
 		lr=algo_args.lr,
 		eps=algo_args.eps,
-		max_grad_norm=algo_args.max_grad_norm)
+		max_grad_norm=algo_args.max_grad_norm,train_model=train_model,evaluate=evaluate,
+		amp_bf16=algo_args.amp_bf16,fused_adam=algo_args.fused_adam)
 
 
 
+	rollouts.to(device)
 	obs = envs.reset()
 	if isinstance(obs, dict):
 		for key in obs:
@@ -154,7 +192,6 @@ def main():
 	else:
 		rollouts.obs[0].copy_(obs)
 
-	rollouts.to(device)
 
 	episode_rewards = deque(maxlen=100)
 	if algo_args.waffle_replay:
@@ -162,7 +199,9 @@ def main():
 
 	start = time.time()
 	num_updates = int(
-		algo_args.num_env_steps) // algo_args.num_steps // algo_args.num_processes
+		algo_args.num_env_steps) // algo_args.num_steps // (algo_args.num_processes*world)
+	if num_updates<1:
+		raise ValueError('Budget too small for one global rollout')
 
 	# start the training loop
 	for j in range(num_updates):
@@ -178,7 +217,7 @@ def main():
 		# step the environment for a few times
 		for step in range(algo_args.num_steps):
 			# Sample actions
-			with torch.no_grad():
+			with torch.no_grad(), torch.autocast(device_type=device.type,dtype=torch.bfloat16,enabled=algo_args.amp_bf16):
 
 				rollouts_obs = {}
 				for key in rollouts.obs:
@@ -186,7 +225,7 @@ def main():
 				rollouts_hidden_s = {}
 				for key in rollouts.recurrent_hidden_states:
 					rollouts_hidden_s[key] = rollouts.recurrent_hidden_states[key][step]
-				value, action, action_log_prob, recurrent_hidden_states = actor_critic.act(
+				value, action, action_log_prob, recurrent_hidden_states = act(
 					rollouts_obs, rollouts_hidden_s,
 					rollouts.masks[step])
 
@@ -222,37 +261,40 @@ def main():
 		if algo_args.waffle_replay:
 			episode_rewards.extend(torch.stack(completed_rewards)[torch.stack(completed_masks)].cpu().tolist())
 		# store the stepped experience to buffer
-		with torch.no_grad():
+		with torch.no_grad(), torch.autocast(device_type=device.type,dtype=torch.bfloat16,enabled=algo_args.amp_bf16):
 			rollouts_obs = {}
 			for key in rollouts.obs:
 				rollouts_obs[key] = rollouts.obs[key][-1]
 			rollouts_hidden_s = {}
 			for key in rollouts.recurrent_hidden_states:
 				rollouts_hidden_s[key] = rollouts.recurrent_hidden_states[key][-1]
-			next_value = actor_critic.get_value(
+			next_value = get_value(
 				rollouts_obs, rollouts_hidden_s,
 				rollouts.masks[-1]).detach()
 
 		# compute advantage and gradient, and update the network parameters
 		rollouts.compute_returns(next_value, algo_args.use_gae, algo_args.gamma,
-								 algo_args.gae_lambda, algo_args.use_proper_time_limits)
+								 algo_args.gae_lambda, algo_args.use_proper_time_limits,algo_args.gae_backend)
 
 		value_loss, action_loss, dist_entropy = agent.update(rollouts)
 
 		rollouts.after_update()
 
 		# save the model for every interval-th episode or for the last epoch
-		if (j % algo_args.save_interval == 0
-			or j == num_updates - 1) :
+		if rank==0 and (j % algo_args.save_interval == 0
+			or j == num_updates - 1):
 			save_path = os.path.join(algo_args.output_dir, 'checkpoints')
 			if not os.path.exists(save_path):
 				os.mkdir(save_path)
 
 			torch.save(actor_critic.state_dict(), os.path.join(save_path, '%.5i'%j + ".pt"))
 
-		if j % algo_args.log_interval == 0 and len(episode_rewards) > 1:
-			total_num_steps = (j + 1) * algo_args.num_processes * algo_args.num_steps
+		if rank==0 and j % algo_args.log_interval == 0:
+			total_num_steps = (j + 1) * algo_args.num_processes * algo_args.num_steps * world
 			end = time.time()
+			if not episode_rewards:
+				print("Updates {}, global timesteps {}, FPS {} (no local completed episodes)".format(j,total_num_steps,int(total_num_steps/max(end-start,1e-6))))
+				continue
 			print(
 				"Updates {}, num timesteps {}, FPS {} \n Last {} training episodes: mean/median reward "
 				"{:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}\n"
@@ -274,6 +316,8 @@ def main():
 				df.to_csv(os.path.join(algo_args.output_dir, 'progress.csv'), mode='w', header=True, index=False)
 
 	envs.close()
+	if world>1:
+		torch.distributed.destroy_process_group()
 
 
 if __name__ == '__main__':

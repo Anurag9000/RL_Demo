@@ -233,7 +233,7 @@ class st_model(nn.Module):
         if detach_sample:
             mu, sx, sy, corr = mu.detach(), sx.detach(), sy.detach(), corr.detach()
         if sampling:
-            sample_unit = torch.empty(mu.shape).normal_().to(device) # N(0,1) with shape (batch, time, node, 2)
+            sample_unit = torch.empty_like(mu).normal_() # N(0,1) with shape (batch, time, node, 2)
             sample_unit_x, sample_unit_y = sample_unit[:,:,:,0:1], sample_unit[:,:,:,1:2] # (batch, time, node, 1)
             sample_x = sx*sample_unit_x
             sample_y = corr*sy*sample_unit_x+((1.-corr**2.)**0.5)*sy*sample_unit_y
@@ -313,7 +313,7 @@ class st_model(nn.Module):
         loss_mask_per_pedestrian = (loss_mask_rel.sum(2)==loss_mask_rel.shape[2]).float() # (batch, num_peds)
         if self.args.only_observe_full_period:
             attn_mask_single_step = torch.bmm(loss_mask_per_pedestrian.unsqueeze(2), loss_mask_per_pedestrian.unsqueeze(1)) # (batch, num_peds, num_peds)
-            attn_mask = torch.ones(batch_size, self.args.obs_seq_len, num_peds, num_peds).to(device) * attn_mask_single_step.unsqueeze(1) # (batch, obs_seq_len, num_peds, num_peds)
+            attn_mask = torch.ones(batch_size,self.args.obs_seq_len,num_peds,num_peds,device=device) * attn_mask_single_step.unsqueeze(1) # (batch, obs_seq_len, num_peds, num_peds)
         ## observation period: spatial
         if self.args.spatial == 'gumbel_social_transformer':
             # x_embedding = self.node_embedding(x)[0] # (obs_seq_len, node, d_model)
@@ -339,8 +339,8 @@ class st_model(nn.Module):
         else:
             raise RuntimeError("The spatial component is not found.")
         ## observation period: temporal
-        ht = torch.zeros(self.args.lstm_num_layers, batch_size*num_peds, self.args.lstm_hidden_size).to(device)
-        ct = torch.zeros(self.args.lstm_num_layers, batch_size*num_peds, self.args.lstm_hidden_size).to(device) 
+        ht = torch.zeros(self.args.lstm_num_layers,batch_size*num_peds,self.args.lstm_hidden_size,device=device)
+        ct = torch.zeros(self.args.lstm_num_layers,batch_size*num_peds,self.args.lstm_hidden_size,device=device) 
         if self.args.temporal == 'lstm':
             for tt in range(self.args.obs_seq_len):
                 loss_mask_rel_tt = loss_mask_rel[:,:,tt:tt+1].reshape(-1,1) # (batch*num_peds, 1)

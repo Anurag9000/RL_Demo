@@ -105,3 +105,26 @@ of controlled empty-room trials before arming. The explicit
 --enable-requests and --arm options are NOT a deployment recommendation
 until those gates are passed. The original TurtleBot2i adapter stays
 unchanged; this is not a full ROS integration or a person-safe system.
+
+## Opt-in accelerated PPO
+
+Use a separately installed PyTorch 2.x environment and benchmark each option.
+`--compile-policy --masked-gru --gae-backend scan --fused-adam --tf32` enables
+fixed-shape recurrent processing, associative GAE and fused Adam. `--compile-gst`
+compiles the frozen predictor independently. `--compile-mode reduce-overhead`
+requests compiler CUDA graph optimizations where supported (capture is not guaranteed).
+`--amp-bf16` enables autocast for actor-critic rollout and learning on compatible CUDA GPUs;
+Gaussian parameters, PPO ratios and advantages remain FP32. GST stays FP32.
+`--gae-backend triton` requires a compatible Triton CUDA install. Use the reference
+GAE to verify parity first. GPU RNG replaces CPU RNG for GST edge sampling; this
+preserves the distribution but not the original seed-by-seed stochastic sequence.
+
+For DDP, use `torchrun --standalone --nproc_per_node=2 train.py` followed by Waffle
+training options. `--num-processes` is environments PER rank; the transition budget
+is GLOBAL. DDP uses NCCL on CUDA and synchronizes global advantage statistics;
+only rank zero writes checkpoints and logs (episode reward statistics local to rank 0).
+Do not combine DDP and policy compilation in this initial version. Use replay for
+DDP to avoid forking CPU workers after CUDA/NCCL initialization. The first-order
+model, replay reward, frozen GST, and action contract are unchanged.
+These paths require runtime smoke tests and throughput benchmarks; no speedup or
+CUDA graph capture is established merely by enabling the flags.

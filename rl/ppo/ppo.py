@@ -15,7 +15,8 @@ class PPO():
                  lr=None,
                  eps=None,
                  max_grad_norm=None,
-                 use_clipped_value_loss=True):
+                 use_clipped_value_loss=True, train_model=None, evaluate=None,
+                 amp_bf16=False, fused_adam=False):
 
         self.actor_critic = actor_critic
 
@@ -29,14 +30,26 @@ class PPO():
         self.max_grad_norm = max_grad_norm
         self.use_clipped_value_loss = use_clipped_value_loss
 
-        self.optimizer = optim.Adam([p for p in actor_critic.parameters() if p.requires_grad], lr=lr, eps=eps)
+        self.train_model = train_model
+        self.evaluate = evaluate or actor_critic.evaluate_actions
+        self.amp_bf16 = amp_bf16
+        kwargs = {'fused':True} if fused_adam else {}
+        self.optimizer = optim.Adam([p for p in actor_critic.parameters() if p.requires_grad], lr=lr, eps=eps, **kwargs)
 
 
 
     def update(self, rollouts):
         advantages = rollouts.returns[:-1] - rollouts.value_preds[:-1]
-        advantages = (advantages - advantages.mean()) / (
-            advantages.std() + 1e-5)
+        if self.train_model is not None:
+            import torch.distributed as dist
+            stats = torch.stack((advantages.sum(),advantages.square().sum(),
+                                 advantages.new_tensor(advantages.numel())))
+            dist.all_reduce(stats)
+            mean = stats[0]/stats[2]
+            var = (stats[1]-stats[0]*mean)/(stats[2]-1).clamp_min(1)
+            advantages = (advantages-mean)/(var.clamp_min(0).sqrt()+1e-5)
+        else:
+            advantages = (advantages - advantages.mean()) / (advantages.std(unbiased=advantages.numel()>1) + 1e-5)
 
         metrics = torch.zeros(3, device=advantages.device)
         count = 0
@@ -56,9 +69,12 @@ class PPO():
                         adv_targ = sample
 
                 # Reshape to do in a single forward pass for all steps
-                values, action_log_probs, dist_entropy, _ = self.actor_critic.evaluate_actions(
-                    obs_batch, recurrent_hidden_states_batch, masks_batch,
-                    actions_batch)
+                evaluate = self.train_model if self.train_model is not None else self.evaluate
+                # Keep distribution probabilities and PPO ratios in FP32.
+                with torch.autocast(device_type=advantages.device.type, dtype=torch.bfloat16, enabled=self.amp_bf16):
+                    values, action_log_probs, dist_entropy, _ = evaluate(
+                        obs_batch, recurrent_hidden_states_batch, masks_batch, actions_batch)
+                values,action_log_probs,dist_entropy = values.float(),action_log_probs.float(),dist_entropy.float()
 
                 ratio = torch.exp(action_log_probs -
                                   old_action_log_probs_batch)

@@ -33,6 +33,9 @@ class RNNBase(nn.Module):
     # hxs: [1, nenv, human_num, ?]
     # masks: [1, nenv, 1]
     def _forward_gru(self, x, hxs, masks):
+        if getattr(self.args, 'masked_gru', False) and x.size(0) > 1:
+            from waffle_pi.fast_ops import masked_gru
+            return masked_gru(self.gru, x, hxs, masks)
         # for acting model, input shape[0] == hidden state shape[0]
         if x.size(0) == hxs.size(0):
             # use env dimension as batch

@@ -142,7 +142,7 @@ class EdgeAttention_M(nn.Module):
         # if we don't want to mask invalid humans, attn_mask is None and no mask will be applied
         # else apply attn masks
         if attn_mask is not None:
-            attn = attn.masked_fill(attn_mask == 0, -1e9)
+            attn = attn.float().masked_fill(attn_mask == 0, -1e9)
 
         # Softmax
         attn = attn.view(seq_len, nenv, self.agent_num, self.human_num)
@@ -159,7 +159,7 @@ class EdgeAttention_M(nn.Module):
                                                                                          1)  # [seq_len*nenv*6, 5, 256] -> [seq_len*nenv*6, 256, 5]
 
         attn = attn.view(seq_len * nenv * self.agent_num, self.human_num).unsqueeze(-1)  # [seq_len*nenv*6, 5, 1]
-        weighted_value = torch.bmm(h_spatials, attn)  # [seq_len*nenv*6, 256, 1]
+        weighted_value = torch.bmm(h_spatials, attn.to(h_spatials.dtype))  # [seq_len*nenv*6, 256, 1]
 
         # reshape back
         weighted_value = weighted_value.squeeze(-1).view(seq_len, nenv, self.agent_num, h_size)  # [seq_len, 12, 6 or 1, 256]
