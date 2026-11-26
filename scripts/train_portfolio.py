@@ -36,6 +36,12 @@ def run_candidate(a,root,slot,job):
     # Do not inherit a torchrun distributed context into independent trials.
     for key in ('RANK','LOCAL_RANK','WORLD_SIZE','LOCAL_WORLD_SIZE','MASTER_ADDR','MASTER_PORT'):
         env.pop(key,None)
+    env.pop('WAFFLE_RANK_CPUSETS',None)
+    from gazebo_sim.hardware import candidate_cpuset
+    spec=candidate_cpuset(slot)
+    if spec:
+        env['WAFFLE_RANK_CPUSETS']=spec
+    env['CUDA_DEVICE_ORDER']='PCI_BUS_ID'
     env['CUDA_VISIBLE_DEVICES']='' if slot.startswith('cpu:') else slot
     env['OMP_NUM_THREADS']=str(a.threads)
     env['MKL_NUM_THREADS']=str(a.threads)

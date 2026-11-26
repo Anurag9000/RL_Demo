@@ -111,7 +111,7 @@ def common(a,stage,slot):
          '--waffle-dynamics-randomization',str(stage['randomization']),
          '--waffle-detection-delay',str(stage['detection_delay']),
          '--waffle-pose-drift',str(stage['pose_drift']),
-         '--adaptive-kl',str(a.adaptive_kl),'--lr-min',str(a.lr_min),'--lr-max',str(a.lr_max)]
+         '--ppo-stop-kl',str(getattr(a,'ppo_stop_kl',0.)), '--adaptive-kl',str(a.adaptive_kl),'--lr-min',str(a.lr_min),'--lr-max',str(a.lr_max)]
     from gazebo_sim.cli import backend_flags
     cmd+=backend_flags(a)
     if slot.startswith('cpu:'):
@@ -141,7 +141,12 @@ def device_env(a,slot):
     env=os.environ.copy()
     for key in ('RANK','LOCAL_RANK','WORLD_SIZE','LOCAL_WORLD_SIZE','MASTER_ADDR','MASTER_PORT'):
         env.pop(key,None)
-    env.update(CUDA_VISIBLE_DEVICES='' if slot.startswith('cpu:') else slot,
+    env.pop('WAFFLE_RANK_CPUSETS',None)
+    from gazebo_sim.hardware import candidate_cpuset
+    spec=candidate_cpuset(slot)
+    if spec:
+        env['WAFFLE_RANK_CPUSETS']=spec
+    env.update(CUDA_DEVICE_ORDER='PCI_BUS_ID',CUDA_VISIBLE_DEVICES='' if slot.startswith('cpu:') else slot,
                OMP_NUM_THREADS=str(a.threads),MKL_NUM_THREADS=str(a.threads),MPLBACKEND='Agg')
     return env
 
@@ -317,12 +322,13 @@ def main():
     p.add_argument('--entropies',type=float,nargs='+',default=[.001,.01])
     p.add_argument('--clip',type=float,default=.2)
     p.add_argument('--adaptive-kl',type=float,default=.01)
+    p.add_argument('--ppo-stop-kl',type=float,default=0.)
     p.add_argument('--lr-min',type=float,default=1e-6)
     p.add_argument('--lr-max',type=float,default=3e-4)
     p.add_argument('--scheduler-seed',type=int,default=45)
     p.add_argument('--validation-seed',type=int,default=90210)
     p.add_argument('--test-seed',type=int,default=190210)
-    p.add_argument('--eval-episodes',type=int,default=64)
+    p.add_argument('--eval-episodes',type=int,default=128)
     p.add_argument('--test-episodes',type=int,default=200)
     p.add_argument('--promotion-success',type=float,default=0.)
     p.add_argument('--target-success',type=float,default=.85)
@@ -374,6 +380,11 @@ def main():
         a.confidence_selection=True
         if a.compile or a.bf16:
             p.error('Measured reference runs use eager FP32; validate accelerated parity separately')
+    if a.confidence_selection:
+        from statistics import NormalDist
+        z=NormalDist().inv_cdf(.975)
+        if any(z*z/(n+z*z)>a.max_collision+1e-12 or n/(n+z*z)<a.target_success-1e-12 for n in (a.eval_episodes,a.test_episodes)):
+            p.error('Validation/test budget cannot satisfy confidence bounds even with perfect outcomes')
     if a.gpus is None and not a.cpu_workers:
         a.gpus=[0]
     if (a.cpu_workers<0 or (a.cpu_workers and a.gpus) or

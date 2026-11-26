@@ -267,6 +267,13 @@ class GazeboVecEnv(VecEnv):
         self.root=Path(tempfile.mkdtemp(prefix='gazebo-',dir=root))
         self.pool=ThreadPoolExecutor(max_workers=self.n)
         self.reset_pool=ThreadPoolExecutor(max_workers=min(self.n, max(1,int(os.environ.get('WAFFLE_RESET_THREADS',str(self.n))))))
+        self.detector_pool=None
+        if os.environ.get('WAFFLE_BATCH_DETECTOR','0')=='1' and detector_factory is DetectorEngine:
+            from .batched_detector import DetectorPool
+            self.detector_pool=DetectorPool(args.waffle_detector_weights,self.profile['detector'],
+                args.waffle_gazebo_detector_device,int(os.environ.get('WAFFLE_DETECTOR_BATCH','8')),
+                float(os.environ.get('WAFFLE_DETECTOR_WAIT_MS','.5')))
+            detector_factory=lambda *a:self.detector_pool.stream(a[-1])
         self.worlds=[PerWorld(config,args,self.device,self.root,i,worker_factory,detector_factory) for i in range(self.n)]
         def box(shape,dtype=np.float32):
             return spaces.Box(-np.inf,np.inf,shape=shape,dtype=dtype)
@@ -275,6 +282,8 @@ class GazeboVecEnv(VecEnv):
                       detected_human_num=box((1,))))
         super().__init__(self.n,obs,box((2,)))
         self.actions=None
+        self.pinned={}
+        self.pinned_enabled=self.device.type=='cuda' and os.environ.get('WAFFLE_PINNED_OBS','0')=='1'
 
     def _case(self,i):
         if self.args.waffle_eval_episodes:
@@ -286,7 +295,25 @@ class GazeboVecEnv(VecEnv):
         return self.cases[index]
 
     def _tensor(self,rows):
-        return {k:torch.as_tensor(np.stack([r[k] for r in rows]),device=self.device) for k in rows[0]}
+        if not self.pinned_enabled:
+            return {k:torch.as_tensor(np.stack([r[k] for r in rows]),device=self.device) for k in rows[0]}
+        # Reused pinned buffers: wait for prior DMA before overwriting.
+        # All copies and consumers use the current CUDA stream.
+        out={}
+        for k in rows[0]:
+            arr=np.stack([r[k] for r in rows])
+            if k not in self.pinned:
+                host=torch.empty(arr.shape,dtype=torch.from_numpy(arr).dtype,pin_memory=True)
+                self.pinned[k]=(host,None)
+            host,event=self.pinned[k]
+            if event is not None:
+                event.synchronize()
+            np.copyto(host.numpy(),arr)
+            out[k]=host.to(self.device,non_blocking=True)
+            event=torch.cuda.Event()
+            event.record(torch.cuda.current_stream(self.device))
+            self.pinned[k]=(host,event)
+        return out
 
     def reset(self):
         cases=[self._case(i) for i in range(self.n)]
@@ -358,10 +385,18 @@ class GazeboVecEnv(VecEnv):
         self.reset_pool.shutdown(wait=True)
         for w in self.worlds:
             w.close()
+        if self.detector_pool is not None:
+            self.detector_pool.close()
+        for _,event in self.pinned.values():
+            if event is not None:
+                event.synchronize()
 
     def performance_report(self):
         # Worker times overlap; totals are CPU/world-seconds, not wall time.
-        return {k:sum(w.timing[k] for w in self.worlds) for k in self.worlds[0].timing}
+        result={k:sum(w.timing[k] for w in self.worlds) for k in self.worlds[0].timing}
+        if self.detector_pool is not None:
+            result['detector_pool']=dict(self.detector_pool.stats)
+        return result
 
     def talk2Env_async(self,data):
         pass

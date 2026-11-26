@@ -69,3 +69,18 @@ def worker_command(cmd,env,index):
             raise RuntimeError('numactl required for preferred memory policy')
         prefix+=['numactl','--preferred='+str(node)]
     return prefix+cmd
+
+
+def candidate_cpuset(slot):
+    # Explicit device-to-cpuset map supplied by the hardware planner.
+    import json
+    spec=os.environ.get('WAFFLE_CANDIDATE_CPUSETS')
+    if not spec:
+        return None
+    mapping=json.loads(spec)
+    if slot not in mapping:
+        raise ValueError('No CPU allocation for candidate '+slot)
+    cpus=parse_cpus(mapping[slot])
+    if not cpus<=os.sched_getaffinity(0):
+        raise ValueError('Candidate CPU allocation outside job cpuset')
+    return format_cpus(cpus)

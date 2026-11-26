@@ -9,7 +9,8 @@ class DetectorEngine:
             import torch
             if not torch.cuda.is_available():
                 raise RuntimeError('Requested CUDA detector but CUDA unavailable')
-            torch.cuda.set_device(torch.device(device).index or 0)
+            index=torch.device(device).index
+            torch.cuda.set_device(torch.cuda.current_device() if index is None else index)
         self.model=model
         self.confidence,self.max_range=confidence,max_range
         self.geometry=geometry

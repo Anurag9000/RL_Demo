@@ -283,7 +283,12 @@ def get_args(argv=None):
     parser.add_argument('--waffle-gazebo-model-sha',default=None,help=argparse.SUPPRESS)
     parser.add_argument('--waffle-gazebo-worker-sha',default=None,help=argparse.SUPPRESS)
     parser.add_argument('--waffle-safety-sha',default=None,help=argparse.SUPPRESS)
+    parser.add_argument('--ddp-bucket-view',action='store_true')
+    parser.add_argument('--ddp-bucket-mb',type=float,default=25.)
+    parser.add_argument('--ppo-stop-kl',type=float,default=0.,help='Optional global approximate KL early termination after each PPO epoch')
     args = parser.parse_args(argv)
+    if not 0<args.ddp_bucket_mb<=1024 or not 0<=args.ppo_stop_kl<1:
+        parser.error('Invalid DDP bucket or PPO KL stop limit')
     if args.waffle_gazebo:
         if not args.waffle_pi or not args.waffle_native_action:
             parser.error('Gazebo requires --waffle-pi --waffle-native-action')

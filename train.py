@@ -49,9 +49,9 @@ def main():
 		raise ValueError("BF16 requires a supported CUDA device")
 	if algo_args.fused_adam and device.type!='cuda':
 		raise ValueError("Fused Adam requires CUDA")
-	if algo_args.tf32 and device.type=='cuda':
-		torch.backends.cuda.matmul.allow_tf32=True
-		torch.backends.cudnn.allow_tf32=True
+	if device.type=='cuda':
+		torch.backends.cuda.matmul.allow_tf32=bool(algo_args.tf32)
+		torch.backends.cudnn.allow_tf32=bool(algo_args.tf32)
 	if (algo_args.cuda_graph_actor or algo_args.cuda_graph_gst or algo_args.cuda_graph_ppo) and device.type!='cuda':
 		raise ValueError("Explicit CUDA graphs require a CUDA training device")
 	if algo_args.cuda_graph_actor and (algo_args.compile_policy or world>1):
@@ -203,7 +203,8 @@ def main():
 		if world>1:
 			from torch.nn.parallel import DistributedDataParallel
 			train_model = DistributedDataParallel(actor_critic,device_ids=[device.index] if device.type=='cuda' else None,
-				broadcast_buffers=False,find_unused_parameters=True)
+				broadcast_buffers=False,find_unused_parameters=True,
+				gradient_as_bucket_view=algo_args.ddp_bucket_view,bucket_cap_mb=algo_args.ddp_bucket_mb)
 		act = actor_critic.act
 		get_value = actor_critic.get_value
 		evaluate = actor_critic.evaluate_actions
@@ -230,7 +231,7 @@ def main():
 			eps=algo_args.eps,
 			max_grad_norm=algo_args.max_grad_norm,train_model=train_model,evaluate=evaluate,
 			amp_bf16=algo_args.amp_bf16,fused_adam=algo_args.fused_adam,cuda_graph_ppo=algo_args.cuda_graph_ppo,
-			adaptive_kl=algo_args.adaptive_kl,lr_min=algo_args.lr_min,lr_max=algo_args.lr_max)
+			stop_kl=algo_args.ppo_stop_kl,adaptive_kl=algo_args.adaptive_kl,lr_min=algo_args.lr_min,lr_max=algo_args.lr_max)
 
 
 
@@ -413,6 +414,10 @@ def main():
 				note='Excludes checkpoint/logging time and warmup; phase sync overhead included',
 				device=str(device),torch_version=torch.__version__,world_size=world,
 				gpu_name=torch.cuda.get_device_name(device) if device.type=='cuda' else None,
+				trainable_parameters=sum(p.numel() for p in actor_critic.parameters() if p.requires_grad),
+				gradient_bytes=sum(p.numel()*p.element_size() for p in actor_critic.parameters() if p.requires_grad),
+				cpu_affinity=sorted(os.sched_getaffinity(0)),
+				gazebo_worker_totals=envs.venv.performance_report() if algo_args.waffle_gazebo else None,
 				peak_allocated_bytes=torch.cuda.max_memory_allocated(device) if device.type=='cuda' else None,
 				peak_reserved_bytes=torch.cuda.max_memory_reserved(device) if device.type=='cuda' else None)
 			print(result)

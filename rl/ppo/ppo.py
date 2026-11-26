@@ -16,7 +16,7 @@ class PPO():
                  eps=None,
                  max_grad_norm=None,
                  use_clipped_value_loss=True, train_model=None, evaluate=None,
-                 amp_bf16=False, fused_adam=False,cuda_graph_ppo=False, adaptive_kl=0., lr_min=1e-6, lr_max=3e-4):
+                 amp_bf16=False, fused_adam=False,cuda_graph_ppo=False, adaptive_kl=0., lr_min=1e-6, lr_max=3e-4,stop_kl=0.):
 
         self.actor_critic = actor_critic
 
@@ -35,6 +35,8 @@ class PPO():
         self.amp_bf16 = amp_bf16
         self.adaptive_kl,self.lr_min,self.lr_max=adaptive_kl,lr_min,lr_max
         self.last_kl=0.
+        self.stop_kl=stop_kl
+        self.last_epochs=0
         kwargs = {'fused':True} if fused_adam else {}
         self.params=[p for p in actor_critic.parameters() if p.requires_grad]
         if cuda_graph_ppo:
@@ -89,7 +91,10 @@ class PPO():
         count = 0
 
 
+        self.last_epochs=0
         for e in range(self.ppo_epoch):
+            before_kl=metrics[3].clone() if self.stop_kl else None
+            before_count=count
             if self.actor_critic.is_recurrent:
                 data_generator = rollouts.recurrent_generator(
                     advantages, self.num_mini_batch)
@@ -108,6 +113,14 @@ class PPO():
                     self.optimizer.step()
                 metrics += stats
                 count += 1
+            self.last_epochs=e+1
+            if self.stop_kl and count>before_count:
+                epoch_kl=(metrics[3]-before_kl)/(count-before_count)
+                if self.train_model is not None:
+                    dist.all_reduce(epoch_kl)
+                    epoch_kl/=dist.get_world_size()
+                if float(epoch_kl)>self.stop_kl:
+                    break
         if count == 0:
             raise RuntimeError("No PPO minibatches")
         result=metrics/count

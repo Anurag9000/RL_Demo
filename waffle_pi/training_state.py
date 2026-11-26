@@ -88,6 +88,8 @@ def load(path,model,agent,args,device):
         raise ValueError('Detector checkpoint changed without explicit curriculum transition')
     if old.get('waffle_fidelity_sha')!=args.waffle_fidelity_sha:
         raise ValueError('Fidelity profile changed during continuation')
+    if old.get('ppo_stop_kl',0.)!=getattr(args,'ppo_stop_kl',0.):
+        raise ValueError('Continuation KL epoch threshold mismatch')
     for key in FIXED:
         if old.get(key)!=getattr(args,key):
             raise ValueError('Continuation learner mismatch: '+key)

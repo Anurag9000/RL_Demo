@@ -4,6 +4,8 @@ import torch
 
 
 def setup(args):
+    from gazebo_sim.hardware import bind_rank
+    bind_rank()
     world=int(os.environ.get('WORLD_SIZE','1'))
     rank=int(os.environ.get('RANK','0'))
     local=int(os.environ.get('LOCAL_RANK','0'))

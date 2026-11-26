@@ -12,6 +12,12 @@ def run(args):
     from rl.networks.model import Policy
     if not args.waffle_pi or args.waffle_eval_episodes < 1:
         raise ValueError("Use --waffle-pi and a positive evaluation count")
+    from gazebo_sim.hardware import bind_rank
+    bind_rank()
+    torch.set_num_threads(args.num_threads)
+    if args.cuda:
+        torch.backends.cuda.matmul.allow_tf32=bool(args.tf32)
+        torch.backends.cudnn.allow_tf32=bool(args.tf32)
     config=Config(args)
     tensor=bool(args.waffle_live_orca or args.waffle_replay or args.waffle_gazebo)
     if args.waffle_live_orca and args.waffle_replay:
