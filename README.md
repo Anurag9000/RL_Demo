@@ -21,9 +21,9 @@ We demonstrate that our method enables the robot to achieve good navigation perf
 <img src="/figures/open.png" width="450" />
 </p>
 
-## Waffle Pi experimental adaptation
+## TurtleBot3 Waffle Pi — Gazebo-first adaptation
 
-For tensor-only training, calibration, smoke tests and ROS shadow-mode instructions, see [docs/WAFFLE_PI.md](docs/WAFFLE_PI.md). The original setup below is retained for the legacy reference simulator.
+The primary new training path is the official ROBOTIS Waffle Pi Gazebo Harmonic model, native differential-drive wheel control, real simulated LDS scans, shared DR-SPAAM/tracking, and the original frozen GST + recurrent attention PPO. See **[Gazebo setup, qualification, training and deployment guide](docs/GAZEBO_TRAINING.md)** before running. Native simulator validation and physical calibration are required; no real-world performance result is claimed. The earlier lightweight tensor backends remain opt-in experimental baselines ([WAFFLE_PI.md](docs/WAFFLE_PI.md)). The original paper setup below is retained for reproducibility.
 
 ## Setup
 1. In a conda environment or virtual environment with Python 3.x, install the required python package

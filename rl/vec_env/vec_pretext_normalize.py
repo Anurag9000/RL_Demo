@@ -150,6 +150,10 @@ class VecPretextNormalize(VecEnvWrapper):
             self.mask_buffer.append(O['visible_masks'].unsqueeze(-1).clone())
             in_traj = torch.stack(list(self.traj_buffer)).permute(1,2,0,3)[:,:,::self.pred_interval]
             in_mask = torch.stack(list(self.mask_buffer)).permute(1,2,0,3).float()[:,:,::self.pred_interval]
+        if 'gst_history' in O:
+            in_traj,in_mask=O['gst_history'],O['gst_history_mask']
+            if in_traj.shape[2]!=self.args.obs_seq_len:
+                raise ValueError('Detector history does not match GST checkpoint')
         out_traj, out_mask = self.predict(in_traj,in_mask)
         out_mask = out_mask.bool()
 

@@ -18,6 +18,31 @@ def wheel_targets(pose, action, limits):
     return target
 
 
+def native_targets(action,limits):
+    v=action[...,0].tanh().clamp_min(0.)*limits.max_linear
+    w=action[...,1].tanh()*limits.max_angular
+    target=torch.stack((v-limits.wheel_separation*w/2,
+                        v+limits.wheel_separation*w/2),-1)/limits.wheel_radius
+    return target/(target.abs().amax(-1,keepdim=True)/limits.max_wheel).clamp_min(1.)
+
+
+def approximate_gate(pose,wheels,target,humans,arena,limits,params):
+    # Ideal 360-degree raw range: nearest disk surface or square boundary.
+    # Real blind spots, stale scans, nonfinite returns and coverage are not
+    # modeled here. The physical gate remains independent and authoritative.
+    origin=pose[:,:2]-params['sensor_offset']*torch.stack(
+        (pose[:,2].cos(),pose[:,2].sin()),-1)
+    ranges=(torch.linalg.vector_norm(humans[...,:2]-origin[:,None,:],dim=-1)-humans[...,2]).amin(-1)
+    wall=arena-origin.abs().amax(-1)
+    nearest=torch.minimum(ranges,wall)
+    v=(target.sum(-1)*limits.wheel_radius/2).clamp_min(0.)
+    measured=(wheels.sum(-1)*limits.wheel_radius/2).abs()
+    speed=torch.maximum(v,measured)
+    clearance=params['footprint']+params['sensor_offset']+params['margin']+speed*params['latency']+speed.square()/(2*params['braking'])
+    blocked=nearest<=clearance
+    return torch.where(blocked[:,None],0.,target),blocked
+
+
 def advance(pose,wheels,target,limits,dt,tau_scale=None,accel_scale=None):
     if tau_scale is None:
         alpha = 1. - math.exp(-dt/limits.motor_tau)

@@ -15,6 +15,7 @@ from rclpy.qos import qos_profile_sensor_data
 from geometry_msgs.msg import Pose,PoseArray
 from sensor_msgs.msg import LaserScan
 from .scan_geometry import ScanGeometry
+from .detector_engine import DetectorEngine
 
 
 class DetectorNode(Node):
@@ -23,21 +24,21 @@ class DetectorNode(Node):
         self.args=args
         self.geometry=self.detector=None
         self.last_stamp=None
+        self.profile=None
+        if args.fidelity_profile:
+            import hashlib
+            from .fidelity import read_profile
+            self.profile,_=read_profile(args.fidelity_profile)
+            d=self.profile['detector']
+            if hashlib.sha256(Path(args.weights).read_bytes()).hexdigest()!=d['weights_sha256'] or any(getattr(args,k)!=d[k] for k in ('model','stride','confidence','max_range')):
+                raise ValueError('Detector runtime differs from fidelity profile')
         self.pub=self.create_publisher(PoseArray,args.output_topic,qos_profile_sensor_data)
         self.create_subscription(LaserScan,args.input_topic,self.on_scan,qos_profile_sensor_data)
         self.get_logger().info('Detector is perception-only; waiting for LaserScan')
 
     def initialize(self,geometry):
-        from dr_spaam.detector import Detector
-        if self.args.device.startswith('cuda'):
-            import torch
-            if not torch.cuda.is_available():
-                raise RuntimeError("Requested CUDA detector but CUDA unavailable")
-            torch.cuda.set_device(torch.device(self.args.device).index or 0)
-        self.detector=Detector(self.args.weights,model=self.args.model,
-                               gpu=self.args.device.startswith('cuda'),
-                               stride=self.args.stride,panoramic_scan=geometry.panoramic)
-        self.detector.set_laser_fov(geometry.fov_deg)
+        self.detector=DetectorEngine(self.args.weights,self.args.model,self.args.device,
+                                     self.args.stride,self.args.confidence,self.args.max_range,geometry)
         self.geometry=geometry
 
     def on_scan(self,msg):
@@ -49,8 +50,13 @@ class DetectorNode(Node):
                 raise ValueError("Stale or invalid scan header")
             if self.last_stamp is not None and stamp<=self.last_stamp:
                 raise ValueError("Repeated or out-of-order scan")
+            if self.profile is not None:
+                laser=self.profile['laser']
+                if (len(msg.ranges)!=laser['rays'] or not math.isclose(msg.range_min,laser['range_min'],abs_tol=1e-5)
+                        or not math.isclose(msg.range_max,laser['range_max'],abs_tol=1e-5)
+                        or abs(math.remainder(msg.angle_min-laser['angle_min'],2*math.pi))>1e-4):
+                    raise ValueError('Live LDS metadata differs from fidelity profile')
             geometry=ScanGeometry.from_metadata(len(msg.ranges),msg.angle_min,msg.angle_max,msg.angle_increment)
-            scan=geometry.preprocess(msg.ranges,msg.range_min,msg.range_max)
             if self.detector is None:
                 self.initialize(geometry)
             elif geometry!=self.geometry:
@@ -59,15 +65,9 @@ class DetectorNode(Node):
             if (self.last_stamp is not None and stamp-self.last_stamp>self.args.memory_gap
                     and self.args.model=='DR-SPAAM'):
                 # The pinned upstream model uses a spatial attention memory.
-                self.detector._model.gate.reset()
+                self.detector.reset()
             self.last_stamp=stamp
-            xy,conf,_=self.detector(scan)
-            xy=np.asarray(xy,dtype=np.float32).reshape(-1,2)
-            conf=np.asarray(conf,dtype=np.float32).reshape(-1)
-            if len(xy)!=len(conf) or not np.isfinite(xy).all() or not np.isfinite(conf).all():
-                raise ValueError("Invalid detector output")
-            xy=geometry.detections_to_ros(xy[conf>=self.args.confidence])
-            xy=xy[np.linalg.norm(xy,axis=-1)<=self.args.max_range]
+            xy=self.detector.detect(msg.ranges,msg.range_min,msg.range_max)
             if (time.monotonic()-start>self.args.deadline
                     or self.get_clock().now().nanoseconds/1e9-stamp>self.args.max_age):
                 raise RuntimeError("Detector inference exceeded freshness/deadline")
@@ -87,6 +87,7 @@ class DetectorNode(Node):
 def main():
     p=argparse.ArgumentParser()
     p.add_argument('--weights',required=True)
+    p.add_argument('--fidelity-profile')
     p.add_argument('--model',choices=['DR-SPAAM','DROW3'],default='DR-SPAAM')
     p.add_argument('--device',default='cpu')
     p.add_argument('--input-topic',default='/scan')

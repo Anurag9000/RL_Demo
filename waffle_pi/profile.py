@@ -8,6 +8,78 @@ def configure(config, args):
     if args.env_name != 'CrowdSimPredRealGST-v0' or not args.sort_humans:
         raise ValueError("Waffle profile requires GST and sorted observations")
     config.waffle_pi = True
+    if args.waffle_native_action:
+        from .native import COMMISSION_V,COMMISSION_W,safety_parameters
+        if not (args.waffle_live_orca or args.waffle_replay or args.waffle_gazebo):
+            raise ValueError("Native action training requires a Waffle simulator")
+        args.waffle_speed=min(args.waffle_speed,COMMISSION_V)
+        args.waffle_angular_speed=min(args.waffle_angular_speed,COMMISSION_W)
+        config.waffle_safety=safety_parameters(args.waffle_safety_calibration,args.waffle_radius)
+    elif args.waffle_init_cartesian or args.waffle_safety_calibration:
+        raise ValueError("Native transfer and simulated gate require native action mode")
+    if args.waffle_scene_split!='train' and not args.waffle_eval_episodes:
+        raise ValueError('Validation/test scenarios may not be used for training')
+    if args.waffle_require_measured and args.waffle_eval_episodes and args.waffle_scene_split=='train':
+        raise ValueError('Measured evaluation requires a held-out scene split')
+    if args.waffle_detector_weights and not args.waffle_fidelity_profile:
+        raise ValueError('Neural perception requires fidelity mode')
+    if args.waffle_require_measured and not args.waffle_fidelity_profile:
+        raise ValueError('Measured fidelity profile required')
+    if args.waffle_fidelity_profile:
+        from .fidelity import read_profile
+        if not (args.waffle_native_action and (args.waffle_live_orca or args.waffle_gazebo)):
+            raise ValueError('Fidelity mode requires native Gazebo or live tensor ORCA')
+        if args.waffle_calibration or args.waffle_actuation_delay or args.waffle_compile_dynamics:
+            raise ValueError('Fidelity profile owns actuator timing; do not combine with legacy calibration, delay or dynamics compilation')
+        if args.waffle_require_measured and not args.waffle_safety_calibration:
+            raise ValueError('Separate measured safety record required')
+        config.fidelity,args.waffle_fidelity_sha=read_profile(args.waffle_fidelity_profile,args.waffle_require_measured)
+        if args.waffle_require_measured and not config.fidelity.get('scene'):
+            raise ValueError('Measured mode requires explicit surveyed scenarios')
+        if args.waffle_require_measured and not args.waffle_gazebo and (not config.fidelity.get('detector_bins') or config.fidelity['detector_bins'][-1]['range_m'][1]<args.waffle_sensor_range):
+            raise ValueError('Measured detector bins must cover policy range')
+        if args.waffle_sensor_range>config.fidelity['laser']['range_max']:
+            raise ValueError('Policy sensor range exceeds physical laser range')
+        if args.waffle_detector_weights:
+            import hashlib
+            from pathlib import Path
+            settings=config.fidelity.get('detector')
+            if not settings:
+                raise ValueError('Neural perception requires detector settings in fidelity profile')
+            args.waffle_detector_sha=hashlib.sha256(Path(args.waffle_detector_weights).read_bytes()).hexdigest()
+            if settings.get('weights_sha256')!=args.waffle_detector_sha:
+                raise ValueError('Detector checkpoint hash mismatch')
+            if args.waffle_noise or args.waffle_dropout or args.waffle_detection_delay:
+                raise ValueError('Neural detector replaces statistical detector noise/dropout/delay')
+            if not args.waffle_gazebo and args.num_processes>16:
+                raise ValueError('Neural scan backend initially supports at most 16 independent detector streams')
+        if args.waffle_gazebo:
+            from gazebo_sim.world import validate_gazebo_profile,source_digest
+            from pathlib import Path
+            import hashlib
+            g=validate_gazebo_profile(config.fidelity,args.waffle_require_measured)
+            args.waffle_gazebo_model_sha=source_digest(args.waffle_gazebo_model)
+            worker=Path(args.waffle_gazebo_worker)
+            import os
+            if not worker.is_file() or not os.access(worker,os.X_OK) or not math.isfinite(args.waffle_gazebo_timeout) or args.waffle_gazebo_timeout<=0:
+                raise ValueError('Build native Gazebo worker and set positive timeout')
+            args.waffle_gazebo_worker_sha=hashlib.sha256(worker.read_bytes()).hexdigest()
+            if args.waffle_safety_calibration:
+                args.waffle_safety_sha=hashlib.sha256(Path(args.waffle_safety_calibration).read_bytes()).hexdigest()
+            if args.waffle_require_measured and g.get('safety_sha256')!=args.waffle_safety_sha:
+                raise ValueError('Safety calibration hash differs from measured profile')
+            if args.waffle_require_measured and (g['model_sha256']!=args.waffle_gazebo_model_sha or g['worker_sha256']!=args.waffle_gazebo_worker_sha):
+                raise ValueError('Measured Gazebo model or worker hash mismatch')
+            if args.waffle_dynamics_randomization or args.waffle_pose_drift or args.waffle_occlusion:
+                raise ValueError('Gazebo owns physics and occlusion; put measured variations in its profile, not tensor flags')
+            if args.waffle_require_measured and (args.amp_bf16 or args.tf32 or args.compile_policy or args.compile_gst or args.cuda_graph_actor or args.cuda_graph_gst or args.cuda_graph_ppo):
+                raise ValueError('Measured reference uses eager FP32; accelerated experiments require separate parity qualification')
+        if config.fidelity.get('reward'):
+            from .quality import validate_reward
+            validate_reward(config.fidelity['reward'])
+        laser=config.fidelity['laser']
+        if math.hypot(laser['offset_x'],laser['offset_y'])>config.waffle_safety['sensor_offset']+1e-6:
+            raise ValueError('Safety sensor offset must cover measured extrinsics')
     if args.waffle_calibration:
         with open(args.waffle_calibration) as handle:
             calibration=json.load(handle)
@@ -24,7 +96,8 @@ def configure(config, args):
     if (args.waffle_actuation_delay or args.waffle_dynamics_randomization) and not (args.waffle_live_orca or args.waffle_replay):
         raise ValueError("Actuation delay and dynamics randomization require tensor simulator")
     config.waffle_limits = DriveLimits(max_linear=args.waffle_speed,
-        max_wheel=args.waffle_speed/0.033, motor_tau=args.waffle_motor_tau,
+        max_angular=args.waffle_angular_speed,
+        max_wheel=0.26/0.033 if args.waffle_native_action else args.waffle_speed/0.033, motor_tau=args.waffle_motor_tau,
         wheel_accel=args.waffle_wheel_accel)
     config.action_space.kinematics = 'unicycle'
     config.robot.v_pref = args.waffle_speed

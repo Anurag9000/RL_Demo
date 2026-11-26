@@ -248,7 +248,51 @@ def get_args(argv=None):
     parser.add_argument('--gst-adjacent-mask', action='store_true',
                         help='Use training-consistent adjacent visibility masks for GST displacements')
     parser.add_argument('--cuda-graph-ppo', action='store_true')
+    parser.add_argument('--waffle-native-action', action='store_true',
+                        help='Train latent forward speed and yaw rate instead of Cartesian velocity')
+    parser.add_argument('--waffle-init-cartesian', action='store_true',
+                        help='Transfer compatible checkpoint layers and reset native action head')
+    parser.add_argument('--waffle-angular-speed', type=float, default=1.82)
+    parser.add_argument('--waffle-safety-calibration', default=None,
+                        help='Measured safety gate JSON; simulation uses its clearance parameters')
+    parser.add_argument('--save-training-state', action='store_true')
+    parser.add_argument('--continue-state', default=None,
+                        help='Restore full learner state; num-env-steps is an additional budget')
+    parser.add_argument('--retune-optimizer', action='store_true',
+                        help='On continuation explicitly use CLI lr, entropy and clip settings')
+    parser.add_argument('--curriculum-transition', action='store_true',
+                        help='Permit changed crowd capacity and scenario settings at a fresh rollout boundary')
+    parser.add_argument('--fresh-continuation-rng', action='store_true',
+                        help='Use a fresh random stream instead of restored learner RNG')
+    parser.add_argument('--adaptive-kl', type=float, default=0.,
+                        help='Target approximate KL for bounded learning-rate adaptation; zero disables')
+    parser.add_argument('--lr-min', type=float, default=1e-6)
+    parser.add_argument('--lr-max', type=float, default=3e-4)
+    parser.add_argument('--waffle-fidelity-profile', default=None)
+    parser.add_argument('--waffle-require-measured', action='store_true')
+    parser.add_argument('--waffle-fidelity-sha', default=None, help=argparse.SUPPRESS)
+    parser.add_argument('--waffle-scene-split', choices=['train','validation','test'],default='train')
+    parser.add_argument('--waffle-detector-weights',default=None,help='Actual DR-SPAAM inference on simulated scans')
+    parser.add_argument('--waffle-detector-sha',default=None,help=argparse.SUPPRESS)
+    parser.add_argument('--waffle-gazebo',action='store_true',help='Actual Gazebo Harmonic Waffle Pi, no tensor fallback')
+    parser.add_argument('--waffle-gazebo-model',default=None,help='Installed official Jazzy Waffle Pi model.sdf')
+    parser.add_argument('--waffle-gazebo-worker',default='build/gazebo/waffle_gazebo_worker')
+    parser.add_argument('--waffle-gazebo-logs',default='gazebo_runs/workers')
+    parser.add_argument('--waffle-gazebo-timeout',type=float,default=120.)
+    parser.add_argument('--waffle-gazebo-detector-device',default='cpu')
+    parser.add_argument('--waffle-gazebo-model-sha',default=None,help=argparse.SUPPRESS)
+    parser.add_argument('--waffle-gazebo-worker-sha',default=None,help=argparse.SUPPRESS)
+    parser.add_argument('--waffle-safety-sha',default=None,help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
+    if args.waffle_gazebo:
+        if not args.waffle_pi or not args.waffle_native_action:
+            parser.error('Gazebo requires --waffle-pi --waffle-native-action')
+        if args.waffle_live_orca or args.waffle_replay or args.waffle_build_pool:
+            parser.error('Choose exactly one simulator backend')
+        if not args.waffle_gazebo_model or not args.waffle_fidelity_profile or not args.waffle_detector_weights:
+            parser.error('Gazebo requires official model, explicit fidelity profile and detector weights')
+        if args.use_proper_time_limits:
+            parser.error('Gazebo uses finite task-horizon termination, not truncation bootstrap')
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()
 

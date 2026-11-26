@@ -1,7 +1,7 @@
 name: Waffle tensor validation
 on:
   push:
-    branches: [waffle-pi-sim2real]
+    branches: [main, waffle-pi-sim2real]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -37,13 +37,47 @@ jobs:
         run: |
           python train.py --waffle-pi --waffle-live-orca --no-cuda --resume --fast-training --masked-gru --gae-backend scan --num-processes 4 --num-mini-batch 2 --num-steps 4 --seq_length 4 --ppo-epoch 1 --num-env-steps 16 --waffle-timeout 20 --waffle-pool-count 32 --load-path trained_models/GST_predictor_rand/checkpoints/41665.pt --output_dir /tmp/waffle-ci-train
           test -s /tmp/waffle-ci-train/checkpoints/00000.pt
+      - name: Native Waffle action training smoke
+        run: |
+          python train.py --waffle-pi --waffle-native-action --waffle-init-cartesian --waffle-live-orca --no-cuda --resume --fast-training --masked-gru --gae-backend scan --num-processes 4 --num-mini-batch 2 --num-steps 4 --seq_length 4 --ppo-epoch 1 --num-env-steps 16 --waffle-pool-count 32 --load-path trained_models/GST_predictor_rand/checkpoints/41665.pt --output_dir /tmp/waffle-native-ci
+          test -s /tmp/waffle-native-ci/checkpoints/00000.pt
+      - name: Substep fidelity native PPO smoke
+        run: |
+          python train.py --waffle-pi --waffle-native-action --waffle-init-cartesian --waffle-live-orca --waffle-fidelity-profile configs/waffle_fidelity.example.json --no-cuda --resume --fast-training --masked-gru --gae-backend scan --num-processes 4 --num-mini-batch 2 --num-steps 4 --seq_length 4 --ppo-epoch 1 --num-env-steps 16 --waffle-pool-count 32 --load-path trained_models/GST_predictor_rand/checkpoints/41665.pt --output_dir /tmp/waffle-fidelity-ci
+          test -s /tmp/waffle-fidelity-ci/checkpoints/00000.pt
+      - name: Adaptive PPO curriculum and PBT smoke
+        run: |
+          python -m scripts.train_adaptive --backend tensor --output /tmp/waffle-adaptive-ci --cpu-workers 2 --mode pbt --envs 2 --minibatches 1 --steps 4 --epochs 1 --pool-count 32 --rung-updates 1 1 1 --humans 2 --seeds 11 29 --lrs 0.00004 --entropies 0.001 --episode-timeout 45 --eval-episodes 2 --test-episodes 2 --max-collision 1 --max-gate 1 --target-success 1 --target-streak 10
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('/tmp/waffle-adaptive-ci')
+          history=json.loads((root/'history.json').read_text())
+          assert len(history)==3
+          assert [x['stage'] for x in history]==[0,1,1]
+          assert all(r['status']=='ok' for h in history for r in h['rows']), history
+          assert any(r['retune'] for r in history[1]['rows'])
+          assert all(r['lineage_transitions']==24 for r in history[-1]['rows'])
+          assert json.loads((root/'result.json').read_text())['test']['episodes']==2
+          PY
       - name: Two-rank Gloo PPO smoke
         run: |
-          torchrun --standalone --nproc_per_node=2 train.py --waffle-pi --waffle-live-orca --no-cuda --resume --fast-training --masked-gru --gae-backend scan --num-processes 2 --num-mini-batch 1 --num-steps 4 --seq_length 4 --ppo-epoch 1 --num-env-steps 16 --waffle-timeout 20 --waffle-pool-count 32 --load-path trained_models/GST_predictor_rand/checkpoints/41665.pt --output_dir /tmp/waffle-ci-ddp
+          torchrun --standalone --nproc_per_node=2 train.py --waffle-pi --waffle-live-orca --no-cuda --resume --fast-training --masked-gru --gae-backend scan --num-processes 2 --num-mini-batch 1 --num-steps 4 --seq_length 4 --ppo-epoch 1 --num-env-steps 16 --waffle-timeout 20 --waffle-pool-count 32 --load-path trained_models/GST_predictor_rand/checkpoints/41665.pt --output_dir /tmp/waffle-ci-ddp --save-training-state
           test -s /tmp/waffle-ci-ddp/checkpoints/00000.pt
+          torchrun --standalone --nproc_per_node=2 train.py --waffle-pi --waffle-live-orca --no-cuda --fast-training --masked-gru --gae-backend scan --num-processes 2 --num-mini-batch 1 --num-steps 4 --seq_length 4 --ppo-epoch 1 --num-env-steps 16 --waffle-timeout 20 --waffle-pool-count 32 --continue-state /tmp/waffle-ci-ddp/training_state.pt --output_dir /tmp/waffle-ci-ddp-continued
+          python -c "import json; assert json.load(open('/tmp/waffle-ci-ddp-continued/training_summary.json'))['transitions']==32"
+      - name: Adaptive smoke failure diagnostics
+        if: failure()
+        run: |
+          if test -d /tmp/waffle-adaptive-ci; then
+            find /tmp/waffle-adaptive-ci -name '*.log' -print -exec tail -n 50 {} \;
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: waffle-cpu-smoke-results
-          path: smoke-results.json
+          path: |
+            smoke-results.json
+            /tmp/waffle-adaptive-ci/history.json
+            /tmp/waffle-adaptive-ci/result.json
           if-no-files-found: ignore

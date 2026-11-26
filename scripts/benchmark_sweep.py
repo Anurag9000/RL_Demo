@@ -25,8 +25,13 @@ def main():
     p=argparse.ArgumentParser()
     p.add_argument('--output',required=True)
     p.add_argument('--device',choices=['cpu','cuda'],default='cuda')
-    p.add_argument('--backend',choices=['live','replay'],default='live')
+    p.add_argument('--backend',choices=['gazebo','live','replay'],default='gazebo')
     p.add_argument('--pool')
+    from gazebo_sim.cli import add_flags
+    add_flags(p)
+    p.add_argument('--fidelity-profile')
+    p.add_argument('--detector-weights')
+    p.add_argument('--safety-calibration')
     p.add_argument('--checkpoint',default='trained_models/GST_predictor_rand/checkpoints/41665.pt')
     p.add_argument('--envs',type=int,nargs='+',default=[16,64,256])
     p.add_argument('--minibatches',type=int,nargs='+',default=[4,16])
@@ -50,7 +55,13 @@ def main():
             '--load-path',a.checkpoint,'--num-steps',str(a.steps),'--seq_length',str(a.steps),
             '--ppo-epoch',str(a.epochs),'--waffle-humans',str(a.humans),
             '--benchmark-updates',str(a.updates),'--benchmark-warmup',str(a.warmup)]
-    if a.backend=='live':
+    if a.backend=='gazebo':
+        from gazebo_sim.cli import backend_flags
+        common+=backend_flags(a)+['--waffle-native-action','--waffle-init-cartesian',
+                    '--waffle-fidelity-profile',a.fidelity_profile,'--waffle-detector-weights',a.detector_weights]
+        if a.safety_calibration:
+            common+=['--waffle-safety-calibration',a.safety_calibration]
+    elif a.backend=='live':
         common+=['--waffle-live-orca']
     else:
         common+=['--waffle-replay',a.pool]
@@ -65,7 +76,8 @@ def main():
                 for rep in range(a.repeat):
                     label=f'{preset}_n{n}_m{m}_r{rep}'
                     out=root/label
-                    cmd=common+PRESETS[preset]+['--seed',str(a.seed+rep),
+                    optim=[x for x in PRESETS[preset] if a.backend!='gazebo' or x!='--waffle-compile-dynamics']
+                    cmd=common+optim+['--seed',str(a.seed+rep),
                         '--num-processes',str(n),'--num-mini-batch',str(m),
                         '--output_dir',str(out)]
                     row=dict(preset=preset,envs=n,minibatches=m,repeat=rep,

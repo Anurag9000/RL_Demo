@@ -1,3 +1,5 @@
+> **Gazebo-first project direction:** See [GAZEBO_TRAINING.md](GAZEBO_TRAINING.md) for the primary official Waffle Pi Gazebo backend, native build, qualification, calibrated profile and training/evaluation. This document retains the earlier tensor and ROS baseline commands. For old adaptive/portfolio commands below add `--backend tensor` explicitly; benchmark commands must select `--backend live` or `--backend replay`. Do not use tensor throughput results as Gazebo results.
+
 # Waffle Pi experimental adaptation
 
 Opt-in simulation path preserving the Cartesian checkpoint action semantics.
@@ -348,3 +350,229 @@ setup costs are included in per-run wall time, excluded from steady-state
 phase timings. Use `--repeat 3` to measure variability. `--device cpu` supports
 eager and scan presets. Select by held-out success/collision rates and time to
 reward after throughput tuning; different batch sizes change PPO learning.
+
+
+## Native Waffle policy (primary retraining route)
+
+The original Cartesian adapter is now a baseline only. Select
+`--waffle-native-action --waffle-live-orca` to train a forward-speed/yaw-rate
+policy under the physical commissioning gate's 0.10 m/s and 0.50 rad/s caps.
+The two Gaussian latent coordinates map to v=vmax*max(0,tanh(z0)) and
+w=wmax*tanh(z1). Store the latent sample and its original log probability
+in PPO, not the transformed or gated command. The model retains all shapes.
+`--waffle-init-cartesian --resume` loads the original randomized checkpoint and
+resets its action mean and log standard deviation; GST is frozen, all policy
+feature layers train unless --freeze-human-attention is explicitly used.
+
+```sh
+python train.py --waffle-pi --waffle-native-action --waffle-init-cartesian --waffle-live-orca --resume --fast-training --masked-gru --gae-backend scan --load-path trained_models/GST_predictor_rand/checkpoints/41665.pt --output_dir trained_models/native_waffle --num-processes 256 --num-mini-batch 16 --num-env-steps 1000000
+```
+
+The native backend models all-around stopping clearance from ideal disk and
+square-wall ranges before the motor transition, with measured-speed clearance
+and command delay. `--waffle-safety-calibration` accepts the same parameter
+schema as the physical gate. Defaults are unmeasured conservative examples.
+Actual scan coverage, stale messages, moving human stopping guarantees, and
+arbitrary laboratory maps are not modeled; the real gate remains unchanged.
+Use `--waffle-calibration` for measured actuator parameters separately.
+For native evaluation use --waffle-native-action, the trained checkpoint,
+and matching profile flags, WITHOUT --waffle-init-cartesian. The checkpoint's
+adjacent run_args.json is required to prevent silent action reinterpretation.
+For ROS shadow inference pass --waffle-native-action and matching --speed,
+--angular-speed, --radius, --sensor-range, --humans and GST mask settings.
+Keep the run_args.json with checkpoints. Do not arm the robot based on
+simulation results. A native-policy smoke test is added to CI.
+
+
+## Concurrent independent PPO portfolio
+
+Use a single batched learner on one GPU initially. For several GPUs, run
+independent candidates (not shared gradients), each with its own frozen GST,
+native simulator, PPO optimizer and seed. The scheduler runs at most one
+candidate per listed GPU, starts another as soon as a slot frees up, then
+evaluates every successful candidate on a common held-out seed.
+
+```sh
+python -m scripts.train_portfolio --backend tensor --output experiments/native_portfolio --gpus 0 1 --envs 256 --minibatches 16 --seeds 11 29 47 --lrs 0.00004 0.0001 --entropies 0 0.01 --transitions 1000000 --eval-episodes 100
+```
+
+On CPU use --cpu-workers 2 --envs 16 --minibatches 4; no CUDA needed.
+Set the actual number of GPUs explicitly; this command assumes two GPUs.
+The portfolio saves per-candidate training and evaluation logs, checkpoints,
+results.json, and ranking.json. It rejects candidates exceeding the selected
+simulated collision fraction before ranking by success and other metrics.
+These are independent full-budget trials, not population-based training,
+early stopping, or successive halving. A common selection seed is not a
+final untouched test set; evaluate the chosen policy with further independent
+seeds and the calibrated physical profile. No policy is automatically deployed.
+
+
+## Adaptive convergence and resumable PPO
+
+For new native Waffle training, use `--save-training-state` to save
+`training_state.pt` atomically beside the ordinary inference checkpoints.
+The state includes model weights, every Adam moment/step and parameter group,
+learner update/transition counters, effective LR/entropy/clip, and Python,
+NumPy, PyTorch CPU and active CUDA RNG. To continue, use a NEW output directory
+and `--continue-state PATH` instead of `--resume --waffle-init-cartesian`.
+The transition budget is additional, not cumulative. This preserves full
+optimizer state but deliberately resets environment/recurrent histories and
+collects new on-policy experience. It is not bitwise simulator continuation.
+`--curriculum-transition` allows scenario/crowd-size changes while preserving
+hardware action/observation contract; trainable parameter names must match.
+`--retune-optimizer` explicitly changes LR/entropy/clip without dropping moments.
+`--fresh-continuation-rng` reseeds learner sampling for independent descendants.
+State continuation supports single-rank and synchronous DDP Waffle learners.
+DDP saves rank-zero shared model/Adam and gathers per-rank learner RNG states;
+changing world size requires --fresh-continuation-rng. Captured optimizer graphs
+and linear LR decay are not supported in continuation mode.
+
+`--adaptive-kl 0.01` enables per-update bounded LR feedback using the mean
+approximate KL over PPO minibatches (globally reduced in DDP). If KL is above
+1.5 times target, divide LR by 1.5; below target/1.5, multiply by 1.5; clamp to
+`--lr-min` and `--lr-max`. This is feedback, not a hard KL bound or a guarantee
+of convergence. It cannot change a captured optimizer graph's LR.
+
+### Adaptive concurrent portfolio
+
+```sh
+python -m scripts.train_adaptive --backend tensor --output experiments/adaptive_native \
+  --gpus 0 1 --mode hybrid --envs 256 --minibatches 16 \
+  --rung-updates 8 24 64 128 256 --seeds 11 29 --lrs 0.00004 0.0001 \
+  --entropies 0.001 0.01 --humans 4 --eval-episodes 64 --test-episodes 200
+```
+
+Specify only GPUs actually available; CPU alternative `--cpu-workers 2`.
+Each rung trains for the listed ADDITIONAL PPO updates per candidate, with
+one worker per device. All candidates in a rung use the same stage and
+validation seed. The default curriculum increases crowds 1 -> 2 -> 4 (for
+four target humans), gradually introduces configured noise/dropout/motor
+randomization, and enables configured occlusion/reactive humans/delay at
+the final stage. Hardware limits and safety margins never loosen during
+curriculum. `--promotion-success` optionally gates advancement on the best
+candidate's validation success; if it never reaches the final stage, no
+winner is reported. Noise defaults are zero until explicitly configured;
+use actual calibrated parameters. `--no-curriculum` starts at target difficulty.
+
+Modes: `halving` retains ceil(population/eta) each rung; `pbt` retains the
+population and replaces lower-ranked learners with elite model+Adam state,
+mutating LR/entropy/clip; `hybrid` combines both with a minimum survivor
+population. Every descendant uses fresh training seeds and fresh rollouts.
+No averaging weights, off-policy replay, or simulator-state copying.
+Each process restart may incur compilation/initialization cost; benchmark
+before enabling --compile for short rungs.
+
+Early stopping is based only on final-stage validation. A candidate must
+meet success, collision and intervention thresholds for --target-streak
+consecutive rungs (streak resets when exploited or difficulty changes).
+Optional --patience stops after stagnant final-stage validation rounds.
+A separate test seed is used once on the selected candidate. The result
+records whether both repeated validation and final test met targets;
+a ranked checkpoint is not automatically a converged or safe policy.
+`history.json` records all rungs, commands, lineage, pruned candidates,
+effective hyperparameters and metrics; `result.json` records the selection,
+stopping reason and test. Never use these simulator thresholds as physical
+safety certification. Default thresholds are illustrative and may be
+unattainable with the uncalibrated stopping model.
+
+The prior train_portfolio script remains a full-budget baseline. This
+adaptive scheduler targets reduced time-to-target, not demonstrated speedups.
+
+Evaluation allocates a fixed number of episodes to each vectorized world and
+counts only active quota transitions for safety intervention fractions. This
+avoids preferentially scoring the fastest-terminating episodes in a batch.
+The validation seed is deliberately reused for selection, so repeated successes
+are not statistically independent; the separate test seed is not used for training.
+
+## Surveyed scene and shared scan snapshots
+
+Fidelity profiles can include a `scene` object containing `arena_half_extent_m`,
+`rectangles_m` (closed axis-aligned [xmin,ymin,xmax,ymax] solids) and `scenarios`.
+Each scenario has `robot_start` [x,y,heading], `robot_goal` [x,y], and `humans`
+with `start`, `radius`, `speed`, and cyclic `waypoints` (at least two, equal
+length across people and cases). All positions are in the same surveyed frame.
+Include explicit scenarios for every curriculum crowd size. Start and waypoint
+clearances and route segments are checked. Human static contact is conservatively
+rejected, not solved with obstacle ORCA; narrow passages may produce deadlocks.
+This is not yet general occupancy-map import or a complete pedestrian model.
+Measured mode requires a scene and calibrated detector bins covering sensor range.
+The simulated detector consumes the same cached noisy scan hit eligibility and
+acquisition-time pedestrian geometry as the simulated safety gate, instead of a
+second ideal scan. It remains a statistical detector, not actual neural inference.
+The policy runner requires the identical fidelity-profile hash for fidelity-trained
+checkpoints and a measured profile in request mode. The physical safety gate
+remains independent. Never infer physical safety from a profile hash.
+
+## Fidelity evaluation and objective
+
+Measured profiles must label scenarios with unique `id` and `split` values
+(train/validation/test), with all three splits represented at each curriculum
+crowd size. Training refuses held-out splits. Evaluation visits cases cyclically
+in a seeded order and requires enough episodes to cover all measured cases.
+The adaptive scheduler uses distinct validation/test scene splits and Wilson
+95% success lower/collision upper bounds for measured candidate selection.
+These intervals are descriptive: repeated scenarios and correlated episodes
+violate independence, so do not treat them as guarantees of real-world risk.
+Final test cases should be collected separately (not slight variants of training).
+Metrics now include per-episode path length, travel time, rotation, minimum
+human/wall clearance, intrusion duration, gate fraction and straight-line SPL
+(not obstacle-aware shortest path). The fifth percentile clearance and gate
+intervention episode rate are reported. A scene's sampled start-goal Euclidean
+baseline is not a substitute for measured social navigation performance.
+A fidelity profile may optionally define a `reward` object with finite positive
+or nonnegative coefficients: progress, time, turn, intervention, human_clearance,
+wall_clearance, human_margin, wall_margin. This switches to additive progress,
+time, squared yaw rate, gate intervention and clearance costs, preserving the
+terminal rewards and frozen GST future penalty. Coefficients require explicit
+experimental justification; do not assume one arbitrary reward is optimal.
+Measured adaptive runs disallow BF16 and compilation presets initially; compare
+numerical and policy-quality parity before using acceleration. Select by measured
+performance, not throughput or a single point estimate of success.
+
+## Actual detector-in-the-loop fidelity path
+
+`--waffle-detector-weights PATH` (adaptive scheduler: `--detector-weights PATH`)
+uses the same DR-SPAAM inference and scan geometry engine as ROS 2.
+The fidelity profile needs a `detector` object with model (DR-SPAAM or DROW3),
+stride, confidence, max_range and weights_sha256. Install the upstream detector
+and trusted checkpoint separately. One recurrent detector instance per world,
+up to 16 worlds initially; use fewer if memory is limited. The actual noisy
+scan stream is passed to the detector on scan acquisition. The policy-time
+tracker and GST timestamp history use deployment implementations. Failed or
+duplicate detections and tracker overflow block movement in simulation, even
+when delayed commands remain queued. Statistical detector noise/dropout/delay
+flags must be zero in this mode. It is slow and intended for validation and
+fine-tuning rather than throughput records; PPO does not retrain DR-SPAAM.
+
+The shared association path has a fixture test; actual upstream inference,
+weights and ROS execution require external installation. Disk scans lack leg
+shapes, reflectivity, scan distortion and actual measurement jitter. Detector
+compute/network latency and recurrent policy resets at fault ticks still differ
+from ROS. This path cannot establish exact sensor or physical parity alone.
+
+## Independent measured system identification
+
+`python -m waffle_pi.identify KIND fit.csv holdout.csv result.json` fits model
+parameters using one recording and reports error on a different recording.
+The CLI rejects identical file content and records SHA-256 of both datasets.
+Kinds and CSV columns:
+
+- wheel: t_s,target_l_rad_s,target_r_rad_s,wheel_l_rad_s,wheel_r_rad_s;
+  `--dt 0.05` must match actual uniform sampling. Fit per-wheel response,
+  acceleration, braking, gain, deadband and shared sampled command delay.
+- geometry: wheel_l_rad_s,wheel_r_rad_s,truth_v_m_s,truth_w_rad_s. Truth must
+  be independent external motion measurement, not computed from ROS odometry.
+- laser: truth_range_m,measured_range_m,valid. Use known visible in-range targets;
+  invalid measured values should be represented by a finite placeholder and
+  valid=0. Fit range bias, standard deviation and missed-return fraction.
+- detector: distance_m,detected,truth_x,truth_y,det_x,det_y. Use independently
+  labeled visible pedestrians in laser axes, with matched detection flag.
+  Include sufficient samples per range bin, and count false positives separately.
+
+Merge the reported motor/laser/detector_bins fields into a reviewed fidelity
+profile only after inspecting holdout residuals, excitation, operating range
+and measurement uncertainty. Retain fit and holdout logs and report hashes.
+The identifier never declares a profile measured or certifies a safety record.
+Wheel response alone cannot identify tyre slip, load or battery dynamics; use
+separate runs across actual floor and battery conditions. Do not generate
+unsupervised commands from calibration code. All scripts operate offline.
