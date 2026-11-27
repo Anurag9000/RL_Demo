@@ -10,8 +10,8 @@
     "gpu_snapshot_utc": "2026-11-27T01:46:15Z",
     "host_available_gib_approx": 407,
     "last_checkpoint": "experiments/waffle_safe_clearance_gpu1_ppo_seed436_v5_250k_b16_20261127/checkpoints/00000.pt",
-    "last_health_poll_utc": "2026-11-27T13:56:44Z",
-    "next_health_check_not_before_utc": "2026-11-27T14:06:44Z",
+    "last_health_poll_utc": "2026-11-27T14:07:14Z",
+    "next_health_check_not_before_utc": "2026-11-27T14:17:14Z",
     "output": "experiments/waffle_safe_clearance_gpu1_ppo_seed436_v5_250k_b16_20261127",
     "physical_gpu": 1,
     "pid": 4076346,
@@ -720,26 +720,65 @@
     "timeout_rate": 0.1111111111111111,
     "unique_scenarios": 9
   },
-  "evaluation_seed437_update240_validation500": {
-    "checkpoint": "experiments/waffle_safe_clearance_gpu0_ppo_seed437_v5_recovery1_20261127/checkpoints/00240.pt",
-    "checkpoint_sha256": "9fba327ce8ca22e198306abe817de390742957b3be3fcea9cfd032d0e28ce914",
+  "evaluation_seed436_update200_validation500": {
+    "archive_when_complete": true,
+    "checkpoint": "experiments/waffle_safe_clearance_gpu1_ppo_seed436_v5_recovery1_20261127/checkpoints/00200.pt",
+    "checkpoint_sha256": "9c7967c1087239af6643484cae3bc2f524c9e12a47e07cfe9f2d63e340f5b380",
     "episode_count": 500,
-    "gpu1_free_mib": 88306,
-    "gpu1_total_mib": 95830,
-    "last_observed_utc": "2026-11-27T13:56:44Z",
+    "evaluation_seed": 900436,
+    "last_observed_utc": "2026-11-27T14:07:14Z",
     "launcher": "mission/scripts/eval_v5_bank_checkpoint.sh",
-    "launcher_fixed_issue": "I-022: embedded Python sys.argv closing bracket corrected after initial parse failure; failed log preserved",
-    "metrics_json_present": false,
-    "output": "evaluations/seed437_update240_validation500_20261127",
-    "physical_gpu": 1,
-    "pid": 3386551,
-    "python_pid": 3386575,
-    "selection_status": "diagnostic; no final checkpoint lock",
+    "physical_gpu": 0,
+    "pid": 3888193,
     "split": "validation",
     "status": "running_validation_diagnostic",
     "test_split_used": false,
-    "trace_count_observed": 447,
-    "training_seed": 437
+    "trace_count_observed": 42,
+    "training_seed": 436
+  },
+  "evaluation_seed437_update240_validation500": {
+    "archive": "mission/records/RL_Demo-20261126T161914Z/evaluations/seed437_update240_validation500_20261127",
+    "checkpoint": "experiments/waffle_safe_clearance_gpu0_ppo_seed437_v5_recovery1_20261127/checkpoints/00240.pt",
+    "checkpoint_sha256": "9fba327ce8ca22e198306abe817de390742957b3be3fcea9cfd032d0e28ce914",
+    "counted_transitions": 3196,
+    "elapsed_s": 1648.9132264833897,
+    "episode_count": 500,
+    "episode_steps": 3196,
+    "evaluation_seed": 900437,
+    "exit_code": 0,
+    "gate_episode_fraction": 0.948,
+    "gate_intervention_fraction": 0.5869837296620776,
+    "intrusion_steps": 2098,
+    "mean_paper_itr": 0.8119450638391095,
+    "mean_path_m": 0.0013800457336599558,
+    "mean_reward": -25.13882374572754,
+    "mean_time_s": 1.598,
+    "offline_trace_verification": {
+      "episode_steps": 3196,
+      "intrusion_steps": 2098,
+      "mean_episode_itr": 0.8119450638391095,
+      "passed": true,
+      "pooled_sd_m": 0.7792914554644907
+    },
+    "outcomes": {
+      "collision": 500,
+      "success": 0,
+      "timeout": 0
+    },
+    "pooled_paper_sd_m": 0.7792914554644907,
+    "profile_sha256": "84557d48d8b92f589cc62e2b719510ccfdaa83a27c970d42659d4cf94b494e7",
+    "split": "validation",
+    "status": "completed_negative_validation_diagnostic",
+    "success_ci95": [
+      4.336808689942018e-19,
+      0.007624340461552241
+    ],
+    "test_split_used": false,
+    "trace_count": 500,
+    "trace_unique_scenarios": 500,
+    "training_seed": 437,
+    "transitions_per_sec": 2.212366267314157,
+    "validation_lock_created": false
   },
   "evaluations": [
     {
@@ -937,10 +976,10 @@
     "status": "no GPU allocated to rl-group4; direct device and broker check at 2026-11-26T17:50:14Z"
   },
   "gpu_snapshot": {
-    "gpu0_free_mib": 92723,
-    "gpu1_free_mib": 88306,
+    "gpu0_free_mib": 90478,
+    "gpu1_free_mib": 90660,
     "gpu_total_mib_each": 95830,
-    "timestamp_utc": "2026-11-27T13:56:44Z"
+    "timestamp_utc": "2026-11-27T14:07:14Z"
   },
   "h100_benchmarks_20261127": {
     "allocator_cap_fraction": 0.2,
@@ -978,12 +1017,12 @@
     "stage-logged server-only smoke script under mission/scripts exercised actual Gazebo, DR-SPAAM, GST, policy action, and one physics transition",
     "offline paper-metric traces enforce policy-interval timestamps, aligned timelines, and complete future-horizon coverage"
   ],
-  "last_health_poll_utc": "2026-11-27T13:56:44Z",
+  "last_health_poll_utc": "2026-11-27T14:07:14Z",
   "last_inventory_utc": "2026-11-26T17:30:35Z",
-  "last_sync_check_utc": "2026-11-27T13:55:00Z",
-  "ledger_archive_commit": "26fb25f1b8ece543c2624c152eb6d6d54e20a0cf",
+  "last_sync_check_utc": "2026-11-27T14:06:00Z",
+  "ledger_archive_commit": "f3ca4f77d46abfeaacd2d4adb031f40b5c14ec50",
   "mission_id": "20261126T161914Z",
-  "next_health_poll_not_before_utc": "2026-11-27T14:06:44Z",
+  "next_health_poll_not_before_utc": "2026-11-27T14:17:14Z",
   "numa_nodes": 2,
   "paper_metric_audit": {
     "historical_test_sd": "invalid; no saved per-timestep trajectory to recompute",
@@ -1021,7 +1060,7 @@
     "timestamp_validation": "policy_dt spacing, robot/human timeline alignment, complete future horizon coverage; malformed timestamp regression"
   },
   "phase": "seed436_seed437_v5_recovery_training_running_slow; real validation trace smoke passed; mission_incomplete",
-  "qualification_result": "not qualified: 4/6 success, one collision, one timeout; profile is illustrative",
+  "qualification_result": "not qualified: seed437 update240 0/500 successes on complete validation bank; 500 collisions; independent offline metrics pass; seed436 comparison pending",
   "qualification_started": true,
   "ram_available_gib_approx": 397,
   "recovery_jobs": {
@@ -1382,6 +1421,48 @@
     },
     "swap_used_mib": 468,
     "timestamp_utc": "2026-11-27T13:56:44Z"
+  },
+  "recovery_snapshot_20261127T140714Z": {
+    "gpu0_free_mib": 90478,
+    "gpu1_free_mib": 90660,
+    "gpu_total_mib_each": 95830,
+    "host_available_gib_approx": 458,
+    "jobs_preserved": [
+      2042361,
+      2042362,
+      3888193
+    ],
+    "next_health_poll_not_before_utc": "2026-11-27T14:17:14Z",
+    "retry_records_seed436": 5,
+    "retry_records_seed437": 2,
+    "root_free_tib_approx": 7.0,
+    "seed436": {
+      "cumulative_log_visible_transitions_with_continuation_offset": 113520,
+      "durable_update": 200,
+      "durable_utc": "2026-11-27T13:33:40Z",
+      "gpu": 1,
+      "pid": 2042361,
+      "recovery_segment_transitions": 103200,
+      "reported_fps": 3,
+      "rolling_reward_mean": -25.184910507202147,
+      "update": 214,
+      "worlds": 16
+    },
+    "seed436_validation_trace_count": 42,
+    "seed437": {
+      "cumulative_log_visible_transitions_with_continuation_offset": 80880,
+      "durable_update": 260,
+      "durable_utc": "2026-11-27T13:41:57Z",
+      "gpu": 0,
+      "pid": 2042362,
+      "recovery_segment_transitions": 66240,
+      "reported_fps": 2,
+      "rolling_reward_mean": -25.174899368286134,
+      "update": 275,
+      "worlds": 8
+    },
+    "swap_used_mib": 468,
+    "timestamp_utc": "2026-11-27T14:07:14Z"
   },
   "repo_branch": "codex/waffle-gazebo-mission-20261126",
   "repo_clean_at_last_sync_check": true,

@@ -90,3 +90,6 @@ Corrected validation run remains alive and has produced 61/500 trace files; no f
 
 
 | I-023 | Open, legacy evaluation path only | `rl/evaluation.py` uses `elif isinstance(infos[0]['info'] is None):`; Python `isinstance` requires a second argument, so an environment that reaches this branch raises `TypeError` instead of accepting the null info case. | Static finding only; active Waffle bank evaluator does not call this legacy loop. Fix and add a focused test before relying on the legacy evaluator for an environment that can return `info=None`. No source was changed during this audit. |
+
+
+| I-024 | Open, candidate fails v5 validation (2026-11-27T14:07Z) | Seed437 durable update240 failed the complete 500-case validation bank: 0/500 successes, 500 collisions, near-zero mean path (0.00138m) and mean duration 1.598s. Independent trace scoring passed, so this is a policy/behavior failure rather than a metric mismatch. | Do not select or lock this checkpoint. Inspect action output, reward/learning signal, safety interventions and simulator contacts before candidate selection. Keep held-out test sealed. Complete seed436 comparison and preserve all traces in the archive. |

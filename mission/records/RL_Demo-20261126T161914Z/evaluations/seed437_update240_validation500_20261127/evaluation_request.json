@@ -1,0 +1,11 @@
+{
+  "checkpoint": "/home/rl-group4/waffle_runs/RL_Demo-20261126T161914Z/experiments/waffle_safe_clearance_gpu0_ppo_seed437_v5_recovery1_20261127/checkpoints/00240.pt",
+  "checkpoint_sha256": "9fba327ce8ca22e198306abe817de390742957b3be3fcea9cfd032d0e28ce914",
+  "training_manifest": "/home/rl-group4/waffle_runs/RL_Demo-20261126T161914Z/experiments/waffle_safe_clearance_gpu0_ppo_seed437_v5_recovery1_20261127/run_args.json",
+  "training_seed": 437,
+  "split": "validation",
+  "episode_count": 500,
+  "profile": "/home/rl-group4/waffle_runs/RL_Demo-20261126T161914Z/mission/profiles/waffle_gazebo_illustrative_safe_clearance_diverse_v5_500x3.json",
+  "profile_status": "illustrative",
+  "validation_lock": null
+}
