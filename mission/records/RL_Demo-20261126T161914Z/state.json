@@ -2109,8 +2109,8 @@
     "learner_changed": false,
     "artifacts": "evaluations/seed436_update280_contactprobe1_validation_20261127"
   },
-  "last_health_check_utc": "2026-11-27T18:31:26Z",
-  "next_health_check_not_before_utc": "2026-11-27T18:41:26Z",
+  "last_health_check_utc": "2026-11-27T18:43:07Z",
+  "next_health_check_not_before_utc": "2026-11-27T18:53:07Z",
   "validation_seed436_update280_contact_source100_20261127": {
     "status": "completed_validation_contact_source_diagnostic",
     "started_utc": "2026-11-27T17:57:07Z",
@@ -2304,7 +2304,13 @@
     "test_split_used": false,
     "paper_regime_match": false,
     "regime_mismatch_reason": "The v5 generator uses 4 humans, one fixed two-waypoint cycle per person, per-case heterogeneous radius 0.26-0.32m and speed 0.55-0.95m/s, with no within-episode goal changes. It does not match either paper regime exactly.",
-    "allowed_interpretation": "Exploratory nominal Gazebo training and throughput baseline; not a final paper-regime candidate."
+    "allowed_interpretation": "Exploratory nominal Gazebo training and throughput baseline; not a final paper-regime candidate.",
+    "latest_update": 2,
+    "latest_transitions": 2880,
+    "latest_policy_checkpoint": "00000.pt",
+    "latest_training_state_expected_at_update": 10,
+    "latest_progress_reward": -25.60084447860718,
+    "observed_wall_clock_transitions_per_sec": 4.17
   },
   "paper_metric_and_case_schedule_audit_20261127": {
     "source_files": [
@@ -2346,5 +2352,54 @@
     "current_regime_match": "neither exactly; per-person traits vary but goal intent does not change within episode",
     "v5_mission_note": "stale: text calls it v3 although profile filename and generated scenarios are v5",
     "test_split_used": false
+  },
+  "training_health_20261127T184307Z": {
+    "timestamp_utc": "2026-11-27T18:43:07Z",
+    "seed437": {
+      "pid": 2042362,
+      "alive": true,
+      "update": 439,
+      "transitions": 105600,
+      "latest_checkpoint": "00420.pt",
+      "latest_progress_reward": -25.690636806488037,
+      "gpu": 0
+    },
+    "seed436": {
+      "pid": 2042361,
+      "alive": true,
+      "update": 341,
+      "transitions": 164160,
+      "latest_checkpoint": "00340.pt",
+      "latest_progress_reward": -25.66967893600464,
+      "gpu": 1
+    },
+    "pretrained_seed438": {
+      "pid": 3235199,
+      "alive": true,
+      "update": 2,
+      "transitions": 2880,
+      "latest_policy_checkpoint": "00000.pt",
+      "training_state_due_update": 10,
+      "latest_progress_reward": -25.60084447860718,
+      "gpu": 0,
+      "worlds": 32
+    },
+    "gpu_free_mib": [
+      86632,
+      90660
+    ],
+    "gpu_utilization_percent": [
+      0,
+      90
+    ],
+    "other_visible_compute_pid_444191": {
+      "gpu": 1,
+      "used_mib": 564,
+      "untouched": true
+    },
+    "memory_available_gib": 448,
+    "root_disk_free_tb": 7.0,
+    "pretrained_wall_clock_observed_tps": 4.17,
+    "interpretation": "all three learners advancing; pretrained line is only exploratory because v5 human regimes are not paper matched"
   }
 }
