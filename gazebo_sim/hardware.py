@@ -46,6 +46,37 @@ def bind_rank():
 
 
 def worker_command(cmd,env,index):
+    image=env.get('WAFFLE_GAZEBO_PODMAN_IMAGE')
+    if image:
+        if len(cmd)!=3:
+            raise ValueError('Podman Gazebo worker requires binary, world and config paths')
+        if env.get('WAFFLE_SCAN_TRANSPORT','json')!='json':
+            raise ValueError('Podman Gazebo worker currently requires JSON scan transport')
+        podman=shutil.which('podman')
+        if not podman:
+            raise RuntimeError('WAFFLE_GAZEBO_PODMAN_IMAGE requires rootless podman')
+        world,config=Path(cmd[1]).resolve(),Path(cmd[2]).resolve()
+        if not world.is_file() or not config.is_file():
+            raise FileNotFoundError('Podman Gazebo worker world/config is missing')
+        world_dir=world.parent
+        resources=[]
+        for raw in env.get('GZ_SIM_RESOURCE_PATH','').split(os.pathsep):
+            if raw:
+                resource=Path(raw).resolve()
+                if not resource.exists():
+                    raise FileNotFoundError('Gazebo resource path is missing: '+str(resource))
+                if resource!=world_dir and resource not in resources:
+                    resources.append(resource)
+        wrapped=[podman,'run','--rm','--interactive','--network','host',
+                 '--volume',f'{world_dir}:{world_dir}:rw']
+        wrapped.extend(arg for resource in resources
+                       for arg in ('--volume',f'{resource}:{resource}:ro'))
+        for key in ('GZ_PARTITION','GZ_SIM_RESOURCE_PATH','ROS_LOCALHOST_ONLY','OMP_NUM_THREADS'):
+            if env.get(key) is not None:
+                wrapped.extend(('--env',key+'='+env[key]))
+        worker=env.get('WAFFLE_GAZEBO_CONTAINER_WORKER','/usr/local/bin/waffle_gazebo_worker')
+        wrapped.extend(('--entrypoint',worker,image,str(world),str(config)))
+        cmd=wrapped
     if env.get('WAFFLE_WORKER_AFFINITY','0')!='1':
         return cmd
     allowed=os.sched_getaffinity(0)

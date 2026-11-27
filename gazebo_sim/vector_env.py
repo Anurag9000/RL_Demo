@@ -27,6 +27,7 @@ from waffle_pi.orca_tensor import orca_velocity
 from waffle_pi.fidelity import disk_clearance
 from waffle_pi.scene import scene_tensors,constrain_human_step
 from waffle_pi.quality import navigation_reward
+from waffle_pi.paper_metrics import intrusion_metrics
 from .world import validate_gazebo_profile,source_digest,write_case
 from .worker import Worker
 
@@ -89,6 +90,8 @@ class PerWorld:
         if self.state['contact'] or not self.state['floor_contact_observed']:
             raise RuntimeError('Initial Gazebo contact qualification failed')
         self.ingest(self.state)
+        self.truth_robot_trace=[np.asarray(self.state['truth'][:2],dtype=np.float64)]
+        self.truth_human_trace=[np.asarray(self.state['humans'],dtype=np.float64).copy()]
         if self.scan is None:
             raise RuntimeError('No initial laser observation')
         obs=self.observe()
@@ -182,6 +185,49 @@ class PerWorld:
         blocked=not fresh or (cmd==(0.,0.) and (v!=0. or w!=0.))
         return cmd,blocked
 
+    def _advance_ground_truth_humans(self, future_policy_steps):
+        """Continue the simulated crowd after termination to complete paper lookahead."""
+        for _ in range(future_policy_steps):
+            pos=np.asarray(self.state['humans'],np.float32)
+            vel=np.asarray(self.human_velocity,np.float32)
+            idx=np.arange(self.n)
+            goal=self.routes[idx,self.route]
+            reached=np.linalg.norm(goal-pos,axis=-1)<.15
+            self.route=(self.route+reached)%self.routes.shape[1]
+            goal=self.routes[idx,self.route]
+            p,v,r,s,g=[torch.as_tensor(x,device=self.device,dtype=torch.float32) for x in
+                       (pos[None],vel[None],self.radius[None],self.speed[None],goal[None])]
+            preferred=(g-p)/(g-p).norm(dim=-1,keepdim=True).clamp_min(.1)*s[...,None]
+            if self.args.waffle_reactive_humans:
+                robot=torch.as_tensor([[self.state['truth'][:2]]],device=self.device,dtype=torch.float32)
+                twist=self.state['twist'][0]
+                theta=self.state['truth'][2]
+                rv=torch.as_tensor([[[twist*math.cos(theta),twist*math.sin(theta)]]],device=self.device,dtype=torch.float32)
+                human=orca_velocity(torch.cat((p,robot),1),torch.cat((v,rv),1),
+                    torch.cat((r,torch.full((1,1),self.cfg.robot.radius,device=self.device)),1),
+                    torch.cat((preferred,rv),1),torch.cat((s,torch.full((1,1),.1,device=self.device)),1),
+                    dt=self.cfg.env.time_step)[:,:self.n]
+            else:
+                human=orca_velocity(p,v,r,preferred,s,dt=self.cfg.env.time_step)
+            command=human[0].detach().cpu().numpy()
+            before=pos.copy()
+            for _ in range(self.substeps):
+                old=torch.as_tensor(self.state['humans'],dtype=torch.float32)
+                proposed=old+torch.as_tensor(command,dtype=torch.float32)*self.gate_dt
+                new=constrain_human_step(old,proposed,torch.as_tensor(self.radius),self.cfg.sim.arena_size,self.static_rect)
+                hv=((new-old)/self.gate_dt).tolist()
+                self.state=self.worker.step(self.physics_iterations,0.,0.,hv,True)
+            self.human_velocity=(np.asarray(self.state['humans'],np.float32)-before)/self.cfg.env.time_step
+            self.truth_human_trace.append(np.asarray(self.state['humans'],dtype=np.float64).copy())
+
+    def _paper_social_metrics(self):
+        # T episode transitions need only four extra frames: frame T already
+        # follows the final decision, so it supplies that decision's first
+        # future point and the earlier T-1 decisions have five-point horizons.
+        self._advance_ground_truth_humans(4)
+        return intrusion_metrics(self.truth_robot_trace,self.truth_human_trace,self.radius,
+                                 self.cfg.robot.radius,future_steps=5)
+
     def step(self,latent,human_velocity):
         start=time.perf_counter()
         requested=native_twist(latent,self.cfg.waffle_limits)
@@ -223,10 +269,17 @@ class PerWorld:
             prev,last_h=p,h
         self.steps+=1
         self.human_velocity=(last_h-np.asarray(self.previous_humans))/self.cfg.env.time_step
+        self.truth_robot_trace.append(np.asarray(prev[:2],dtype=np.float64).copy())
+        self.truth_human_trace.append(np.asarray(last_h,dtype=np.float64).copy())
         dist=float(np.linalg.norm(prev[:2]-self.goal))
         success=dist<self.cfg.robot.radius and not collision
         timeout=self.steps>=round(self.cfg.env.time_limit/self.cfg.env.time_step) and not collision and not success
         outcome=2 if collision else 1 if success else 3 if timeout else 0
+        paper={'paper_itr':float('nan'),'paper_sd_m':float('nan'),'paper_intrusion_steps':0,'paper_episode_steps':0,'paper_sd_sum_m':0.0,'paper_sd_count':0}
+        if outcome and self.args.waffle_eval_episodes:
+            paper=self._paper_social_metrics()
+            if paper['paper_sd_m'] is None:
+                paper['paper_sd_m']=float('nan')
         reward=3*(before-dist)
         if clearance<self.cfg.reward.discomfort_dist:
             reward=(clearance-self.cfg.reward.discomfort_dist)*self.cfg.reward.discomfort_penalty_factor*self.cfg.env.time_step
@@ -236,7 +289,7 @@ class PerWorld:
                                      self.cfg.env.time_step,self.profile['reward']))
         if outcome:
             reward={1:self.cfg.reward.success_reward,2:self.cfg.reward.collision_penalty,3:0.}[outcome]
-        metrics=dict(outcome=outcome,intervened=intervened,last_clearance=clearance,last_static_clearance=wall,
+        metrics=dict(outcome=outcome,**paper,intervened=intervened,last_clearance=clearance,last_static_clearance=wall,
                      last_goal_distance=before,last_goal_distance_after=dist,last_path=path,last_turn=turn)
         obs=self.observe()
         self.timing['step_s']+=time.perf_counter()-start
@@ -361,6 +414,7 @@ class GazeboVecEnv(VecEnv):
         # completion order while letting reset overlap other worlds' steps.
         # Keep old case IDs for the terminal transition.
         old_ids=self.case_ids.copy()
+        old_scenario_ids=[self.cases[int(i)].get('id',str(int(i))) for i in old_ids]
         velocities=human.cpu().numpy()
         pending={self.pool.submit(w.step,actions[i],velocities[i]):i for i,w in enumerate(self.worlds)}
         rows=[None]*self.n
@@ -374,6 +428,7 @@ class GazeboVecEnv(VecEnv):
                 resets[i]=self.reset_pool.submit(self.worlds[i].reset,self._case(i))
         obs,rewards,done,metrics=map(list,zip(*rows))
         self.last_scenario=torch.as_tensor(old_ids,device=self.device)
+        self.last_scenario_ids=old_scenario_ids
         for key in metrics[0]:
             setattr(self,key,torch.as_tensor([m[key] for m in metrics],device=self.device))
         for i,future in resets.items():

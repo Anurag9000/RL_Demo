@@ -21,6 +21,24 @@ class Hardware(unittest.TestCase):
         with patch('gazebo_sim.hardware.numa_nodes',return_value={0:[0,1,2,3],1:[4,5,6,7]}),patch('gazebo_sim.hardware.os.sched_getaffinity',return_value=set(range(8))),patch('gazebo_sim.hardware.shutil.which',return_value='/usr/bin/taskset'):
             cmd=worker_command(['worker'],dict(WAFFLE_WORKER_AFFINITY='1',WAFFLE_WORKER_CORES='2',WAFFLE_RESERVE_CORES='0'),2)
             self.assertEqual(cmd,['taskset','-c','4,5','worker'])
+    def test_podman_worker_command_mounts_only_world_and_resources(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            world_dir=root/'episode'; world_dir.mkdir()
+            model_dir=root/'models'; model_dir.mkdir()
+            world=world_dir/'world.sdf'; world.write_text('<sdf/>')
+            config=world_dir/'worker.json'; config.write_text('{}')
+            env=dict(WAFFLE_GAZEBO_PODMAN_IMAGE='localhost/gz:mission',
+                     GZ_SIM_RESOURCE_PATH=f'{world_dir}:{model_dir}',
+                     GZ_PARTITION='mission-test',ROS_LOCALHOST_ONLY='1',OMP_NUM_THREADS='1')
+            with patch('gazebo_sim.hardware.shutil.which',return_value='/usr/bin/podman'):
+                cmd=worker_command(['unused',str(world),str(config)],env,0)
+            self.assertEqual(cmd[0],'/usr/bin/podman')
+            self.assertIn(f'{world_dir}:{world_dir}:rw',cmd)
+            self.assertIn(f'{model_dir}:{model_dir}:ro',cmd)
+            self.assertIn('GZ_PARTITION=mission-test',cmd)
+            self.assertEqual(cmd[-2:], [str(world),str(config)])
+
     def test_modes_and_tradeoffs(self):
         info=dict(nodes={0:list(range(32)),1:list(range(32,64))},
                   gpus={0:dict(numa=0),1:dict(numa=1)},affinity=list(range(64)))

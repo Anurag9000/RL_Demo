@@ -1,6 +1,7 @@
 """Deterministic actor evaluation on reference or batched Waffle simulation."""
 from collections import Counter
 import json
+import math
 from pathlib import Path
 import time
 import torch
@@ -99,16 +100,27 @@ def run(args):
                     gate_ticks+=venv.intervened.float()
                     codes=venv.outcome
                     for i in accepted.nonzero().flatten().tolist():
-                        scenario_ids.add(int(venv.last_scenario[i]))
+                        scenario_ids.add(venv.last_scenario_ids[i])
                         shortest=float(initial_distance[i])
                         actual=float(travel[i])
                         success=int(codes[i])==1
-                        episode_metrics.append(dict(success=success,path_m=actual,time_s=float(duration[i]),
+                        episode=dict(success=success,path_m=actual,time_s=float(duration[i]),
                             rotation_rad=float(turns[i]),min_human_clearance_m=float(minimum[i]),
                             min_wall_clearance_m=float(minimum_wall[i]),intrusion_s=float(intrusion[i]),
                             gate_fraction=float(gate_ticks[i])*config.env.time_step/float(duration[i]),
                             straight_line_spl=float(success)*shortest/max(shortest,actual,1e-8),
-                            final_goal_distance_m=float(venv.last_goal_distance_after[i])))
+                            final_goal_distance_m=float(venv.last_goal_distance_after[i]))
+                        if args.waffle_gazebo:
+                            paper_itr=float(venv.paper_itr[i])
+                            paper_sd=float(venv.paper_sd_m[i])
+                            episode.update(paper_itr=paper_itr,
+                                paper_sd_m=paper_sd if math.isfinite(paper_sd) else None,
+                                paper_intrusion_steps=int(venv.paper_intrusion_steps[i]),
+                                paper_episode_steps=int(venv.paper_episode_steps[i]),
+                                paper_sd_sum_m=float(venv.paper_sd_sum_m[i]),
+                                paper_sd_count=int(venv.paper_sd_count[i]),
+                                scenario_id=venv.last_scenario_ids[i])
+                        episode_metrics.append(episode)
                     for t in (travel,turns,duration,intrusion,initial_distance,gate_ticks):
                         t.masked_fill_(done,0.)
                     minimum.masked_fill_(done,float('inf'))
@@ -144,6 +156,18 @@ def run(args):
             for k in ('min_human_clearance_m','min_wall_clearance_m'):
                 result['p05_'+k]=float(np.quantile([e[k] for e in episode_metrics],.05))
             result['gate_episode_fraction']=sum(e['gate_fraction']>0 for e in episode_metrics)/len(episode_metrics)
+            if args.waffle_gazebo:
+                from .paper_metrics import aggregate_intrusion_metrics
+                pooled=aggregate_intrusion_metrics([{
+                    'paper_itr':e['paper_itr'],
+                    'paper_intrusion_steps':e['paper_intrusion_steps'],
+                    'paper_episode_steps':e['paper_episode_steps'],
+                    'paper_sd_sum_m':e['paper_sd_sum_m'],
+                } for e in episode_metrics])
+                result['mean_paper_itr']=pooled['paper_itr']
+                result['paper_sd_intrusion_steps']=pooled['paper_intrusion_steps']
+                result['mean_paper_sd_m']=pooled['paper_sd_m']
+                result['paper_metric_definition']='ITR is the unweighted mean across episodes of each episode fraction whose robot center intrudes into any human ground-truth position from t+1 through t+5; SD is the pooled mean current-time closest-human center distance over intrusion timesteps.'
         print(json.dumps(result,indent=2,allow_nan=False))
         if args.waffle_eval_json:
             path=Path(args.waffle_eval_json)

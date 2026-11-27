@@ -9,6 +9,9 @@ _init_lock=threading.Lock()
 
 class DetectorEngine:
     def __init__(self,weights,model,device,stride,confidence,max_range,geometry):
+        # Official DR-SPAAM uses np.int in its scan preprocessing; NumPy >=1.24 removed that alias.
+        if not hasattr(np,'int'):
+            np.int=int
         from dr_spaam.detector import Detector
         self.device=torch.device(device)
         if self.device.type=='cuda':
@@ -21,10 +24,20 @@ class DetectorEngine:
         self.geometry=geometry
         with _init_lock,self.context():
             benchmark=torch.backends.cudnn.benchmark
+            # Author checkpoints are serialized from CUDA; map storage to CPU
+            # first so CPU-only qualification works and GPU loads avoid a
+            # transient allocation on the checkpoint's original device.
+            original_load=torch.load
+            def load_checkpoint(*args,**kwargs):
+                kwargs.setdefault('map_location','cpu')
+                return original_load(*args,**kwargs)
             try:
+                torch.backends.cudnn.benchmark=benchmark
+                torch.load=load_checkpoint
                 self.detector=Detector(weights,model=model,gpu=self.device.type=='cuda',
                                        stride=stride,panoramic_scan=geometry.panoramic)
             finally:
+                torch.load=original_load
                 torch.backends.cudnn.benchmark=benchmark
         self.detector.set_laser_fov(geometry.fov_deg)
 

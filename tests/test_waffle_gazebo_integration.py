@@ -84,6 +84,31 @@ class Integration(unittest.TestCase):
                 self.assertTrue(bool((env.last_path>0).all()))
             finally:
                 env.close()
+    def test_terminal_gazebo_episode_reports_paper_ground_truth_metrics(self):
+        profile=json.loads(Path('configs/waffle_gazebo.example.json').read_text())
+        with tempfile.TemporaryDirectory() as tmp:
+            path=Path(tmp)/'model.sdf'
+            path.write_text(FIXTURE)
+            cfg=SimpleNamespace(fidelity=profile,sim=SimpleNamespace(human_num=1,arena_size=2.5),
+                env=SimpleNamespace(time_step=.25,time_limit=.25),
+                robot=SimpleNamespace(radius=.25,v_pref=.1,sensor_range=3.),
+                reward=SimpleNamespace(discomfort_dist=.25,discomfort_penalty_factor=10.,success_reward=10.,collision_penalty=-20.),
+                waffle_safety=safety_parameters(None,.25),waffle_limits=DriveLimits(max_linear=.1,max_angular=.5))
+            args=SimpleNamespace(num_processes=1,seed=9,waffle_require_measured=False,waffle_scene_split='train',
+                waffle_eval_episodes=1,waffle_gazebo_logs=tmp,waffle_gazebo_model=str(path),
+                waffle_gazebo_worker='fixture',waffle_gazebo_timeout=2.,waffle_detector_weights='fixture',
+                waffle_gazebo_detector_device='cpu',waffle_reactive_humans=False)
+            env=GazeboVecEnv(cfg,args,torch.device('cpu'),FakeWorker,FakeDetector)
+            try:
+                env.reset()
+                _,_,done,_=env.step(torch.zeros(1,2))
+                self.assertTrue(bool(done[0]))
+                self.assertEqual(int(env.paper_episode_steps[0]),1)
+                self.assertTrue(bool(torch.isfinite(env.paper_itr).all()))
+                self.assertEqual(env.last_scenario_ids[0],'illustrative-1-train')
+            finally:
+                env.close()
+
     def test_recurrent_reset_does_not_cut_return(self):
         box=spaces.Box(-1.,1.,shape=(1,12),dtype=np.float32)
         storage=RolloutStorage(2,1,{'spatial_edges':box},

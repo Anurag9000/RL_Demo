@@ -32,8 +32,11 @@ class Worker:
         self.log=Path(log).open('w')
         env=os.environ.copy()
         env.pop('WAFFLE_SCAN_FD',None)
+        resources=[str(Path(world).parent)]
+        resources.extend(x for x in env.get('WAFFLE_GAZEBO_RESOURCE_PATH','').split(os.pathsep) if x)
+        resources=list(dict.fromkeys(str(Path(x).resolve()) for x in resources))
         env.update(GZ_PARTITION='waffle-sim-'+uuid.uuid4().hex,
-                   ROS_LOCALHOST_ONLY='1',GZ_SIM_RESOURCE_PATH=str(Path(world).parent),
+                   ROS_LOCALHOST_ONLY='1',GZ_SIM_RESOURCE_PATH=os.pathsep.join(resources),
                    OMP_NUM_THREADS='1')
         try:
             transport=env.get('WAFFLE_SCAN_TRANSPORT','json')
