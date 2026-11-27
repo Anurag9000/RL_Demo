@@ -12,12 +12,12 @@
       "gpu1": 90660
     },
     "gpu_snapshot_utc": "2026-11-27T01:46:15Z",
-    "host_available_gib": 463,
+    "host_available_gib": 462,
     "host_available_gib_approx": 407,
     "last_checkpoint": "experiments/waffle_safe_clearance_gpu1_ppo_seed436_v5_250k_b16_20261127/checkpoints/00000.pt",
-    "last_health_poll_utc": "2026-11-27T15:30:38Z",
-    "next_health_check_not_before_utc": "2026-11-27T15:40:38Z",
-    "observed_utc": "2026-11-27T15:30:38Z",
+    "last_health_poll_utc": "2026-11-27T15:46:35Z",
+    "next_health_check_not_before_utc": "2026-11-27T15:56:35Z",
+    "observed_utc": "2026-11-27T15:46:35Z",
     "output": "experiments/waffle_safe_clearance_gpu1_ppo_seed436_v5_250k_b16_20261127",
     "physical_gpu": 1,
     "pid": 4076346,
@@ -68,7 +68,7 @@
     "Maintain each process 10% VRAM allocator cap and preserve unrelated jobs"
   ],
   "branch": "codex/waffle-gazebo-mission-20261126",
-  "commit": "e5a6da0a938a581d91e6ac7f266bb7c7bf105611",
+  "commit": "8bcaf346a4589e2b21466d1d3cdbfe62074724c5",
   "cpu_allowed": "0-63",
   "current_training_recovery1": {
     "gpu_free_mib": {
@@ -77,32 +77,32 @@
     },
     "gpu_utilization_pct": {
       "gpu0": 0,
-      "gpu1": 90
+      "gpu1": 92
     },
-    "host_available_gib": 463,
+    "host_available_gib": 462,
     "jobs": {
       "seed436": {
         "gpu": 1,
-        "latest_durable_checkpoint": "experiments/waffle_safe_clearance_gpu1_ppo_seed436_v5_recovery1_20261127/checkpoints/00240.pt",
-        "latest_rolling_reward": -25.119846115112306,
+        "latest_durable_checkpoint": "experiments/waffle_safe_clearance_gpu1_ppo_seed436_v5_recovery1_20261127/checkpoints/00260.pt",
+        "latest_rolling_reward": -25.088498306274413,
         "pid": 2042361,
         "reported_fps": 3,
-        "segment_transitions": 121920,
+        "segment_transitions": 125280,
         "status": "alive",
-        "update": 253
+        "update": 260
       },
       "seed437": {
         "gpu": 0,
-        "latest_durable_checkpoint": "experiments/waffle_safe_clearance_gpu0_ppo_seed437_v5_recovery1_20261127/checkpoints/00300.pt",
-        "latest_rolling_reward": -24.67842346191406,
+        "latest_durable_checkpoint": "experiments/waffle_safe_clearance_gpu0_ppo_seed437_v5_recovery1_20261127/checkpoints/00320.pt",
+        "latest_rolling_reward": -24.925107250213625,
         "pid": 2042362,
         "reported_fps": 2,
-        "segment_transitions": 78480,
+        "segment_transitions": 80640,
         "status": "alive",
-        "update": 326
+        "update": 335
       }
     },
-    "observed_utc": "2026-11-27T15:30:38Z",
+    "observed_utc": "2026-11-27T15:46:35Z",
     "preserved": true,
     "root_fs_free_tib": 7.0,
     "swap_used_mib": 468
@@ -1081,7 +1081,7 @@
     "stage-logged server-only smoke script under mission/scripts exercised actual Gazebo, DR-SPAAM, GST, policy action, and one physics transition",
     "offline paper-metric traces enforce policy-interval timestamps, aligned timelines, and complete future-horizon coverage"
   ],
-  "last_health_poll_utc": "2026-11-27T15:30:38Z",
+  "last_health_poll_utc": "2026-11-27T15:46:35Z",
   "last_inventory_utc": "2026-11-26T17:30:35Z",
   "last_sync_check_utc": "2026-11-27T14:06:00Z",
   "latest_validation_seed436_update200_20261127": {
@@ -1114,9 +1114,9 @@
     "timeout_rate": 0.0,
     "transitions_per_sec": 2.0244677902603025
   },
-  "ledger_archive_commit": "f3ca4f77d46abfeaacd2d4adb031f40b5c14ec50",
+  "ledger_archive_commit": "8bcaf346a4589e2b21466d1d3cdbfe62074724c5",
   "mission_id": "20261126T161914Z",
-  "next_health_poll_not_before_utc": "2026-11-27T15:40:38Z",
+  "next_health_poll_not_before_utc": "2026-11-27T15:56:35Z",
   "numa_nodes": 2,
   "paper_metric_audit": {
     "historical_test_sd": "invalid; no saved per-timestep trajectory to recompute",
@@ -1154,6 +1154,18 @@
     "timestamp_validation": "policy_dt spacing, robot/human timeline alignment, complete future horizon coverage; malformed timestamp regression"
   },
   "phase": "seed436_seed437_v5_recovery_training_running_slow; real validation trace smoke passed; mission_incomplete",
+  "publication_sync": {
+    "artifact_commit": "8bcaf346a4589e2b21466d1d3cdbfe62074724c5",
+    "artifact_hash_mismatches": 0,
+    "branch": "codex/waffle-gazebo-mission-20261126",
+    "evaluation_manifests_verified": 4,
+    "github_head": "8bcaf346a4589e2b21466d1d3cdbfe62074724c5",
+    "h100_head": "8bcaf346a4589e2b21466d1d3cdbfe62074724c5",
+    "kakarot_head": "8bcaf346a4589e2b21466d1d3cdbfe62074724c5",
+    "observed_utc": "2026-11-27T15:46:35Z",
+    "worktrees_clean": true
+  },
+  "published_branch_commit": "8bcaf346a4589e2b21466d1d3cdbfe62074724c5",
   "qualification_result": "not qualified: seed437 update240 0/500 successes on complete validation bank; 500 collisions; independent offline metrics pass; seed436 comparison pending",
   "qualification_started": true,
   "ram_available_gib_approx": 397,
