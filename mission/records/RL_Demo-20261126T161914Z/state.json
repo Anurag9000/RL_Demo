@@ -2109,8 +2109,8 @@
     "learner_changed": false,
     "artifacts": "evaluations/seed436_update280_contactprobe1_validation_20261127"
   },
-  "last_health_check_utc": "2026-11-27T19:41:07Z",
-  "next_health_check_not_before_utc": "2026-11-27T18:53:07Z",
+  "last_health_check_utc": "2026-11-27T20:13:36Z",
+  "next_health_check_not_before_utc": "2026-11-27T20:23:36Z",
   "validation_seed436_update280_contact_source100_20261127": {
     "status": "completed_validation_contact_source_diagnostic",
     "started_utc": "2026-11-27T17:57:07Z",
@@ -2457,5 +2457,80 @@
     "preserved_previous_tracked_state_keys": 132,
     "merged_run_root_state_keys": 133,
     "policy": "union keys and prefer current run-root values on conflicts"
+  },
+  "paper_regime_training_20261128": {
+    "schema": "waffle-paper-regime-training-launch-v1",
+    "created_utc": "2026-11-27T20:13:36Z",
+    "phase": "startup; Gazebo worlds active; first PPO update not yet observed",
+    "host": "H100",
+    "run_root_id": "RL_Demo-20261126T161914Z",
+    "source_commit_h100": "66efe86eb043bfdb31d365be4058b3e6b9016bfc",
+    "source_tree_sha256_git": "04fdc6ce0f21988ecf8840438fc49122f095d46f",
+    "published_kakarot_github_commit": "5d11cb2129eb3e5be0929ab7ba56ba6286b50768",
+    "published_tree_sha256_git": "04fdc6ce0f21988ecf8840438fc49122f095d46f",
+    "resource_admission": {
+      "free_vram_mib_gpu0": 43480,
+      "free_vram_mib_gpu1": 39521,
+      "gpu_utilization_queried": false
+    },
+    "allocation_policy": "normal on-demand CUDA allocation; no per-process 20 percent allocator cap",
+    "runs": [
+      {
+        "run_id": "paper_randomized_gpu0_seed439_20261128",
+        "regime": "randomized",
+        "gpu": 0,
+        "seed": 439,
+        "started_utc": "2026-11-27T20:10:47Z",
+        "profile": "mission/profiles/waffle_gazebo_paper_randomized_500x3.json",
+        "profile_sha256": "57b373a1c6d63cc281c5699071414b3733dd4084aca8ccd43717ce43fcb68931",
+        "split": "train",
+        "worlds": 16,
+        "rollout_steps": 30,
+        "mini_batches": 4,
+        "ppo_epochs": 5,
+        "requested_transitions": 250000,
+        "checkpoint": "trained_models/GST_predictor_rand/checkpoints/41665.pt",
+        "checkpoint_sha256": "a60bdd3b8ca84457497365133b9055c80d55b11c5a3bc76b28e38d4200cfd8ce",
+        "initialization": "transferred official randomized actor; native action head reset; fresh PPO optimizer",
+        "output": "experiments/paper_randomized_gpu0_seed439_20261128",
+        "stdout": "logs/paper_randomized_gpu0_seed439_20261128.stdout",
+        "startup_evidence_utc": "2026-11-27T20:13:36Z",
+        "gazebo_world_configs": 16,
+        "podman_worker_launchers": 16,
+        "evidence": "per-world episode logs present; learner alive; no PPO update/progress.csv observed yet"
+      },
+      {
+        "run_id": "paper_nonrandomized_gpu1_seed440_20261128",
+        "regime": "nonrandomized",
+        "gpu": 1,
+        "seed": 440,
+        "started_utc": "2026-11-27T20:10:47Z",
+        "profile": "mission/profiles/waffle_gazebo_paper_nonrandomized_500x3.json",
+        "profile_sha256": "c6cd247d1f9acd3aee76a958e0a2a463c8cbd099b2d289c46d0b2201754d3d39",
+        "split": "train",
+        "worlds": 16,
+        "rollout_steps": 30,
+        "mini_batches": 4,
+        "ppo_epochs": 5,
+        "requested_transitions": 250000,
+        "checkpoint": "trained_models/GST_predictor_rand/checkpoints/41665.pt",
+        "checkpoint_sha256": "a60bdd3b8ca84457497365133b9055c80d55b11c5a3bc76b28e38d4200cfd8ce",
+        "initialization": "transferred official randomized actor; native action head reset; fresh PPO optimizer",
+        "output": "experiments/paper_nonrandomized_gpu1_seed440_20261128",
+        "stdout": "logs/paper_nonrandomized_gpu1_seed440_20261128.stdout",
+        "startup_evidence_utc": "2026-11-27T20:13:36Z",
+        "gazebo_world_configs": 16,
+        "podman_worker_launchers": 16,
+        "evidence": "per-world episode logs present; learner alive; no PPO update/progress.csv observed yet"
+      }
+    ],
+    "worker_sha256": "095521529c74cb135c7be804c21a374d7db4299a3928b3b47d0825479fe7e9aa",
+    "detector_sha256": "1b62e50d9bcb954975bda28610e09921e8bde94216b0a291a704a579690b6324",
+    "previous_workloads": "seed436, seed437 and seed438 were left untouched",
+    "polling": {
+      "last_consolidated_health_check_utc": "2026-11-27T20:09:47Z",
+      "last_targeted_startup_check_utc": "2026-11-27T20:13:36Z",
+      "next_check_not_before_utc": "2026-11-27T20:23:36Z"
+    }
   }
 }

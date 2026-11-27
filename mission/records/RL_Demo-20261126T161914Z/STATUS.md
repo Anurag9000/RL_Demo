@@ -667,3 +667,10 @@ The consolidated sample at 2026-11-27T19:41:07Z found all three existing learner
 ## 2026-11-27T19:42:17Z archive reconciliation note
 
 The tracked archive was newer than some run-root copies. Existing tracked sections were retained verbatim and unique run-root updates appended; the state snapshot was merged by key union. Previous and current versions of CODE_AUDIT_PROGRESS.md and scripts/diagnose_v5_action_gate.py remain preserved in their respective locations, with current tracked-archive hashes recorded in SYNC_MANIFEST.json.
+
+
+## 2026-11-27T20:13:36Z paper-regime PPO startup
+
+Two detached Gazebo PPO runs started from the official randomized actor with a fresh optimizer and native action head, using train splits only. Randomized run: seed 439 on GPU 0, 16 worlds; nonrandomized run: seed 440 on GPU 1, 16 worlds; each requests 250,000 transitions with 30-step recurrent rollouts, 4 mini-batches and 5 PPO epochs. The launcher runs repository train.py with normal on-demand CUDA allocation and no legacy 20% per-process cap.
+
+At admission, free VRAM was 43,480 MiB on GPU 0 and 39,521 MiB on GPU 1; utilization was not queried. By 2026-11-27T20:13:36Z, each run had 16 world configs and 16 Podman worker launchers, with per-world episode logs appearing and the learner alive. The first PPO update was not yet observed, so this is startup evidence rather than a learning or quality result. Existing seed436, seed437 and seed438 jobs were left untouched. Next consolidated check is no earlier than 2026-11-27T20:23:36Z. Full hashes and artifact paths are in paper_regime_training_20261128.json.

@@ -1,5 +1,5 @@
 {
-  "copied_utc": "2026-11-27T19:42:17Z",
+  "copied_utc": "2026-11-27T20:13:36Z",
   "files": {
     "CODE_AUDIT_PROGRESS.md": {
       "bytes": 109059,
@@ -10,12 +10,12 @@
       "sha256": "0526cb92942370e210c8e7b043d773567aee5111c1ec991c2373d144767afb9e"
     },
     "STATUS.md": {
-      "bytes": 114545,
-      "sha256": "bfd16ab7f6b6ce52e52e4c6dbc406897f9258d1a2a7a36cf187c7b4ad699181e"
+      "bytes": 115615,
+      "sha256": "c4079576455a6aa6bfdf140682f3025d33a5ae040125df936494352964664720"
     },
     "commands.jsonl": {
-      "bytes": 86376,
-      "sha256": "8bbe12a968abc7c37ad692a4ec62de94558bbde4840d83954f1711fb5e72d435"
+      "bytes": 87023,
+      "sha256": "22763dfeb2f27aba3d9b039374751760e432f351d4d48fab2f39ab11e4673c14"
     },
     "evaluations/paper_regime_smokes_20261128/EVALUATION_MANIFEST.json": {
       "bytes": 2740,
@@ -62,8 +62,12 @@
       "sha256": "aaaf761aa24c748524ad8d615170d59ed9ece50ac53e4b15baabf7b7584b661d"
     },
     "state.json": {
-      "bytes": 92773,
-      "sha256": "b2164c151d17694f3e2955beb6614d0e1d008043d4de06c904b437b61fd3eef3"
+      "bytes": 96550,
+      "sha256": "0604273a78453c5bb12219b14ba8fd3b4d5448bec611a76aa2997d7aabdd5657"
+    },
+    "paper_regime_training_20261128.json": {
+      "bytes": 3592,
+      "sha256": "d541b919377c330088e2841bbf5522a0eb0981a6deebc224e0e7be468378bff6"
     }
   },
   "manifest_reconciliation_note": "Tracked and run-root ledgers were merged without deleting prior history. Two archived files remain version-distinct and are each preserved; hashes describe tracked archive bytes.",
