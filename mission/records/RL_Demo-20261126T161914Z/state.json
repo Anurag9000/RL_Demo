@@ -720,6 +720,26 @@
     "timeout_rate": 0.1111111111111111,
     "unique_scenarios": 9
   },
+  "evaluation_seed437_update240_validation500": {
+    "checkpoint": "experiments/waffle_safe_clearance_gpu0_ppo_seed437_v5_recovery1_20261127/checkpoints/00240.pt",
+    "checkpoint_sha256": "9fba327ce8ca22e198306abe817de390742957b3be3fcea9cfd032d0e28ce914",
+    "episode_count": 500,
+    "gpu1_free_mib": 88726,
+    "gpu1_total_mib": 95830,
+    "last_observed_utc": "2026-11-27T13:32:59Z",
+    "launcher": "mission/scripts/eval_v5_bank_checkpoint.sh",
+    "launcher_fixed_issue": "I-022: embedded Python sys.argv closing bracket corrected after initial parse failure; failed log preserved",
+    "output": "evaluations/seed437_update240_validation500_20261127",
+    "physical_gpu": 1,
+    "pid": 3386551,
+    "python_pid": 3386575,
+    "selection_status": "diagnostic; no final checkpoint lock",
+    "split": "validation",
+    "status": "running_validation_diagnostic",
+    "test_split_used": false,
+    "trace_count_observed": 2,
+    "training_seed": 437
+  },
   "evaluations": [
     {
       "checkpoint": "seed425/00010.pt",
@@ -959,8 +979,8 @@
   ],
   "last_health_poll_utc": "2026-11-27T13:24:09Z",
   "last_inventory_utc": "2026-11-26T17:30:35Z",
-  "last_sync_check_utc": "2026-11-27T13:26:00Z",
-  "ledger_archive_commit": "20449b109a26538da5f61fd15766bb26af520351",
+  "last_sync_check_utc": "2026-11-27T13:32:00Z",
+  "ledger_archive_commit": "7b2e5ee7225e01452630d53f903ce6bdc4b930e7",
   "mission_id": "20261126T161914Z",
   "next_health_poll_not_before_utc": "2026-11-27T13:34:09Z",
   "numa_nodes": 2,

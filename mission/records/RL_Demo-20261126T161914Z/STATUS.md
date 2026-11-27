@@ -516,3 +516,8 @@ Free VRAM: GPU0 92,723/95,830 MiB; GPU1 90,660/95,830 MiB. Host available 463 Gi
 ## 2026-11-27T13:26Z mission ledger archive synchronization
 
 The updated status, issue register, source audit coverage, structured state and append-only command ledger were added to the feature branch as commit `20449b109a26538da5f61fd15766bb26af520351`. Kakarot fast-forwarded and pushed this branch to GitHub; H100 fetched it. All three checkouts verified the same commit with clean worktrees and `main` unchanged. Per-file SHA256 values are in the tracked SYNC_MANIFEST.json.
+
+
+## 2026-11-27T13:32:59Z 500-case validation diagnostic launched
+
+A first launch of `eval_v5_bank_checkpoint.sh` passed its split/checkpoint admission gate but failed before starting Gazebo because the embedded Python `sys.argv` list ended with a parenthesis instead of a closing bracket. No workers or output directory were created; the failed shell log is preserved at `logs/eval-seed437-update240-validation500.log`, and its stale request marker was removed. Fixed the bracket and confirmed shell syntax plus Python compilation of the exact embedded block. The rerun passed admission for exactly 500 validation cases with seed437 update240 checkpoint SHA256 `9fba327ce8ca22e198306abe817de390742957b3be3fcea9cfd032d0e28ce914`. Evaluation PID 3386551 / Python PID 3386575 is active on GPU1. At the 13:32:59Z check, GPU1 had 88,726/95,830 MiB free and two per-episode trace files had been emitted; evaluation is incomplete. This is diagnostic validation only and cannot select a final checkpoint by itself. The held-out test split remains untouched.

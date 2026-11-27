@@ -79,3 +79,6 @@ The isolated 32-world probe exited 0 and returned throughput data, but its world
 ### I-010 retry-count follow-up (2026-11-27T13:24:09Z)
 
 The active recovery log roots now contain five seed436 and two seed437 retryable worker-closed-stdout records. Six report native worker exit code 139; one seed436 exit code is unavailable. Learners remain alive and were not modified. This increases the observed recovery campaign count; cause remains unknown and logs contain no stack trace in the earlier audit.
+
+
+| I-022 | Fixed and running (2026-11-27T13:32Z) | The guarded v5 bank evaluator embedded a Python argument-list syntax error; admission wrote a request, but no evaluation process or output was created. | Added the missing closing bracket; parsed the embedded Python and ran `bash -n`. Removed only the stale request created by the failed attempt and preserved its log. The corrected rerun passed 500-case validation admission and is actively writing traces for seed437 checkpoint 00240. Final metrics not available yet; test split untouched. |

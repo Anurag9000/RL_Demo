@@ -1,25 +1,29 @@
 {
-  "copied_utc": "2026-11-27T13:26:00Z",
+  "copied_utc": "2026-11-27T13:32:59Z",
   "files": {
     "CODE_AUDIT_PROGRESS.md": {
       "bytes": 102218,
       "sha256": "c8d3a5ef418410181e89d9c327e2f990b873a0a35159e0d669d3542d78b06385"
     },
     "ISSUES.md": {
-      "bytes": 15154,
-      "sha256": "483a657d5d1b78431a5ddb4400c9093151b6d1f1a144d94af8043ced7c01e5fd"
+      "bytes": 15700,
+      "sha256": "ee21aadc97e141a3cc60b4281295f0169119655154836f6412a4f32bd094f6b0"
     },
     "STATUS.md": {
-      "bytes": 88146,
-      "sha256": "0a0301f8ebe408913e2ae9d1068048fc8c7be21e696dac78d79f49335c7889d5"
+      "bytes": 89197,
+      "sha256": "599b4c59abfac8eaca122c82acba12b476567061b6727c39aaf8ae2d04d2421a"
     },
     "commands.jsonl": {
-      "bytes": 68879,
-      "sha256": "c1663b9d2279f5bfa0057c234db1197a23029620464a9883e64cad5471d5ef42"
+      "bytes": 69257,
+      "sha256": "917cac59b7f0dd63306f6a64aa356a83bf03e197dbb42fe453fb6b17e8e77eaf"
+    },
+    "scripts/eval_v5_bank_checkpoint.sh": {
+      "bytes": 6121,
+      "sha256": "fb83935740e9b97299987ffb2a0ab56483be80b84b2c84ba6a2d87b8f2c17402"
     },
     "state.json": {
-      "bytes": 62676,
-      "sha256": "ad2fda828d5aa8f2e4a2716391fa4a69304664698e8ae4bd2b90681dd21fd025"
+      "bytes": 63636,
+      "sha256": "c3de4c59441879faf1b8f26c5a2196e1e11a8457e961f114ae6c6a93bd5d5809"
     }
   },
   "source": "/home/rl-group4/waffle_runs/RL_Demo-20261126T161914Z/mission"
