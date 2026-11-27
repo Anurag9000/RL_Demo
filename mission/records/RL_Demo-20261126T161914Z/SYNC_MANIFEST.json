@@ -1,21 +1,21 @@
 {
-  "copied_utc": "2026-11-27T16:03:47Z",
+  "copied_utc": "2026-11-27T16:14:24Z",
   "files": {
     "CODE_AUDIT_PROGRESS.md": {
       "bytes": 106095,
       "sha256": "08f984202573633f29901a2170627bf6536fa2ea33fa81f5541a96319d82e5cd"
     },
     "ISSUES.md": {
-      "bytes": 17995,
-      "sha256": "f4163cfd109cbcdb4207d2f93a6d19f51c79b0e714e083ba196d28a6ba8627a8"
+      "bytes": 18265,
+      "sha256": "71f684e6cff6ab4dcdbdc69755d204e824b2c9078ca83eaeb77725ad73276f68"
     },
     "STATUS.md": {
-      "bytes": 96506,
-      "sha256": "0396d5bcc7cd228d34c3d05c6f73e502f5b3c2d76b4c05ed22180e54659afaa9"
+      "bytes": 97824,
+      "sha256": "a0ab65725f0904f33a5cdb8b2c5a1bfde7da4267806ef62a6083fc883a2f47bd"
     },
     "commands.jsonl": {
-      "bytes": 74478,
-      "sha256": "2a7c763b5bd4bec40018ce60a953d3f5696abec5e310442d85c7cdfd0f5e1ded"
+      "bytes": 75195,
+      "sha256": "03a9f8ecbbd39de92bbf99eed7c1eca015e8d7549da8ee3544508f4e2ab6c363"
     },
     "evaluations/seed436_update200_validation500_20261127/EVALUATION_MANIFEST.json": {
       "bytes": 87485,
@@ -42,12 +42,16 @@
       "sha256": "fb83935740e9b97299987ffb2a0ab56483be80b84b2c84ba6a2d87b8f2c17402"
     },
     "state.json": {
-      "bytes": 74392,
-      "sha256": "505937ee4447dc615ae1a44b6f9fc2cfe5c8016e00caa8025c48009204ebe7c1"
+      "bytes": 75785,
+      "sha256": "5b07b412caab495a0ccabebe2d38849d0c3e8c8cca5c0d8b94cf655774f628e7"
     },
     "scripts/run_v5_action_gate_diagnostic.sh": {
       "bytes": 2640,
       "sha256": "bddf3b6908b0184416946130b056c139b1f3244c5a1a8dcd5d3e80b54ba9e26a"
+    },
+    "evaluations/seed437_update340_validation_action_gate100_20261127/EVALUATION_MANIFEST.json": {
+      "bytes": 39154,
+      "sha256": "330a8ac358be7c741c6d4a4ae134ead1404eb9d2c76916ce52bdf82335c2bf44"
     }
   },
   "source": "/home/rl-group4/waffle_runs/RL_Demo-20261126T161914Z/mission"
