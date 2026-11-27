@@ -52,6 +52,20 @@ def intrusion_metrics(robot_positions, human_positions, human_radii, robot_radiu
     }
 
 
+def aggregate_success_navigation_metrics(episode_metrics):
+    """Return paper-style NT/PL means over successful episodes only.
+
+    Failed episodes remain in the input denominator for SR/CR/TR, but do not
+    contribute to navigation time or path length. Undefined means are None.
+    """
+    successful = [episode for episode in episode_metrics if bool(episode["success"])]
+    return {
+        "successful_episode_count": len(successful),
+        "paper_nt_success_only_s": float(np.mean([float(item["time_s"]) for item in successful])) if successful else None,
+        "paper_pl_success_only_m": float(np.mean([float(item["path_m"]) for item in successful])) if successful else None,
+    }
+
+
 def aggregate_intrusion_metrics(episode_metrics):
     """Average per-episode ITR and pool SD over intrusion timesteps, as in the paper."""
     episodes = list(episode_metrics)

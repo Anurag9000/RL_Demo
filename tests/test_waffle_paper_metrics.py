@@ -2,7 +2,7 @@ import unittest
 import tempfile
 from pathlib import Path
 import numpy as np
-from waffle_pi.paper_metrics import intrusion_metrics, aggregate_intrusion_metrics
+from waffle_pi.paper_metrics import intrusion_metrics, aggregate_intrusion_metrics, aggregate_success_navigation_metrics
 from waffle_pi.offline_metrics import score_trace_file, score_trace_directory, verify_and_apply_offline_metrics
 
 
@@ -123,6 +123,25 @@ class PaperMetrics(unittest.TestCase):
             np.savez_compressed(path,**payload)
             with self.assertRaisesRegex(ValueError,'complete future horizon'):
                 score_trace_file(path)
+
+    def test_navigation_time_and_path_are_success_only(self):
+        result = aggregate_success_navigation_metrics([
+            {"success": True, "time_s": 8.0, "path_m": 5.0},
+            {"success": False, "time_s": 3.0, "path_m": 1.0},
+            {"success": False, "time_s": 10.0, "path_m": 12.0},
+        ])
+        self.assertEqual(result["successful_episode_count"], 1)
+        self.assertEqual(result["paper_nt_success_only_s"], 8.0)
+        self.assertEqual(result["paper_pl_success_only_m"], 5.0)
+
+    def test_navigation_metrics_are_null_without_successes(self):
+        result = aggregate_success_navigation_metrics([
+            {"success": False, "time_s": 3.0, "path_m": 1.0},
+            {"success": False, "time_s": 10.0, "path_m": 12.0},
+        ])
+        self.assertEqual(result["successful_episode_count"], 0)
+        self.assertIsNone(result["paper_nt_success_only_s"])
+        self.assertIsNone(result["paper_pl_success_only_m"])
 
     def test_pooled_metrics_weight_intrusion_events_and_timesteps(self):
         pooled = aggregate_intrusion_metrics([
