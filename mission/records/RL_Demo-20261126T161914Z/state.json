@@ -2091,5 +2091,24 @@
     "trace_metric_offline_verification_passed": true,
     "test_split_used": false,
     "archive": "evaluations/seed437_update360_validation_action_gate100_20261127"
-  }
+  },
+  "diagnostic_seed436_update280_contact_probe": {
+    "status": "completed_single_case_validation_telemetry_smoke",
+    "started_utc": "2026-11-27T17:53:53Z",
+    "finished_utc": "2026-11-27T17:54:03Z",
+    "exit_status": 0,
+    "checkpoint": "experiments/waffle_safe_clearance_gpu1_ppo_seed436_v5_recovery1_20261127/checkpoints/00280.pt",
+    "scenario_id": "v5-validation-0225",
+    "split": "validation",
+    "episodes": 1,
+    "scored_policy_steps": 5,
+    "worker_contact_or_tilt_policy_substeps": 0,
+    "worker_contact_or_tilt_lookahead_substeps": 14,
+    "terminal_reason": "combined Collision label triggered by human disk clearance -0.008262 m; wall clearance positive",
+    "test_split_used": false,
+    "learner_changed": false,
+    "artifacts": "evaluations/seed436_update280_contactprobe1_validation_20261127"
+  },
+  "last_health_check_utc": "2026-11-27T17:54:48Z",
+  "next_health_check_not_before_utc": "2026-11-27T18:04:48Z"
 }

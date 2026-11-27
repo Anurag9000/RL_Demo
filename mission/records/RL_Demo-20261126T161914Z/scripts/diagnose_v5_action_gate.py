@@ -76,12 +76,29 @@ def guard(self, requested):
 
 def step(self, latent, human_velocity):
     self._diag_guards = []
+    contact_flags = []
     before = dict(sensor_fault=bool(self.fault), pose=list(map(float, self.state['truth'])),
                   goal=list(map(float, self.goal)), actual_twist=list(map(float, self.state['twist'])))
-    obs, reward, done, metrics = orig_step(self, latent, human_velocity)
+    worker_step = self.worker.step
+    def observed_worker_step(*args, **kwargs):
+        state = worker_step(*args, **kwargs)
+        contact_flags.append(bool(state.get('contact', False)))
+        return state
+    self.worker.step = observed_worker_step
+    try:
+        obs, reward, done, metrics = orig_step(self, latent, human_velocity)
+    finally:
+        self.worker.step = worker_step
+    policy_flags = contact_flags[:self.substeps]
+    lookahead_flags = contact_flags[self.substeps:]
     item = dict(scenario_id=self.scenario.get('id'), episode=self.episode, step=self.steps,
         diagnostic_forward_transform=a.forward_transform, latent_action=np.asarray(latent).tolist(), before=before, guard_substeps=self._diag_guards,
         after_pose=list(map(float, self.state['truth'])), after_twist=list(map(float, self.state['twist'])),
+        worker_contact_or_tilt_substeps=int(sum(policy_flags)),
+        worker_contact_or_tilt_any=bool(any(policy_flags)),
+        lookahead_contact_or_tilt_substeps=int(sum(lookahead_flags)),
+        disk_human_overlap_step=bool(metrics.get('last_clearance', 0.) < 0.),
+        disk_wall_overlap_step=bool(metrics.get('last_static_clearance', 0.) <= 0.),
         reward=float(reward), done=bool(done), metrics=metrics)
     with (out / f'lane-{self.index:03d}-action-gate.jsonl').open('a') as stream:
         stream.write(json.dumps(json_clean(item), allow_nan=False)+'\n')

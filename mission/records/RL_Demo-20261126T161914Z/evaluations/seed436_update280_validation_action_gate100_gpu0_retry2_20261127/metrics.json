@@ -2048,7 +2048,7 @@
   "mean_paper_sd_m": 0.7782316806123076,
   "paper_metric_definition": "ITR is the unweighted mean across episodes of each episode fraction whose robot center intrudes into any human ground-truth position from t+1 through t+5; SD is the pooled mean current-time closest-human center distance over intrusion timesteps.",
   "mean_paper_itr_percent": 82.29685559538501,
-  "paper_trace_dir": "/home/rl-group4/waffle_runs/RL_Demo-20261126T161914Z/evaluations/seed436_update280_validation_action_gate100_gpu0_retry2_20261127/metrics_traces",
+  "paper_trace_dir": "$RUN_ROOT/evaluations/seed436_update280_validation_action_gate100_gpu0_retry2_20261127/metrics_traces",
   "paper_trace_count": 100,
   "paper_trace_offline_verification": {
     "passed": true,
