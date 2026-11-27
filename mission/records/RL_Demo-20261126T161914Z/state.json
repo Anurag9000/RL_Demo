@@ -2302,5 +2302,30 @@
     "initial_checkpoint_load_confirmed": true,
     "scratch_controls_stopped": false,
     "test_split_used": false
+  },
+  "paper_metric_and_case_schedule_audit_20261127": {
+    "source_files": [
+      "waffle_pi/evaluate.py",
+      "waffle_pi/paper_metrics.py",
+      "waffle_pi/offline_metrics.py",
+      "gazebo_sim/vector_env.py"
+    ],
+    "paper_metric_contract": "ITR counts one event per decision step if any true human position at t+1..t+5 overlaps radii; SD pools current nearest center distance only at those intrusion steps; NT/PL are success-only and null without success; SR/CR/TR partition completed episodes",
+    "trace_contract": "offline truth scorer enforces full five-frame suffix, monotonic/matched simulator timestamps, unique scenario IDs, exact evaluator trace parity",
+    "evaluation_case_selection": "split and human-count filtering followed by seeded permutation and per-lane strided schedule; offline verifier rejects duplicate scenario IDs",
+    "schedule_arithmetic_check": {
+      "cases": 500,
+      "lane_counts_checked": "1..64",
+      "results": "all quotas schedule 500 unique indices without omissions or duplicates"
+    },
+    "unit_test_command": "python -m unittest discover -s tests -p test_waffle_paper_metrics.py",
+    "unit_tests_passed": 13,
+    "unit_tests_failed": 0,
+    "elapsed_seconds": 0.011,
+    "test_split_used": false,
+    "limitations": [
+      "The 500-case arithmetic check mirrors the current scheduler formula; it is not an end-to-end 500-world evaluator run.",
+      "Original paper prose/code SD convention remains documented separately; current implementation reports center-distance interpretation."
+    ]
   }
 }
