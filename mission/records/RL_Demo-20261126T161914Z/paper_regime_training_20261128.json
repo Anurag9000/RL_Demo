@@ -2,12 +2,60 @@
   "allocation_policy": "normal on-demand CUDA allocation; no per-process 20 percent allocator cap",
   "created_utc": "2026-11-27T20:13:36Z",
   "detector_sha256": "1b62e50d9bcb954975bda28610e09921e8bde94216b0a291a704a579690b6324",
+  "health_checks": [
+    {
+      "free_vram_mib": {
+        "gpu0": 39692,
+        "gpu1": 35476
+      },
+      "gpu_utilization_queried": false,
+      "interpretation": "logged FPS includes cold startup and is not a steady-state throughput estimate; first rollout/update only, no quality inference",
+      "legacy_trainers": {
+        "seed436": {
+          "recent_reward": -25.201567211151122,
+          "transitions": 177120,
+          "update_index": 368
+        },
+        "seed437": {
+          "recent_reward": -24.712005043029784,
+          "transitions": 114000,
+          "update_index": 474
+        },
+        "seed438": {
+          "recent_reward": -25.06625865936279,
+          "transitions": 25920,
+          "update_index": 26
+        }
+      },
+      "timestamp_utc": "2026-11-27T20:24:04Z",
+      "trainers": {
+        "paper_nonrandomized_gpu1_seed440_20261128": {
+          "episodes_reported": 86,
+          "first_optimizer_update_completed": true,
+          "logged_fps": 1,
+          "mean_reward": -23.41532722739286,
+          "median_reward": -23.0,
+          "transitions": 480,
+          "update_index": 0
+        },
+        "paper_randomized_gpu0_seed439_20261128": {
+          "episodes_reported": 95,
+          "first_optimizer_update_completed": true,
+          "logged_fps": 1,
+          "mean_reward": -21.625940563804225,
+          "median_reward": -20.6,
+          "transitions": 480,
+          "update_index": 0
+        }
+      }
+    }
+  ],
   "host": "H100",
-  "phase": "startup; Gazebo worlds active; first PPO update not yet observed",
+  "phase": "PPO active; first update completed for both regimes; quality unqualified",
   "polling": {
-    "last_consolidated_health_check_utc": "2026-11-27T20:09:47Z",
-    "last_targeted_startup_check_utc": "2026-11-27T20:13:36Z",
-    "next_check_not_before_utc": "2026-11-27T20:23:36Z"
+    "gpu_utilization_queried": false,
+    "last_consolidated_health_check_utc": "2026-11-27T20:24:04Z",
+    "next_check_not_before_utc": "2026-11-27T20:34:04Z"
   },
   "previous_workloads": "seed436, seed437 and seed438 were left untouched",
   "published_kakarot_github_commit": "5d11cb2129eb3e5be0929ab7ba56ba6286b50768",
@@ -16,6 +64,10 @@
     "free_vram_mib_gpu0": 43480,
     "free_vram_mib_gpu1": 39521,
     "gpu_utilization_queried": false
+  },
+  "resource_after_admission": {
+    "gpu0": 39692,
+    "gpu1": 35476
   },
   "run_root_id": "RL_Demo-20261126T161914Z",
   "runs": [

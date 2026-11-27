@@ -2109,8 +2109,8 @@
     "learner_changed": false,
     "artifacts": "evaluations/seed436_update280_contactprobe1_validation_20261127"
   },
-  "last_health_check_utc": "2026-11-27T20:13:36Z",
-  "next_health_check_not_before_utc": "2026-11-27T20:23:36Z",
+  "last_health_check_utc": "2026-11-27T20:24:04Z",
+  "next_health_check_not_before_utc": "2026-11-27T20:34:04Z",
   "validation_seed436_update280_contact_source100_20261127": {
     "status": "completed_validation_contact_source_diagnostic",
     "started_utc": "2026-11-27T17:57:07Z",
@@ -2459,13 +2459,17 @@
     "policy": "union keys and prefer current run-root values on conflicts"
   },
   "paper_regime_training_20261128": {
-    "schema": "waffle-paper-regime-training-launch-v1",
+    "allocation_policy": "normal on-demand CUDA allocation; no per-process 20 percent allocator cap",
     "created_utc": "2026-11-27T20:13:36Z",
-    "phase": "startup; Gazebo worlds active; first PPO update not yet observed",
+    "detector_sha256": "1b62e50d9bcb954975bda28610e09921e8bde94216b0a291a704a579690b6324",
     "host": "H100",
-    "run_root_id": "RL_Demo-20261126T161914Z",
-    "source_commit_h100": "66efe86eb043bfdb31d365be4058b3e6b9016bfc",
-    "source_tree_sha256_git": "04fdc6ce0f21988ecf8840438fc49122f095d46f",
+    "phase": "PPO active; first update completed for both regimes; quality unqualified",
+    "polling": {
+      "last_consolidated_health_check_utc": "2026-11-27T20:24:04Z",
+      "next_check_not_before_utc": "2026-11-27T20:34:04Z",
+      "gpu_utilization_queried": false
+    },
+    "previous_workloads": "seed436, seed437 and seed438 were left untouched",
     "published_kakarot_github_commit": "5d11cb2129eb3e5be0929ab7ba56ba6286b50768",
     "published_tree_sha256_git": "04fdc6ce0f21988ecf8840438fc49122f095d46f",
     "resource_admission": {
@@ -2473,64 +2477,158 @@
       "free_vram_mib_gpu1": 39521,
       "gpu_utilization_queried": false
     },
-    "allocation_policy": "normal on-demand CUDA allocation; no per-process 20 percent allocator cap",
+    "run_root_id": "RL_Demo-20261126T161914Z",
     "runs": [
       {
-        "run_id": "paper_randomized_gpu0_seed439_20261128",
-        "regime": "randomized",
+        "checkpoint": "trained_models/GST_predictor_rand/checkpoints/41665.pt",
+        "checkpoint_sha256": "a60bdd3b8ca84457497365133b9055c80d55b11c5a3bc76b28e38d4200cfd8ce",
+        "evidence": "per-world episode logs present; learner alive; no PPO update/progress.csv observed yet",
+        "gazebo_world_configs": 16,
         "gpu": 0,
-        "seed": 439,
-        "started_utc": "2026-11-27T20:10:47Z",
+        "initialization": "transferred official randomized actor; native action head reset; fresh PPO optimizer",
+        "mini_batches": 4,
+        "output": "experiments/paper_randomized_gpu0_seed439_20261128",
+        "podman_worker_launchers": 16,
+        "ppo_epochs": 5,
         "profile": "mission/profiles/waffle_gazebo_paper_randomized_500x3.json",
         "profile_sha256": "57b373a1c6d63cc281c5699071414b3733dd4084aca8ccd43717ce43fcb68931",
-        "split": "train",
-        "worlds": 16,
-        "rollout_steps": 30,
-        "mini_batches": 4,
-        "ppo_epochs": 5,
+        "regime": "randomized",
         "requested_transitions": 250000,
-        "checkpoint": "trained_models/GST_predictor_rand/checkpoints/41665.pt",
-        "checkpoint_sha256": "a60bdd3b8ca84457497365133b9055c80d55b11c5a3bc76b28e38d4200cfd8ce",
-        "initialization": "transferred official randomized actor; native action head reset; fresh PPO optimizer",
-        "output": "experiments/paper_randomized_gpu0_seed439_20261128",
-        "stdout": "logs/paper_randomized_gpu0_seed439_20261128.stdout",
+        "rollout_steps": 30,
+        "run_id": "paper_randomized_gpu0_seed439_20261128",
+        "seed": 439,
+        "split": "train",
+        "started_utc": "2026-11-27T20:10:47Z",
         "startup_evidence_utc": "2026-11-27T20:13:36Z",
-        "gazebo_world_configs": 16,
-        "podman_worker_launchers": 16,
-        "evidence": "per-world episode logs present; learner alive; no PPO update/progress.csv observed yet"
+        "stdout": "logs/paper_randomized_gpu0_seed439_20261128.stdout",
+        "worlds": 16
       },
       {
-        "run_id": "paper_nonrandomized_gpu1_seed440_20261128",
-        "regime": "nonrandomized",
-        "gpu": 1,
-        "seed": 440,
-        "started_utc": "2026-11-27T20:10:47Z",
-        "profile": "mission/profiles/waffle_gazebo_paper_nonrandomized_500x3.json",
-        "profile_sha256": "c6cd247d1f9acd3aee76a958e0a2a463c8cbd099b2d289c46d0b2201754d3d39",
-        "split": "train",
-        "worlds": 16,
-        "rollout_steps": 30,
-        "mini_batches": 4,
-        "ppo_epochs": 5,
-        "requested_transitions": 250000,
         "checkpoint": "trained_models/GST_predictor_rand/checkpoints/41665.pt",
         "checkpoint_sha256": "a60bdd3b8ca84457497365133b9055c80d55b11c5a3bc76b28e38d4200cfd8ce",
-        "initialization": "transferred official randomized actor; native action head reset; fresh PPO optimizer",
-        "output": "experiments/paper_nonrandomized_gpu1_seed440_20261128",
-        "stdout": "logs/paper_nonrandomized_gpu1_seed440_20261128.stdout",
-        "startup_evidence_utc": "2026-11-27T20:13:36Z",
+        "evidence": "per-world episode logs present; learner alive; no PPO update/progress.csv observed yet",
         "gazebo_world_configs": 16,
+        "gpu": 1,
+        "initialization": "transferred official randomized actor; native action head reset; fresh PPO optimizer",
+        "mini_batches": 4,
+        "output": "experiments/paper_nonrandomized_gpu1_seed440_20261128",
         "podman_worker_launchers": 16,
-        "evidence": "per-world episode logs present; learner alive; no PPO update/progress.csv observed yet"
+        "ppo_epochs": 5,
+        "profile": "mission/profiles/waffle_gazebo_paper_nonrandomized_500x3.json",
+        "profile_sha256": "c6cd247d1f9acd3aee76a958e0a2a463c8cbd099b2d289c46d0b2201754d3d39",
+        "regime": "nonrandomized",
+        "requested_transitions": 250000,
+        "rollout_steps": 30,
+        "run_id": "paper_nonrandomized_gpu1_seed440_20261128",
+        "seed": 440,
+        "split": "train",
+        "started_utc": "2026-11-27T20:10:47Z",
+        "startup_evidence_utc": "2026-11-27T20:13:36Z",
+        "stdout": "logs/paper_nonrandomized_gpu1_seed440_20261128.stdout",
+        "worlds": 16
       }
     ],
+    "schema": "waffle-paper-regime-training-launch-v1",
+    "source_commit_h100": "66efe86eb043bfdb31d365be4058b3e6b9016bfc",
+    "source_tree_sha256_git": "04fdc6ce0f21988ecf8840438fc49122f095d46f",
     "worker_sha256": "095521529c74cb135c7be804c21a374d7db4299a3928b3b47d0825479fe7e9aa",
-    "detector_sha256": "1b62e50d9bcb954975bda28610e09921e8bde94216b0a291a704a579690b6324",
-    "previous_workloads": "seed436, seed437 and seed438 were left untouched",
-    "polling": {
-      "last_consolidated_health_check_utc": "2026-11-27T20:09:47Z",
-      "last_targeted_startup_check_utc": "2026-11-27T20:13:36Z",
-      "next_check_not_before_utc": "2026-11-27T20:23:36Z"
+    "health_checks": [
+      {
+        "timestamp_utc": "2026-11-27T20:24:04Z",
+        "free_vram_mib": {
+          "gpu0": 39692,
+          "gpu1": 35476
+        },
+        "gpu_utilization_queried": false,
+        "trainers": {
+          "paper_randomized_gpu0_seed439_20261128": {
+            "update_index": 0,
+            "transitions": 480,
+            "episodes_reported": 95,
+            "mean_reward": -21.625940563804225,
+            "median_reward": -20.6,
+            "logged_fps": 1,
+            "first_optimizer_update_completed": true
+          },
+          "paper_nonrandomized_gpu1_seed440_20261128": {
+            "update_index": 0,
+            "transitions": 480,
+            "episodes_reported": 86,
+            "mean_reward": -23.41532722739286,
+            "median_reward": -23.0,
+            "logged_fps": 1,
+            "first_optimizer_update_completed": true
+          }
+        },
+        "legacy_trainers": {
+          "seed437": {
+            "update_index": 474,
+            "transitions": 114000,
+            "recent_reward": -24.712005043029784
+          },
+          "seed436": {
+            "update_index": 368,
+            "transitions": 177120,
+            "recent_reward": -25.201567211151122
+          },
+          "seed438": {
+            "update_index": 26,
+            "transitions": 25920,
+            "recent_reward": -25.06625865936279
+          }
+        },
+        "interpretation": "logged FPS includes cold startup and is not a steady-state throughput estimate; first rollout/update only, no quality inference"
+      }
+    ],
+    "resource_after_admission": {
+      "gpu0": 39692,
+      "gpu1": 35476
     }
+  },
+  "training_health_20261127T202404Z": {
+    "timestamp_utc": "2026-11-27T20:24:04Z",
+    "free_vram_mib": {
+      "gpu0": 39692,
+      "gpu1": 35476
+    },
+    "gpu_utilization_queried": false,
+    "trainers": {
+      "paper_randomized_gpu0_seed439_20261128": {
+        "update_index": 0,
+        "transitions": 480,
+        "episodes_reported": 95,
+        "mean_reward": -21.625940563804225,
+        "median_reward": -20.6,
+        "logged_fps": 1,
+        "first_optimizer_update_completed": true
+      },
+      "paper_nonrandomized_gpu1_seed440_20261128": {
+        "update_index": 0,
+        "transitions": 480,
+        "episodes_reported": 86,
+        "mean_reward": -23.41532722739286,
+        "median_reward": -23.0,
+        "logged_fps": 1,
+        "first_optimizer_update_completed": true
+      }
+    },
+    "legacy_trainers": {
+      "seed437": {
+        "update_index": 474,
+        "transitions": 114000,
+        "recent_reward": -24.712005043029784
+      },
+      "seed436": {
+        "update_index": 368,
+        "transitions": 177120,
+        "recent_reward": -25.201567211151122
+      },
+      "seed438": {
+        "update_index": 26,
+        "transitions": 25920,
+        "recent_reward": -25.06625865936279
+      }
+    },
+    "interpretation": "logged FPS includes cold startup and is not a steady-state throughput estimate; first rollout/update only, no quality inference"
   }
 }
