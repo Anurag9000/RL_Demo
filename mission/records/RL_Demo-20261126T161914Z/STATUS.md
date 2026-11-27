@@ -511,3 +511,8 @@ Correction to the 13:13:43Z sample entry: the first glob used a pattern that did
 Both recovery learners remain alive: seed436 PID 2042361 on GPU1 (16 worlds), and seed437 PID 2042362 on GPU0 (8 worlds). Latest progress rows: seed436 update 195 / 94,080 recovery-segment transitions, 3 reported FPS, rolling reward mean -25.23; seed437 update 249 / 60,000 segment transitions, 2 reported FPS, reward mean -25.37. From the 13:13:43Z sample, seed436 advanced +4 updates/+1,920 segment transitions and seed437 +6/+1,440. Adding the recorded continuation offsets 10,320 and 14,640 gives cumulative log-visible transitions 104,400 and 74,640. Latest durable checkpoints remain seed436 update 180 (12:50:27Z) and seed437 update 240 (13:09:45Z). These are segment/log-visible counters, not verified unique environment transitions across recovery.
 
 Free VRAM: GPU0 92,723/95,830 MiB; GPU1 90,660/95,830 MiB. Host available 463 GiB; swap used 468 MiB; /dev/shm free 252 GiB; root filesystem free 7.0 TiB. Recursive retry-ledger scan finds five seed436 and two seed437 worker closures (six code 139 exits, one unavailable exit code). Both learners and active Gazebo episode logs remain present; neither process changed. Next stable sample no earlier than 13:34:09Z.
+
+
+## 2026-11-27T13:26Z mission ledger archive synchronization
+
+The updated status, issue register, source audit coverage, structured state and append-only command ledger were added to the feature branch as commit `20449b109a26538da5f61fd15766bb26af520351`. Kakarot fast-forwarded and pushed this branch to GitHub; H100 fetched it. All three checkouts verified the same commit with clean worktrees and `main` unchanged. Per-file SHA256 values are in the tracked SYNC_MANIFEST.json.

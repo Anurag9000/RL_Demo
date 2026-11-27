@@ -904,7 +904,7 @@
     "sha256": "7bce2f5999e39e56b3e1bf2f9438bcb61c77db937579ee5cc334d637ca4d7a2d",
     "status": "illustrative, six fresh test scenarios; all non-scene profile fields match base"
   },
-  "github_branch_push": "pushed to Anurag9000/RL_Demo feature branch from Kakarot; verified remote SHA a4b563750ff14bcc2118f39f6f68f9203a524ac2; H100 fetched; main unchanged",
+  "github_branch_push": "mission ledger commit 20449b109a26538da5f61fd15766bb26af520351 pushed from Kakarot; H100 fetched; main unchanged",
   "gpu_assignment": {
     "gpu0_job_owner": "rl-group1",
     "gpu0_runtime_hours": 44.97,
@@ -959,8 +959,8 @@
   ],
   "last_health_poll_utc": "2026-11-27T13:24:09Z",
   "last_inventory_utc": "2026-11-26T17:30:35Z",
-  "last_sync_check_utc": "2026-11-27T13:23:00Z",
-  "ledger_archive_commit": "a969f6414f9de8cd1ddc220b0bb3bede64ae1bc1",
+  "last_sync_check_utc": "2026-11-27T13:26:00Z",
+  "ledger_archive_commit": "20449b109a26538da5f61fd15766bb26af520351",
   "mission_id": "20261126T161914Z",
   "next_health_poll_not_before_utc": "2026-11-27T13:34:09Z",
   "numa_nodes": 2,
