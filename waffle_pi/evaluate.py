@@ -158,7 +158,8 @@ def run(args):
                 result['mean_'+k]=float(np.mean([e[k] for e in episode_metrics]))
             result['mean_all_episode_path_m']=result['mean_path_m']
             result['mean_all_episode_time_s']=result['mean_time_s']
-            from .paper_metrics import aggregate_success_navigation_metrics
+            from .paper_metrics import aggregate_success_navigation_metrics, paper_outcome_percentages
+            result.update(paper_outcome_percentages(outcomes, len(episode_metrics)))
             result.update(aggregate_success_navigation_metrics(episode_metrics))
             result['paper_navigation_metric_definition']='NT and PL are mean simulated time and Gazebo truth path length over successful episodes only; both are null when there are no successes. mean_time_s and mean_path_m retain all-outcome means.'
             for k in ('min_human_clearance_m','min_wall_clearance_m'):
