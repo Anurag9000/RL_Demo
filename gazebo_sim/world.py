@@ -7,6 +7,7 @@ from pathlib import Path
 import xml.etree.ElementTree as ET
 
 from waffle_pi.gazebo_world import build,child,MODEL
+from waffle_pi.human_dynamics import validate_human_dynamics
 
 
 def replace(parent,tag,value):
@@ -36,6 +37,8 @@ def validate_gazebo_profile(profile,measured=False):
         raise ValueError('Measured Gazebo requires physics evidence and model/worker hashes')
     if not profile.get('scene'):
         raise ValueError('Gazebo requires an explicit scenario bank')
+    if profile.get('human_dynamics') is not None:
+        validate_human_dynamics(profile['human_dynamics'])
     return g
 
 

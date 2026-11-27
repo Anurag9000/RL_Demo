@@ -161,6 +161,36 @@ scratch control omit --resume and --waffle-init-cartesian. For continuation
 use --continue-state instead of weights-only resume, with matching contracts
 and new rollouts. A tensor-trained checkpoint is not a Gazebo learner state.
 
+## Paper-regime scenario banks
+
+The profiles
+mission/profiles/waffle_gazebo_paper_randomized_500x3.json and
+mission/profiles/waffle_gazebo_paper_nonrandomized_500x3.json contain separate,
+seeded train/validation/test banks (500 cases per split, four humans per case).
+Rebuild them from an illustrative base profile with:
+
+~~~sh
+python scripts/generate_paper_regime_scenarios.py \
+  --base configs/waffle_gazebo.example.json --output-dir mission/profiles \
+  --per-split 500
+~~~
+
+The randomized bank uses human radii 0.3–0.5 m, preferred speeds 0.5–1.5 m/s,
+and independent 0.5-probability scheduled hidden goal changes at five-second
+episode boundaries. The nonrandomized bank fixes radius at 0.3 m and speed at
+1.0 m/s and disables scheduled mid-episode changes. Both use end-of-route
+resampling for continuous crowd flow. Human goals and simulator truth remain
+inside Gazebo; the policy receives only detector/tracker observations. The
+training process writes gazebo_environment_summary.json at shutdown with
+goal-change/sample-failure counts, episodes started, worker timing and detector
+statistics when available.
+
+These banks are nominal and illustrative, not hardware-calibrated crowd data.
+They cover four humans only, so they do not yet establish the paper's full
+crowd-count coverage or satisfy measured-profile qualification. Train and tune
+on train/validation; reserve each bank's test split for one final locked
+evaluation. A short integration smoke is not a quality or convergence result.
+
 ### Concurrent curriculum and policy search
 
 ~~~sh

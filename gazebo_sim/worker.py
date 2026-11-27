@@ -152,7 +152,12 @@ class Worker:
                     pass
                 self.proc.wait()
         self.reader.join(timeout=3)
-        self.proc.stdin.close()
-        self.proc.stdout.close()
+        # Broken workers can leave buffered pipe errors behind. Cleanup must
+        # not replace the original worker-startup or IPC exception.
+        for pipe in (self.proc.stdin,self.proc.stdout):
+            try:
+                pipe.close()
+            except OSError:
+                pass
         self.log.close()
         self._release_scan()

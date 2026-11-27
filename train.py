@@ -429,7 +429,19 @@ def main():
 					segment_updates=num_updates,segment_transitions=num_updates*algo_args.num_steps*algo_args.num_processes*world,
 					lr=agent.optimizer.param_groups[0]['lr'],entropy_coef=agent.entropy_coef,clip_param=agent.clip_param),handle,indent=2)
 	finally:
-		envs.close()
+		try:
+			if rank==0 and algo_args.waffle_gazebo:
+				try:
+					report=envs.venv.performance_report()
+					target=os.path.join(algo_args.output_dir,'gazebo_environment_summary.json')
+					tmp=target+'.tmp'
+					with open(tmp,'w') as handle:
+						json.dump(report,handle,indent=2,allow_nan=False)
+					os.replace(tmp,target)
+				except Exception as exc:
+					print('Could not save Gazebo environment summary:',repr(exc),flush=True)
+		finally:
+			envs.close()
 	if world>1:
 		torch.distributed.destroy_process_group()
 

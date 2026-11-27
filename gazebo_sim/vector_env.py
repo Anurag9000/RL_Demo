@@ -29,6 +29,7 @@ from waffle_pi.fidelity import disk_clearance
 from waffle_pi.scene import scene_tensors,constrain_human_step
 from waffle_pi.quality import navigation_reward
 from waffle_pi.paper_metrics import intrusion_metrics
+from waffle_pi.human_dynamics import update_human_goals
 from .world import validate_gazebo_profile,source_digest,write_case
 from .worker import Worker
 
@@ -37,6 +38,7 @@ class PerWorld:
     def __init__(self,config,args,device,root,index,worker_factory=Worker,detector_factory=DetectorEngine):
         self.cfg,self.args,self.device=config,args,device
         self.profile=config.fidelity
+        self.human_dynamics=self.profile.get('human_dynamics')
         self.g=self.profile['gazebo']
         self.laser=self.profile['laser']
         self.root=Path(root)/str(index)
@@ -70,6 +72,10 @@ class PerWorld:
         self.speed=np.asarray([h['speed'] for h in scenario['humans']],np.float32)
         self.routes=np.asarray([h['waypoints'] for h in scenario['humans']],np.float32)
         self.route=np.zeros(self.n,dtype=np.int64)
+        self.current_human_goals=self.routes[np.arange(self.n),self.route].copy()
+        self.policy_tick=0
+        self.human_goal_change_count=0
+        self.human_goal_sample_failures=0
         self.human_velocity=np.zeros((self.n,2),np.float32)
         self.tracker=Tracker(self.n)
         self.history=TrajectoryHistory(self.n,5)
@@ -206,16 +212,31 @@ class PerWorld:
         blocked=not fresh or (cmd==(0.,0.) and (v!=0. or w!=0.))
         return cmd,blocked
 
+    def next_human_goals(self,positions):
+        """Advance hidden crowd goals once per real or lookahead policy tick."""
+        pos=np.asarray(positions,dtype=np.float32)
+        if self.human_dynamics is None:
+            reached=np.linalg.norm(self.routes[np.arange(self.n),self.route]-pos,axis=-1)<.15
+            self.route=(self.route+reached)%self.routes.shape[1]
+            self.current_human_goals=self.routes[np.arange(self.n),self.route].copy()
+            return self.current_human_goals
+        goals,changed,failed=update_human_goals(pos,self.current_human_goals,self.radius,
+            np.asarray(self.state['truth'][:2]),self.goal,self.cfg.robot.radius,
+            float(self.profile['scene']['arena_half_extent_m']),self.policy_tick,
+            float(self.cfg.env.time_step),self.human_dynamics,self.rng,
+            rectangles=self.profile['scene']['rectangles_m'])
+        self.current_human_goals=goals.astype(np.float32)
+        self.policy_tick+=1
+        self.human_goal_change_count+=changed
+        self.human_goal_sample_failures+=failed
+        return self.current_human_goals
+
     def _advance_ground_truth_humans(self, future_policy_steps):
         """Continue the simulated crowd after termination to complete paper lookahead."""
         for _ in range(future_policy_steps):
             pos=np.asarray(self.state['humans'],np.float32)
             vel=np.asarray(self.human_velocity,np.float32)
-            idx=np.arange(self.n)
-            goal=self.routes[idx,self.route]
-            reached=np.linalg.norm(goal-pos,axis=-1)<.15
-            self.route=(self.route+reached)%self.routes.shape[1]
-            goal=self.routes[idx,self.route]
+            goal=self.next_human_goals(pos)
             p,v,r,s,g=[torch.as_tensor(x,device=self.device,dtype=torch.float32) for x in
                        (pos[None],vel[None],self.radius[None],self.speed[None],goal[None])]
             preferred=(g-p)/(g-p).norm(dim=-1,keepdim=True).clamp_min(.1)*s[...,None]
@@ -491,9 +512,9 @@ class GazeboVecEnv(VecEnv):
         for i,(w,p) in enumerate(zip(self.worlds,pos)):
             if active[i]:
                 w.previous_humans=p.copy()
-                reached=np.linalg.norm(w.routes[np.arange(self.h),w.route]-p,axis=-1)<.15
-                w.route=(w.route+reached)%w.routes.shape[1]
-            goals.append(w.routes[np.arange(self.h),w.route])
+                goals.append(w.next_human_goals(p))
+            else:
+                goals.append(w.current_human_goals)
         p,v,r,s,g=[torch.as_tensor(x,device=self.device,dtype=torch.float32) for x in (pos,vel,radius,speed,np.stack(goals))]
         preferred=(g-p)/(g-p).norm(dim=-1,keepdim=True).clamp_min(.1)*s[...,None]
         if self.args.waffle_reactive_humans:
@@ -557,6 +578,14 @@ class GazeboVecEnv(VecEnv):
     def performance_report(self):
         # Worker times overlap; totals are CPU/world-seconds, not wall time.
         result={k:sum(w.timing[k] for w in self.worlds) for k in self.worlds[0].timing}
+        result['human_dynamics']={
+            'regime':self.worlds[0].human_dynamics['regime'] if self.worlds[0].human_dynamics else 'legacy_routes',
+            'goal_changes':sum(w.human_goal_change_count for w in self.worlds),
+            'sample_failures':sum(w.human_goal_sample_failures for w in self.worlds),
+            'episodes_started':sum(w.episode for w in self.worlds),
+            'per_world':[{'index':w.index,'goal_changes':w.human_goal_change_count,
+                          'sample_failures':w.human_goal_sample_failures,
+                          'episodes_started':w.episode} for w in self.worlds]}
         if self.detector_pool is not None:
             result['detector_pool']=dict(self.detector_pool.stats)
         return result
