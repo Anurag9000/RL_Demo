@@ -1,0 +1,75 @@
+{
+  "episodes": 1,
+  "outcomes": {
+    "Collision": 1
+  },
+  "success_rate": 0.0,
+  "collision_rate": 1.0,
+  "timeout_rate": 0.0,
+  "mean_reward": -21.1319637298584,
+  "seed": 90437,
+  "gate_intervention_fraction": 0.75,
+  "backend": "gazebo",
+  "transitions_per_sec": 1.8371582320547495,
+  "counted_transitions": 12,
+  "elapsed_s": 6.531827139668167,
+  "success_ci95": [
+    0.0,
+    0.7934506856227626
+  ],
+  "collision_ci95": [
+    0.20654931437723745,
+    1.0
+  ],
+  "scene_split": "validation",
+  "unique_scenarios": 1,
+  "episode_metrics": [
+    {
+      "success": false,
+      "path_m": 0.0030062117148190737,
+      "time_s": 3.0,
+      "rotation_rad": 0.44839420914649963,
+      "min_human_clearance_m": -0.08943096548318863,
+      "min_wall_clearance_m": 1.4654613733291626,
+      "intrusion_s": 0.75,
+      "gate_fraction": 0.75,
+      "straight_line_spl": 0.0,
+      "final_goal_distance_m": 1.1119003295898438,
+      "paper_itr": 0.4166666666666667,
+      "paper_sd_m": 0.8372691771192455,
+      "paper_intrusion_steps": 5,
+      "paper_episode_steps": 12,
+      "paper_sd_sum_m": 4.186345885596228,
+      "paper_sd_count": 5,
+      "scenario_id": "v5-validation-0157"
+    }
+  ],
+  "mean_path_m": 0.0030062117148190737,
+  "mean_time_s": 3.0,
+  "mean_rotation_rad": 0.44839420914649963,
+  "mean_intrusion_s": 0.75,
+  "mean_straight_line_spl": 0.0,
+  "mean_final_goal_distance_m": 1.1119003295898438,
+  "mean_all_episode_path_m": 0.0030062117148190737,
+  "mean_all_episode_time_s": 3.0,
+  "successful_episode_count": 0,
+  "paper_nt_success_only_s": null,
+  "paper_pl_success_only_m": null,
+  "paper_navigation_metric_definition": "NT and PL are mean simulated time and Gazebo truth path length over successful episodes only; both are null when there are no successes. mean_time_s and mean_path_m retain all-outcome means.",
+  "p05_min_human_clearance_m": -0.08943096548318863,
+  "p05_min_wall_clearance_m": 1.4654613733291626,
+  "gate_episode_fraction": 1.0,
+  "mean_paper_itr": 0.4166666666666667,
+  "paper_sd_intrusion_steps": 5,
+  "mean_paper_sd_m": 0.8372691771192455,
+  "paper_metric_definition": "ITR is the unweighted mean across episodes of each episode fraction whose robot center intrudes into any human ground-truth position from t+1 through t+5; SD is the pooled mean current-time closest-human center distance over intrusion timesteps.",
+  "paper_trace_dir": "/home/rl-group4/waffle_runs/RL_Demo-20261126T161914Z/evaluations/success_only_schema_smoke_seed437_20261127/metrics_traces",
+  "paper_trace_count": 1,
+  "paper_trace_offline_verification": {
+    "passed": true,
+    "mean_episode_itr": 0.4166666666666667,
+    "pooled_sd_m": 0.8372691771192455,
+    "intrusion_steps": 5,
+    "episode_steps": 12
+  }
+}
