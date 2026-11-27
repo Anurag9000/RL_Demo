@@ -463,3 +463,13 @@ Perception reads confirm constant-velocity state/covariance prediction, gated Ma
 ## 2026-11-27T13:48Z complete recurrent predictor wrapper pass
 
 Read all 222 lines of `rl/vec_env/vec_pretext_normalize.py`. It loads the pinned GST artifact and checks prediction/control timestep divisibility; keeps per-slot position/mask history in a ring for Waffle observations (or a deque for legacy scenes); uses direct timestamped detector histories when provided; predicts future positions/masks; adds exponentially discounted collision shaping in legacy paths while zeroing that added reward on terminal Waffle lanes; converts predictions to robot-relative coordinates and fills the future spatial-edge features only where prediction masks are valid; and sorts human slots by current distance while carrying the Waffle visibility mask. GST compile and CUDA graph are opt-in. This confirms the v5 PPO receives predicted future features before rollout storage, while policy action inference remains recurrent. The older displacement bookkeeping (`last_pos`) is assigned but unused in this wrapper; no demonstrated active-path defect follows from that alone. This was static review only, with no process or source change.
+
+
+## 2026-11-27T13:54Z line-count correction
+
+The 13:12 review note transcribed `gazebo_sim/worker.cc` as 333 lines; `wc -l` confirms the complete file is 354 lines. The full-file read did cover the entire 354-line implementation. The five-file review total is therefore 1,245 lines (577 vector_env + 158 worker.py + 153 world.py + 354 worker.cc + 3 lines reported for the small hardware helper was not included in the prior sum); the prior 1,221 combined figure is superseded. Exact total with hardware.py must be read from its current `wc -l` before reporting a combined count.
+
+
+## 2026-11-27T13:55Z combined source line-count correction
+
+Correction to the preceding correction: `wc -l` gives 125 lines for `gazebo_sim/hardware.py`, so the exact five-file total is 1,367 lines (577 + 158 + 153 + 354 + 125). No separate 3-line helper count applies. The earlier 1,221 and 1,245 totals are both withdrawn.

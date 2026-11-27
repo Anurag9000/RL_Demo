@@ -1407,7 +1407,7 @@
       "gazebo_sim/vector_env.py (577 lines)",
       "gazebo_sim/worker.py (158 lines)",
       "gazebo_sim/world.py (153 lines)",
-      "gazebo_sim/worker.cc (333 lines)",
+      "gazebo_sim/worker.cc (354 lines)",
       "gazebo_sim/hardware.py (complete)",
       "rl/networks/model.py (94 lines)",
       "rl/networks/network_utils.py (64 lines)",
@@ -1418,7 +1418,16 @@
       "rl/evaluation.py (160 lines)",
       "rl/vec_env/vec_pretext_normalize.py (222 lines)"
     ],
+    "dedicated_gazebo_semantic_read_lines": {
+      "gazebo_sim/hardware.py": 125,
+      "gazebo_sim/vector_env.py": 577,
+      "gazebo_sim/worker.cc": 354,
+      "gazebo_sim/worker.py": 158,
+      "gazebo_sim/world.py": 153,
+      "total": 1367
+    },
     "indexed_functions_and_classes": 1028,
+    "line_count_correction_utc": "2026-11-27T13:55:00Z",
     "open_static_findings": [
       "I-023 legacy rl/evaluation.py one-argument isinstance in info=None branch; active Waffle evaluator unaffected"
     ],

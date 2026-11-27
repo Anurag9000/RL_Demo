@@ -535,3 +535,8 @@ The validation-only seed437 update240 evaluation is active (bash 3386551, Python
 Seed436 PID 2042361 (GPU1, 16 worlds) is at update 205 / 98,880 segment transitions, 3 reported FPS, reward mean -25.74; durable update200 saved 13:33:40Z. Seed437 PID 2042362 (GPU0, 8 worlds) is at update262 / 63,120 transitions, 2 FPS, reward mean -25.15; durable update260 saved 13:41:57Z. Since 13:35:53Z, counters advanced +5/+2,400 (436) and +6/+1,440 (437); adding continuation offsets gives 109,200 and 77,760 cumulative log-visible transitions. Retry ledgers remain 5 seed436 and 2 seed437.
 
 The seed437 update240 500-case validation diagnostic remains active (PID 3386551 and child 3386575), with 247 trace files and no metrics JSON yet. Free VRAM: GPU0 92,723 MiB; GPU1 88,412 MiB. No learner changed. The held-out test split remains untouched. Next health sample no earlier than 13:56:11Z.
+
+
+## 2026-11-27T13:54Z audit line-count correction
+
+Correction: `gazebo_sim/worker.cc` is 354 lines, not 333. The full-file read covered all 354 lines; the earlier claimed 1,221-line combined total was incorrect and is withdrawn.
