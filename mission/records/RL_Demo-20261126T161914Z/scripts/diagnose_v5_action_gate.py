@@ -14,8 +14,11 @@ p.add_argument('--output-dir', required=True)
 p.add_argument('--logs-dir', required=True)
 p.add_argument('--seed', type=int, required=True)
 p.add_argument('--episodes', type=int, default=1)
+p.add_argument('--processes', type=int, default=1)
 p.add_argument('--gpu', type=int, default=0)
 a = p.parse_args()
+if a.processes < 1 or a.episodes < a.processes:
+    raise SystemExit('episodes must be at least the process count')
 root, repo, out, logs = map(Path, (a.run_root, a.repo_root, a.output_dir, a.logs_dir))
 checkpoint = Path(a.checkpoint)
 if not checkpoint.is_file() or not root.resolve() in checkpoint.resolve().parents:
@@ -81,6 +84,6 @@ sys.argv = ['train.py', '--output_dir', str(out), '--waffle-pi', '--waffle-nativ
     '--waffle-gazebo-worker', str(root/'build/waffle_gazebo_worker'), '--waffle-gazebo-logs', str(logs),
     '--waffle-gazebo-detector-device', 'learner', '--waffle-detector-weights', str(root/'models/dr_spaam/ckpt_jrdb_ann_dr_spaam_e20.pth'),
     '--waffle-humans', '4', '--waffle-scene-split', 'validation', '--waffle-eval-episodes', str(a.episodes),
-    '--waffle-eval-json', str(out/'metrics.json'), '--load-path', str(checkpoint), '--num-processes', '1',
-    '--num-mini-batch', '1', '--num-steps', '30', '--seq_length', '30', '--seed', str(a.seed)]
+    '--waffle-eval-json', str(out/'metrics.json'), '--load-path', str(checkpoint), '--num-processes', str(a.processes),
+    '--num-mini-batch', str(a.processes), '--num-steps', '30', '--seq_length', '30', '--seed', str(a.seed)]
 train.main()
