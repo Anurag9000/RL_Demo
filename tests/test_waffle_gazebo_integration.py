@@ -174,6 +174,11 @@ class Integration(unittest.TestCase):
                     self.assertEqual(trace['episode_steps'].item(),1)
                     self.assertEqual(trace['robot_positions'].shape,(2,2))
                     self.assertEqual(trace['human_positions'].shape[0],6)
+                    self.assertEqual(trace['human_ids'].tolist(),['person_0'])
+                    self.assertEqual(trace['robot_times'].shape,(2,))
+                    self.assertEqual(trace['human_times'].shape,(6,))
+                    self.assertAlmostEqual(float(trace['robot_times'][-1]-trace['robot_times'][0]),.25)
+                    self.assertAlmostEqual(float(trace['human_times'][-1]-trace['robot_times'][-1]),1.)
                     self.assertEqual(trace['scenario_id'].item(),'illustrative-1-train')
                     self.assertEqual(bool(trace['online_sd_valid'].item()),bool(torch.isfinite(env.paper_sd_m[0])))
                 from waffle_pi.offline_metrics import score_trace_file

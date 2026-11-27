@@ -52,7 +52,8 @@ class PaperMetrics(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp)
             robot=np.zeros((2,2),dtype=np.float32)
-            base=dict(robot_positions=robot,human_radii=np.asarray([.3]),
+            base=dict(robot_positions=robot,human_radii=np.asarray([.3]),human_ids=np.asarray(['person_0']),
+                robot_times=np.asarray([2.,2.25]),human_times=np.arange(6,dtype=np.float64)*.25+2.,
                 robot_radius=np.asarray(.25),future_steps=np.asarray(5),episode_steps=np.asarray(1),
                 scenario_index=np.asarray(0),scenario_id=np.asarray('case'),split=np.asarray('validation'),
                 seed=np.asarray(7),lane=np.asarray(0),episode_number=np.asarray(1),profile_sha256=np.asarray('profile'),
@@ -73,6 +74,8 @@ class PaperMetrics(unittest.TestCase):
             self.assertAlmostEqual(result['pooled_sd_m'],1.)
             self.assertTrue(result['all_online_parity'])
             self.assertEqual(result['episodes'][0]['checkpoint_sha256'],'checkpoint')
+            self.assertEqual(result['episodes'][0]['human_ids'],['person_0'])
+            self.assertEqual(result['episodes'][0]['human_time_end'],3.25)
 
     def test_pooled_metrics_weight_intrusion_events_and_timesteps(self):
         pooled = aggregate_intrusion_metrics([

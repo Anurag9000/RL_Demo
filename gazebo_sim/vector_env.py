@@ -74,6 +74,7 @@ class PerWorld:
         self.tracker=Tracker(self.n)
         self.history=TrajectoryHistory(self.n,5)
         self.last_stamp=self.used_stamp=-math.inf
+        self.last_sim_time=-math.inf
         self.scan=None
         self.points=None
         self.fault=True
@@ -106,6 +107,8 @@ class PerWorld:
         self.ingest(self.state)
         self.truth_robot_trace=[np.asarray(self.state['truth'][:2],dtype=np.float64)]
         self.truth_human_trace=[np.asarray(self.state['humans'],dtype=np.float64).copy()]
+        self.truth_time_trace=[float(self.state['time'])]
+        self.truth_human_ids=np.asarray([f'person_{i}' for i in range(self.n)])
         if self.scan is None:
             raise RuntimeError('No initial laser observation')
         obs=self.observe()
@@ -118,6 +121,10 @@ class PerWorld:
             a=np.asarray(state[key])
             if a.shape!=shape or not np.isfinite(a).all():
                 raise RuntimeError('Invalid native state '+key)
+        sim_time=float(state['time'])
+        if not math.isfinite(sim_time) or sim_time<=self.last_sim_time:
+            raise RuntimeError('Nonmonotonic Gazebo simulation time')
+        self.last_sim_time=sim_time
         for frame in state['scans']:
             stamp=float(frame['stamp'])
             if stamp<=self.last_stamp:
@@ -233,6 +240,7 @@ class PerWorld:
                 self.state=self.worker.step(self.physics_iterations,0.,0.,hv,True)
             self.human_velocity=(np.asarray(self.state['humans'],np.float32)-before)/self.cfg.env.time_step
             self.truth_human_trace.append(np.asarray(self.state['humans'],dtype=np.float64).copy())
+            self.truth_time_trace.append(float(self.state['time']))
 
     def _paper_social_metrics(self):
         # T episode transitions need only four extra frames: frame T already
@@ -285,6 +293,7 @@ class PerWorld:
         self.human_velocity=(last_h-np.asarray(self.previous_humans))/self.cfg.env.time_step
         self.truth_robot_trace.append(np.asarray(prev[:2],dtype=np.float64).copy())
         self.truth_human_trace.append(np.asarray(last_h,dtype=np.float64).copy())
+        self.truth_time_trace.append(float(self.state['time']))
         dist=float(np.linalg.norm(prev[:2]-self.goal))
         success=dist<self.cfg.robot.radius and not collision
         timeout=self.steps>=round(self.cfg.env.time_limit/self.cfg.env.time_step) and not collision and not success
@@ -424,8 +433,11 @@ class GazeboVecEnv(VecEnv):
         world=self.worlds[lane]
         robot=np.asarray(world.truth_robot_trace,dtype=np.float32)
         humans=np.asarray(world.truth_human_trace,dtype=np.float32)
-        if len(robot)!=world.steps+1 or len(humans)<len(robot)+4:
+        times=np.asarray(world.truth_time_trace,dtype=np.float64)
+        if len(robot)!=world.steps+1 or len(humans)<len(robot)+4 or len(times)!=len(humans):
             raise RuntimeError('evaluation truth trace is incomplete or lacks the four-frame suffix')
+        if not np.isfinite(times).all() or np.any(np.diff(times)<=0):
+            raise RuntimeError('evaluation truth timestamps are invalid or nonmonotonic')
         path=self.eval_trace_dir/f'lane-{lane:03d}-episode-{episode_number:04d}-case-{scenario_index:06d}.npz'
         tmp=path.with_name(path.name+'.tmp')
         sd_value=metrics['paper_sd_m']
@@ -435,8 +447,8 @@ class GazeboVecEnv(VecEnv):
                 robot_positions=robot,human_positions=humans,human_radii=np.asarray(world.radius,dtype=np.float32),
                 robot_radius=np.asarray(self.cfg.robot.radius,dtype=np.float32),future_steps=np.asarray(5,dtype=np.int32),
                 policy_dt=np.asarray(self.cfg.env.time_step,dtype=np.float64),
-                robot_times=np.arange(len(robot),dtype=np.float64)*self.cfg.env.time_step,
-                human_times=np.arange(len(humans),dtype=np.float64)*self.cfg.env.time_step,
+                robot_times=times[:len(robot)],human_times=times,
+                human_ids=world.truth_human_ids,
                 episode_steps=np.asarray(world.steps,dtype=np.int32),scenario_index=np.asarray(scenario_index,dtype=np.int32),
                 scenario_id=np.asarray(scenario_id),lane=np.asarray(lane,dtype=np.int32),episode_number=np.asarray(episode_number,dtype=np.int32),
                 split=np.asarray(self.args.waffle_scene_split),seed=np.asarray(self.args.seed,dtype=np.int64),

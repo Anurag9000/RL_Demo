@@ -11,6 +11,9 @@ def score_trace_file(path):
         robot=np.asarray(trace['robot_positions'],dtype=np.float64)
         humans=np.asarray(trace['human_positions'],dtype=np.float64)
         radii=np.asarray(trace['human_radii'],dtype=np.float64)
+        human_ids=np.asarray(trace['human_ids']).astype(str)
+        robot_times=np.asarray(trace['robot_times'],dtype=np.float64)
+        human_times=np.asarray(trace['human_times'],dtype=np.float64)
         robot_radius=float(trace['robot_radius'])
         future_steps=int(trace['future_steps'])
         episode_steps=int(trace['episode_steps'])
@@ -24,10 +27,14 @@ def score_trace_file(path):
         raise ValueError(f'{path}: invalid human truth trace')
     if episode_steps<1 or robot.shape[0]!=episode_steps+1 or future_steps<1:
         raise ValueError(f'{path}: inconsistent episode length/horizon')
-    if humans.shape[1]!=len(radii) or humans.shape[1]<1 or not np.isfinite(radii).all() or (radii<=0).any():
-        raise ValueError(f'{path}: invalid human radii/slots')
+    if humans.shape[1]!=len(radii) or humans.shape[1]!=len(human_ids) or humans.shape[1]<1 or len(set(human_ids.tolist()))!=len(human_ids) or not np.isfinite(radii).all() or (radii<=0).any():
+        raise ValueError(f'{path}: invalid human radii/IDs/slots')
     if not np.isfinite(robot_radius) or robot_radius<=0 or humans.shape[0]<episode_steps+future_steps:
         raise ValueError(f'{path}: incomplete future truth horizon')
+    if robot_times.shape!=(episode_steps+1,) or human_times.shape!=(humans.shape[0],) or not np.isfinite(robot_times).all() or not np.isfinite(human_times).all():
+        raise ValueError(f'{path}: invalid simulator timestamps')
+    if np.any(np.diff(robot_times)<=0) or np.any(np.diff(human_times)<=0) or not np.allclose(human_times[:len(robot_times)],robot_times,rtol=0.,atol=1e-9):
+        raise ValueError(f'{path}: nonmonotonic or misaligned simulator timestamps')
     overlap_limit=radii+robot_radius
     event_count=0
     social_distance_sum=0.0
@@ -47,6 +54,8 @@ def score_trace_file(path):
         detector_sha256=str(metadata.get('detector_sha256','')),
         model_sdf_sha256=str(metadata.get('model_sdf_sha256','')),
         worker_sha256=str(metadata.get('worker_sha256','')),episode_steps=episode_steps,
+        human_ids=human_ids.tolist(),robot_time_start=float(robot_times[0]),
+        robot_time_end=float(robot_times[-1]),human_time_end=float(human_times[-1]),
         intrusion_steps=event_count,itr=event_count/episode_steps,
         sd_sum_m=social_distance_sum,sd_count=event_count,
         sd_m=social_distance_sum/event_count if event_count else None,
