@@ -213,7 +213,8 @@ on held-out scenarios, independent seeds, repeated runs and physical recordings.
 Report success, collisions, timeouts, clearance quantiles, interventions,
 travel time/path length, and straight-line SPL. Wilson intervals are descriptive
 for correlated scenarios. Do not use simulator collision fractions as physical
-safety certification.
+safety certification. See [the Waffle Pi paper metric schema](WAFFLE_PAPER_METRICS.md)
+for exact denominators, percentage fields, and null behavior for success-only NT/PL.
 
 Gazebo evaluation writes one compressed, non-pickle NPZ paper-metric truth
 trace per completed episode. By default, --waffle-eval-json OUT/metrics.json
