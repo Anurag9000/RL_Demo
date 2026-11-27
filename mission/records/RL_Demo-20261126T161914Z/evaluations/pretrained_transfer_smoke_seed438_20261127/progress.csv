@@ -1,0 +1,2 @@
+misc/nupdates,misc/total_timesteps,fps,eprewmean,loss/policy_entropy,loss/policy_loss,loss/value_loss,loss/approx_kl,optimizer/lr
+0,60,1,-22.71057939529419,0.7189385890960693,-5.960465010446114e-09,127.02611541748047,0.0,4e-05

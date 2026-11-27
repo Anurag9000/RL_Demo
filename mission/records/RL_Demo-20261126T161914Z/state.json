@@ -2109,8 +2109,8 @@
     "learner_changed": false,
     "artifacts": "evaluations/seed436_update280_contactprobe1_validation_20261127"
   },
-  "last_health_check_utc": "2026-11-27T18:09:03Z",
-  "next_health_check_not_before_utc": "2026-11-27T18:19:03Z",
+  "last_health_check_utc": "2026-11-27T18:20:54Z",
+  "next_health_check_not_before_utc": "2026-11-27T18:30:54Z",
   "validation_seed436_update280_contact_source100_20261127": {
     "status": "completed_validation_contact_source_diagnostic",
     "started_utc": "2026-11-27T17:57:07Z",
@@ -2156,5 +2156,88 @@
     },
     "interpretation": "The active v5 lineages started with randomly initialized actor-critic weights; load_path is recorded but unused when resume is false. They are scratch baselines, not the goal pretrained actor transfer.",
     "action": "Preserve active runs/checkpoints as scratch controls; start a separate randomized-pretrained transfer lineage after transfer smoke. No training process stopped or modified."
+  },
+  "training_health_20261127T182054Z": {
+    "timestamp_utc": "2026-11-27T18:20:54Z",
+    "seed437": {
+      "pid": 2042362,
+      "alive": true,
+      "update": 428,
+      "transitions": 102960,
+      "latest_checkpoint": "00420.pt",
+      "latest_progress_reward": -24.85744842529297,
+      "gpu": 0
+    },
+    "seed436": {
+      "pid": 2042361,
+      "alive": true,
+      "update": 332,
+      "transitions": 159840,
+      "latest_checkpoint": "00320.pt",
+      "latest_progress_reward": -25.346874809265138,
+      "gpu": 1
+    },
+    "gpu_free_mib": [
+      92701,
+      90660
+    ],
+    "gpu_utilization_percent": [
+      0,
+      91
+    ],
+    "other_visible_compute_pid_444191": {
+      "gpu": 1,
+      "used_mib": 564,
+      "untouched": true
+    },
+    "interpretation": "both scratch controls alive and advancing slowly; not converged; processes preserved"
+  },
+  "pretrained_transfer_smoke_seed438_20261127": {
+    "status": "completed_one_update_actual_gazebo_transfer_smoke",
+    "started_utc": "2026-11-27T18:21:06Z",
+    "finished_utc": "2026-11-27T18:21:57Z",
+    "exit_status": 0,
+    "source_checkpoint": "trained_models/GST_predictor_rand/checkpoints/41665.pt",
+    "source_checkpoint_sha256": "a60bdd3b8ca84457497365133b9055c80d55b11c5a3bc76b28e38d4200cfd8ce",
+    "resume": true,
+    "waffle_init_cartesian": true,
+    "waffle_native_action": true,
+    "continue_state": null,
+    "fresh_ppo_optimizer": true,
+    "profile": "illustrative v5 safe-clearance diverse 500x3",
+    "split": "train",
+    "seed": 438,
+    "worlds": 2,
+    "ppo_updates": 1,
+    "segment_transitions": 60,
+    "episodes_reported": 8,
+    "mean_episode_reward": -22.7,
+    "output_checkpoint_path": "$RUN_ROOT/experiments/waffle_pretrained_transfer_smoke_seed438_rand41665_20261127/checkpoints/00000.pt",
+    "output_checkpoint_sha256": "a690bd8ce61e9111bca3412cc0331b52e2ad484baf66184cc25e30aebcfc6db6",
+    "training_state_sha256": "6b5a2f35e55daa8b4aca16e645852260849ac18ab28f478ceaa4e71fd2e5b58b",
+    "archive": "evaluations/pretrained_transfer_smoke_seed438_20261127",
+    "test_split_used": false
+  },
+  "pretrained_transfer_checkpoint_validation_smoke_20261127": {
+    "status": "completed_fresh_process_gazebo_eval_smoke",
+    "exit_status": 0,
+    "split": "validation",
+    "episodes": 1,
+    "scenario_id": "v5-validation-0393",
+    "checkpoint_sha256": "a690bd8ce61e9111bca3412cc0331b52e2ad484baf66184cc25e30aebcfc6db6",
+    "outcome": "Collision",
+    "successes": 0,
+    "collisions": 1,
+    "timeouts": 0,
+    "policy_steps": 8,
+    "path_m": 0.056311167776584625,
+    "duration_s": 2.0,
+    "min_human_clearance_m": -0.05649480223655701,
+    "paper_itr_percent": 62.5,
+    "paper_sd_m": 0.7373685700630932,
+    "offline_trace_verification_passed": true,
+    "test_split_used": false,
+    "interpretation": "confirms fresh native checkpoint loading and Gazebo evaluator path only; no evidence of convergence or acceptable quality",
+    "archive": "evaluations/pretrained_transfer_smoke_seed438_20261127"
   }
 }

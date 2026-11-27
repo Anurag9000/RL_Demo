@@ -1,0 +1,18 @@
+run_id=waffle_pretrained_transfer_smoke_seed438_rand41665_20261127
+checkpoint_sha256=a60bdd3b8ca84457497365133b9055c80d55b11c5a3bc76b28e38d4200cfd8ce
+git_sha=c8f321b6df6c949e9766ff52b6197433d2432a20
+started_utc=2026-11-27T18:21:06Z
+cuda device=NVIDIA H100 NVL initial_free_mib=92177 total_mib=95311 allocator_cap_fraction=0.20
+No ghost version.
+new gst
+new st model
+LOADED MODEL
+device:  cuda:0
+
+Loaded the following checkpoint: $REPO_ROOT/trained_models/GST_predictor_rand/checkpoints/41665.pt
+$REPO_ROOT/waffle_pi/detector_engine.py:33: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  return original_load(*args,**kwargs)
+Updates 0, num timesteps 60, FPS 1 
+ Last 8 training episodes: mean/median reward -22.7/-23.0, min/max reward -26.9/-20.1
+
+finished_utc=2026-11-27T18:21:57Z

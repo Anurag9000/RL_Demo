@@ -1,0 +1,14 @@
+{
+  "source_official_randomized_actor": {
+    "repo_path": "trained_models/GST_predictor_rand/checkpoints/41665.pt",
+    "sha256": "a60bdd3b8ca84457497365133b9055c80d55b11c5a3bc76b28e38d4200cfd8ce"
+  },
+  "output_native_policy": {
+    "run_path": "$RUN_ROOT/experiments/waffle_pretrained_transfer_smoke_seed438_rand41665_20261127/checkpoints/00000.pt",
+    "sha256": "a690bd8ce61e9111bca3412cc0331b52e2ad484baf66184cc25e30aebcfc6db6"
+  },
+  "recoverable_training_state_with_optimizer": {
+    "run_path": "$RUN_ROOT/experiments/waffle_pretrained_transfer_smoke_seed438_rand41665_20261127/training_state.pt",
+    "sha256": "6b5a2f35e55daa8b4aca16e645852260849ac18ab28f478ceaa4e71fd2e5b58b"
+  }
+}

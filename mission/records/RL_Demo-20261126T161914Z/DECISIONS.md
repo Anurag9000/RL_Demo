@@ -7,3 +7,8 @@ The current Gazebo evaluator's `Collision` category combines a Gazebo worker con
 ## D-002 — Reclassify the active v5 runs as scratch controls
 
 The saved run args and original launcher establish that active seed436/437 runs did not transfer the paper actor: the initial commands omitted `--resume`, `--load-path` and `--waffle-init-cartesian`; `train.py` loads `load_path` only in the resume branch. `continue_state` restores those scratch runs' own model/optimizer state. Preserve both running jobs as scratch controls and keep their checkpoint genealogy; do not silently relabel or migrate them. Start a separate policy lineage from the official randomized actor checkpoint `trained_models/GST_predictor_rand/checkpoints/41665.pt`, explicitly load compatible weights, reset only the native action head, and create a fresh PPO optimizer.
+
+
+## D-003 — Transfer smoke is a wiring gate, not a quality result
+
+The separate seed438 smoke strictly loaded official randomized checkpoint 41665.pt, reset the native action head, used a fresh PPO optimizer and ran 60 actual Gazebo transitions. A fresh evaluator loaded the resulting native checkpoint and completed one validation trace, which collided. This proves only that the transfer/training/checkpoint/evaluation path executes. It does not show the pretrained policy has learned useful navigation or that the goal is met. Continue with a separate sustained pretrained run and use full validation evidence before selecting a candidate; keep test sealed.
