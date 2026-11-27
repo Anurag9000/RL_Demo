@@ -17,6 +17,7 @@ def score_trace_file(path):
         robot_radius=float(trace['robot_radius'])
         future_steps=int(trace['future_steps'])
         episode_steps=int(trace['episode_steps'])
+        policy_dt=float(trace['policy_dt'])
         metadata={k:trace[k].item() for k in ('scenario_id','scenario_index','split','seed','lane','episode_number','profile_sha256','checkpoint_sha256','detector_sha256','model_sdf_sha256','worker_sha256') if k in trace}
         online_itr=float(trace['online_itr']) if 'online_itr' in trace else None
         online_sd_valid=bool(trace['online_sd_valid']) if 'online_sd_valid' in trace else None
@@ -31,10 +32,19 @@ def score_trace_file(path):
         raise ValueError(f'{path}: invalid human radii/IDs/slots')
     if not np.isfinite(robot_radius) or robot_radius<=0 or humans.shape[0]<episode_steps+future_steps:
         raise ValueError(f'{path}: incomplete future truth horizon')
-    if robot_times.shape!=(episode_steps+1,) or human_times.shape!=(humans.shape[0],) or not np.isfinite(robot_times).all() or not np.isfinite(human_times).all():
-        raise ValueError(f'{path}: invalid simulator timestamps')
-    if np.any(np.diff(robot_times)<=0) or np.any(np.diff(human_times)<=0) or not np.allclose(human_times[:len(robot_times)],robot_times,rtol=0.,atol=1e-9):
-        raise ValueError(f'{path}: nonmonotonic or misaligned simulator timestamps')
+    if (not np.isfinite(policy_dt) or policy_dt<=0 or robot_times.shape!=(episode_steps+1,)
+            or human_times.shape!=(humans.shape[0],) or not np.isfinite(robot_times).all()
+            or not np.isfinite(human_times).all()):
+        raise ValueError(f'{path}: invalid simulator timestamps or policy interval')
+    if np.any(np.diff(robot_times)<=0) or np.any(np.diff(human_times)<=0):
+        raise ValueError(f'{path}: nonmonotonic simulator timestamps')
+    tolerance=max(1e-6,policy_dt*1e-5)
+    required_human_frames=episode_steps+future_steps
+    if (not np.allclose(human_times[:episode_steps+1],robot_times,rtol=0.,atol=tolerance)
+            or not np.allclose(np.diff(robot_times),policy_dt,rtol=0.,atol=tolerance)
+            or not np.allclose(np.diff(human_times[:required_human_frames]),policy_dt,rtol=0.,atol=tolerance)
+            or abs((human_times[required_human_frames-1]-robot_times[-1])-(future_steps-1)*policy_dt)>tolerance):
+        raise ValueError(f'{path}: simulator timestamps do not cover the policy interval and complete future horizon')
     overlap_limit=radii+robot_radius
     event_count=0
     social_distance_sum=0.0

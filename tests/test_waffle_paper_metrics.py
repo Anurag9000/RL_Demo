@@ -3,7 +3,7 @@ import tempfile
 from pathlib import Path
 import numpy as np
 from waffle_pi.paper_metrics import intrusion_metrics, aggregate_intrusion_metrics
-from waffle_pi.offline_metrics import score_trace_directory, verify_and_apply_offline_metrics
+from waffle_pi.offline_metrics import score_trace_file, score_trace_directory, verify_and_apply_offline_metrics
 
 
 class PaperMetrics(unittest.TestCase):
@@ -54,7 +54,7 @@ class PaperMetrics(unittest.TestCase):
             robot=np.zeros((2,2),dtype=np.float32)
             base=dict(robot_positions=robot,human_radii=np.asarray([.3]),human_ids=np.asarray(['person_0']),
                 robot_times=np.asarray([2.,2.25]),human_times=np.arange(6,dtype=np.float64)*.25+2.,
-                robot_radius=np.asarray(.25),future_steps=np.asarray(5),episode_steps=np.asarray(1),
+                robot_radius=np.asarray(.25),future_steps=np.asarray(5),episode_steps=np.asarray(1),policy_dt=np.asarray(.25),
                 scenario_index=np.asarray(0),scenario_id=np.asarray('case'),split=np.asarray('validation'),
                 seed=np.asarray(7),lane=np.asarray(0),episode_number=np.asarray(1),profile_sha256=np.asarray('profile'),
                 checkpoint_sha256=np.asarray('checkpoint'),detector_sha256=np.asarray('detector'),
@@ -104,6 +104,25 @@ class PaperMetrics(unittest.TestCase):
         offline=dict(offline,trace_count=1,episodes=[scored])
         with self.assertRaisesRegex(RuntimeError,'count does not match'):
             verify_and_apply_offline_metrics(episodes,offline,online)
+
+    def test_offline_scorer_rejects_incomplete_timestamp_horizon(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            payload=dict(robot_positions=np.zeros((2,2),dtype=np.float32),
+                human_positions=np.full((6,1,2),4.,dtype=np.float32),
+                human_radii=np.asarray([.3]),human_ids=np.asarray(['person_0']),
+                robot_times=np.asarray([2.,2.25]),
+                human_times=np.asarray([2.,2.25,2.5,2.75,3.,3.5]),
+                robot_radius=np.asarray(.25),future_steps=np.asarray(5),episode_steps=np.asarray(1),policy_dt=np.asarray(.25),scenario_index=np.asarray(0),scenario_id=np.asarray('case'),
+                split=np.asarray('validation'),seed=np.asarray(7),lane=np.asarray(0),
+                episode_number=np.asarray(1),profile_sha256=np.asarray('profile'),
+                checkpoint_sha256=np.asarray('checkpoint'),detector_sha256=np.asarray('detector'),
+                model_sdf_sha256=np.asarray('model'),worker_sha256=np.asarray('worker'),
+                online_itr=np.asarray(0.),online_sd_m=np.asarray(0.),online_sd_valid=np.asarray(False))
+            path=root/'bad-time.npz'
+            np.savez_compressed(path,**payload)
+            with self.assertRaisesRegex(ValueError,'complete future horizon'):
+                score_trace_file(path)
 
     def test_pooled_metrics_weight_intrusion_events_and_timesteps(self):
         pooled = aggregate_intrusion_metrics([
