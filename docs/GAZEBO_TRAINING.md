@@ -324,6 +324,8 @@ echo "$!" > "$WAFFLE_RUN_ROOT/mission/paper_nonrandomized_gpu1_seed440_20261128.
 ~~~
 
 These are training commands, not quality claims. The test splits stay locked.
+
+The launcher runs the repository train.py directly with normal on-demand CUDA allocation; it does not apply the older 20% per-process allocator cap. Check free VRAM before admission and keep the active workload within the verified available capacity.
 A handled TERM to the launcher forwards SIGINT to its Python trainer, which
 runs Gazebo cleanup and writes gazebo_environment_summary.json. Resume only
 from a compatible training_state.pt using the matching source, profile and

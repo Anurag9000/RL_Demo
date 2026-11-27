@@ -48,7 +48,7 @@ stop_child() { if [[ -n "$train_pid" ]] && kill -0 "$train_pid" 2>/dev/null; the
 trap finish EXIT
 trap stop_child TERM HUP
 trap stop_child INT
-python -u "$ROOT/mission/scripts/train_vram_bounded_20pct.py" \
+python -u "$REPO/train.py" \
   --output_dir "$OUT" --waffle-pi --waffle-gazebo --resume --load-path "$ACTOR" \
   --waffle-init-cartesian --waffle-native-action \
   --waffle-fidelity-profile "$PROFILE" --waffle-gazebo-model "$MODEL" \
