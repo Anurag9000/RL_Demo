@@ -52,6 +52,20 @@ def intrusion_metrics(robot_positions, human_positions, human_radii, robot_radiu
     }
 
 
+def paper_outcome_percentages(outcomes, total):
+    """Return SR/CR/TR in paper units, requiring a complete episode ledger."""
+    if type(total) is not int or total < 1:
+        raise ValueError("total must be a positive integer")
+    counts = {name: int(outcomes.get(name, 0)) for name in ("ReachGoal", "Collision", "Timeout")}
+    if any(count < 0 for count in counts.values()) or sum(counts.values()) != total:
+        raise ValueError("success, collision, and timeout counts must sum to total")
+    return {
+        "paper_sr_percent": 100.0 * counts["ReachGoal"] / total,
+        "paper_cr_percent": 100.0 * counts["Collision"] / total,
+        "paper_tr_percent": 100.0 * counts["Timeout"] / total,
+    }
+
+
 def aggregate_success_navigation_metrics(episode_metrics):
     """Return paper-style NT/PL means over successful episodes only.
 

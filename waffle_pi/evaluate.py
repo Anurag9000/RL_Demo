@@ -116,6 +116,7 @@ def run(args):
                             paper_itr=float(venv.paper_itr[i])
                             paper_sd=float(venv.paper_sd_m[i])
                             episode.update(paper_itr=paper_itr,
+                                paper_itr_percent=100.0*paper_itr,
                                 paper_sd_m=paper_sd if math.isfinite(paper_sd) else None,
                                 paper_intrusion_steps=int(venv.paper_intrusion_steps[i]),
                                 paper_episode_steps=int(venv.paper_episode_steps[i]),
@@ -180,6 +181,7 @@ def run(args):
                 offline=score_trace_directory(trace_dir)
                 paper_itr,paper_sd=verify_and_apply_offline_metrics(episode_metrics,offline,pooled)
                 result['mean_paper_itr']=paper_itr
+                result['mean_paper_itr_percent']=100.0*paper_itr
                 result['mean_paper_sd_m']=paper_sd
                 result['paper_trace_dir']=str(trace_dir)
                 result['paper_trace_count']=offline['trace_count']

@@ -2,7 +2,7 @@ import unittest
 import tempfile
 from pathlib import Path
 import numpy as np
-from waffle_pi.paper_metrics import intrusion_metrics, aggregate_intrusion_metrics, aggregate_success_navigation_metrics
+from waffle_pi.paper_metrics import intrusion_metrics, aggregate_intrusion_metrics, aggregate_success_navigation_metrics, paper_outcome_percentages
 from waffle_pi.offline_metrics import score_trace_file, score_trace_directory, verify_and_apply_offline_metrics
 
 
@@ -123,6 +123,14 @@ class PaperMetrics(unittest.TestCase):
             np.savez_compressed(path,**payload)
             with self.assertRaisesRegex(ValueError,'complete future horizon'):
                 score_trace_file(path)
+
+    def test_paper_outcome_rates_are_percentages_and_partition_all_cases(self):
+        result = paper_outcome_percentages({"ReachGoal": 3, "Collision": 1, "Timeout": 2}, 6)
+        self.assertEqual(result["paper_sr_percent"], 50.0)
+        self.assertAlmostEqual(result["paper_cr_percent"], 100.0/6.0)
+        self.assertAlmostEqual(result["paper_tr_percent"], 100.0/3.0)
+        with self.assertRaisesRegex(ValueError, "must sum to total"):
+            paper_outcome_percentages({"ReachGoal": 1, "Collision": 0, "Timeout": 0}, 2)
 
     def test_navigation_time_and_path_are_success_only(self):
         result = aggregate_success_navigation_metrics([
