@@ -586,3 +586,10 @@ Full archive with metrics, eight action logs, 100 compressed traces, 116 Gazebo 
 A diagnostic-only sigmoid forward mapping was evaluated on the same 100 validation scenarios and checkpoint as the checkpoint-native action/gate run; the safety gate remained unchanged. All 100 episodes still collided, with 0 successes and 0 timeouts. Mean path increased from 0.001010m to 0.021136m; mean duration was 1.5225s. The gate was active in 97% of episodes and blocked 1,751/3,045 physics substeps (57.5%); sensor/tracker faults accounted for 85/3,045 (2.8%). Scenarios matched one-to-one and offline trace verification passed. The action-map dead zone explains near-zero movement but changing the mapping alone did not solve the navigation failure. This counterfactual is not a qualified checkpoint or action contract.
 
 Full 229-file archive with metrics, action logs, 100 traces, worker logs, receipt, analysis, and per-file SHA-256 manifest: `evaluations/seed437_update340_validation_action_gate100_sigmoid_forward_counterfactual_20261127/`.
+
+
+## 2026-11-27T16:44:31Z seed437 update360 matched validation sample
+
+The durable update360 checkpoint completed the same 100 validation scenarios as update340 using the checkpoint-native action mapping. It again produced 0 successes, 100 collisions, 0 timeouts; mean path was 0.000994m, duration 1.5125s, and final goal distance 1.2279m. All 605 deterministic latent forward outputs were negative, so all 3,025 forward requests were zero. The gate blocked 1,678/3,025 substeps (55.5%) and had activity in 95% of episodes; 80/3,025 substeps (2.6%) had sensor/tracker faults. Paper-trace offline verification passed. The matched update340 sample had the same outcomes and practically identical path, so 20 additional updates did not recover deterministic movement.
+
+The 229-file evidence archive is `evaluations/seed437_update360_validation_action_gate100_20261127/`. The full-bank test split remains untouched; active training processes remain unchanged.

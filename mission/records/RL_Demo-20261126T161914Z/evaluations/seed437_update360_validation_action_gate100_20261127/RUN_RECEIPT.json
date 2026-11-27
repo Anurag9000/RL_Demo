@@ -1,0 +1,20 @@
+{
+  "host": "gpu2",
+  "started_utc": "2026-11-27T16:38:23Z",
+  "finished_utc": "2026-11-27T16:43:40Z",
+  "exit_status": 0,
+  "runner_pid": 1735293,
+  "checkpoint": "experiments/waffle_safe_clearance_gpu0_ppo_seed437_v5_recovery1_20261127/checkpoints/00360.pt",
+  "checkpoint_sha256": "872e28688d12bf4cfd0b3ed201266c234160a4129eb7c86a0f3da473fe3e1d1c",
+  "profile_sha256": "84557d48d8b92f589ccf62e2b719510ccfdaa83a27c970d42659d4cf94b494e7",
+  "scene_split": "validation",
+  "seed": 900440,
+  "episodes": 100,
+  "unique_scenarios": 100,
+  "same_scenarios_as_update340": true,
+  "lanes": 8,
+  "gpu": 0,
+  "test_split_touched": false,
+  "training_changed": false,
+  "diagnostic_forward_transform": "checkpoint_native"
+}
