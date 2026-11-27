@@ -1,6 +1,6 @@
 {
   "schema": "rl_demo_evaluation_manifest_v1",
-  "copied_utc": "2026-11-27T16:13:00Z",
+  "copied_utc": "2026-11-27T16:22:22Z",
   "source_host": "gpu2",
   "source_root": "/home/rl-group4/waffle_runs/RL_Demo-20261126T161914Z/evaluations/seed437_update340_validation_action_gate100_20261127",
   "evaluation": {
@@ -14,8 +14,8 @@
   },
   "files": {
     "ACTION_GATE_ANALYSIS.md": {
-      "bytes": 2974,
-      "sha256": "c07f5e21f63ab60abf971dd0429930584e55318f74610bdf380ff47d95632e5c"
+      "bytes": 3100,
+      "sha256": "aa1bac689f95f1dbcd370b6b9daf2b0edeac8e9f6244106a8f03e7b796d8e346"
     },
     "RUN_EXIT.json": {
       "bytes": 168,

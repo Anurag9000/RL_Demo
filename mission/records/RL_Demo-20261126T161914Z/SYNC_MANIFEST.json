@@ -1,21 +1,21 @@
 {
-  "copied_utc": "2026-11-27T16:14:24Z",
+  "copied_utc": "2026-11-27T16:22:22Z",
   "files": {
     "CODE_AUDIT_PROGRESS.md": {
       "bytes": 106095,
       "sha256": "08f984202573633f29901a2170627bf6536fa2ea33fa81f5541a96319d82e5cd"
     },
     "ISSUES.md": {
-      "bytes": 18265,
-      "sha256": "71f684e6cff6ab4dcdbdc69755d204e824b2c9078ca83eaeb77725ad73276f68"
+      "bytes": 18280,
+      "sha256": "3b4b4d1378af30349f2b5c807b98102478ae18d3858aa9728b39daf45bf5e2a9"
     },
     "STATUS.md": {
       "bytes": 97824,
       "sha256": "a0ab65725f0904f33a5cdb8b2c5a1bfde7da4267806ef62a6083fc883a2f47bd"
     },
     "commands.jsonl": {
-      "bytes": 75195,
-      "sha256": "03a9f8ecbbd39de92bbf99eed7c1eca015e8d7549da8ee3544508f4e2ab6c363"
+      "bytes": 75517,
+      "sha256": "6817d2f42ba0d88bc37d0b9097c2031b635155a24c107eb126add12b5285a8cc"
     },
     "evaluations/seed436_update200_validation500_20261127/EVALUATION_MANIFEST.json": {
       "bytes": 87485,
@@ -51,7 +51,7 @@
     },
     "evaluations/seed437_update340_validation_action_gate100_20261127/EVALUATION_MANIFEST.json": {
       "bytes": 39154,
-      "sha256": "330a8ac358be7c741c6d4a4ae134ead1404eb9d2c76916ce52bdf82335c2bf44"
+      "sha256": "6470d6411d8b7f4a8e35b75292bee300af616ab833c2e43501fce9d6d11538fc"
     }
   },
   "source": "/home/rl-group4/waffle_runs/RL_Demo-20261126T161914Z/mission"
