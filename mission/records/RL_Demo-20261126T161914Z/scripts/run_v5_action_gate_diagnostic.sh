@@ -3,8 +3,8 @@ set -euo pipefail
 RUN_ROOT=/home/rl-group4/waffle_runs/RL_Demo-20261126T161914Z
 REPO=/home/rl-group4/Projects/Untapped/RL_Demo
 VENV=/home/rl-group4/.venvs/fedqcl-sync-py312
-if [[ $# -ne 7 ]]; then
-  echo "usage: $0 CHECKPOINT OUTPUT_DIR LOG_DIR EVAL_SEED EPISODES PROCESSES PHYSICAL_GPU" >&2
+if [[ $# -lt 7 || $# -gt 8 ]]; then
+  echo "usage: $0 CHECKPOINT OUTPUT_DIR LOG_DIR EVAL_SEED EPISODES PROCESSES PHYSICAL_GPU [FORWARD_TRANSFORM]" >&2
   exit 64
 fi
 CHECKPOINT=$(realpath "$1")
@@ -14,6 +14,11 @@ SEED=$4
 EPISODES=$5
 PROCESSES=$6
 GPU=$7
+FORWARD_TRANSFORM=${8:-checkpoint_native}
+if [[ "$FORWARD_TRANSFORM" != checkpoint_native && "$FORWARD_TRANSFORM" != sigmoid_forward_counterfactual ]]; then
+  echo "invalid forward transform: $FORWARD_TRANSFORM" >&2
+  exit 64
+fi
 TAG=$(basename "$OUT")
 if [[ ! "$CHECKPOINT" == "$RUN_ROOT"/* || ! "$OUT" == "$RUN_ROOT"/evaluations/* || ! "$LOG_DIR" == "$RUN_ROOT"/logs/* ]]; then
   echo "checkpoint, output and logs must remain under the mission run root" >&2
@@ -58,4 +63,5 @@ cd "$REPO"
 python "$REPO/mission/records/RL_Demo-20261126T161914Z/scripts/diagnose_v5_action_gate.py" \
   --run-root "$RUN_ROOT" --repo-root "$REPO" --checkpoint "$CHECKPOINT" \
   --output-dir "$OUT" --logs-dir "$LOG_DIR" --seed "$SEED" \
-  --episodes "$EPISODES" --processes "$PROCESSES" --gpu "$GPU"
+  --episodes "$EPISODES" --processes "$PROCESSES" --gpu "$GPU" \
+  --forward-transform "$FORWARD_TRANSFORM"

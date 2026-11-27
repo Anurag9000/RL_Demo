@@ -2,6 +2,7 @@
 """Run a small real-Gazebo validation diagnostic and record policy/gate decisions."""
 import argparse
 import json
+import math
 import os
 from pathlib import Path
 import sys
@@ -15,6 +16,7 @@ p.add_argument('--logs-dir', required=True)
 p.add_argument('--seed', type=int, required=True)
 p.add_argument('--episodes', type=int, default=1)
 p.add_argument('--processes', type=int, default=1)
+p.add_argument('--forward-transform', choices=('checkpoint_native', 'sigmoid_forward_counterfactual'), default='checkpoint_native')
 p.add_argument('--gpu', type=int, default=0)
 a = p.parse_args()
 if a.processes < 1 or a.episodes < a.processes:
@@ -33,7 +35,16 @@ import torch
 torch.cuda.set_device(0)
 torch.cuda.init()
 torch.cuda.set_per_process_memory_fraction(.20, 0)
-from gazebo_sim.vector_env import PerWorld
+import gazebo_sim.vector_env as vector_env
+PerWorld = vector_env.PerWorld
+if a.forward_transform == 'sigmoid_forward_counterfactual':
+    def counterfactual_twist(action, limits):
+        z0, z1 = map(float, action)
+        if not all(map(math.isfinite, (z0, z1))):
+            raise ValueError('Non-finite counterfactual action')
+        forward = (1. / (1. + math.exp(-z0))) if z0 >= 0 else (math.exp(z0) / (1. + math.exp(z0)))
+        return limits.max_linear * forward, limits.max_angular * math.tanh(z1)
+    vector_env.native_twist = counterfactual_twist
 orig_guard, orig_step = PerWorld.guard, PerWorld.step
 
 def json_clean(value):
@@ -69,7 +80,7 @@ def step(self, latent, human_velocity):
                   goal=list(map(float, self.goal)), actual_twist=list(map(float, self.state['twist'])))
     obs, reward, done, metrics = orig_step(self, latent, human_velocity)
     item = dict(scenario_id=self.scenario.get('id'), episode=self.episode, step=self.steps,
-        latent_action=np.asarray(latent).tolist(), before=before, guard_substeps=self._diag_guards,
+        diagnostic_forward_transform=a.forward_transform, latent_action=np.asarray(latent).tolist(), before=before, guard_substeps=self._diag_guards,
         after_pose=list(map(float, self.state['truth'])), after_twist=list(map(float, self.state['twist'])),
         reward=float(reward), done=bool(done), metrics=metrics)
     with (out / f'lane-{self.index:03d}-action-gate.jsonl').open('a') as stream:
@@ -87,3 +98,7 @@ sys.argv = ['train.py', '--output_dir', str(out), '--waffle-pi', '--waffle-nativ
     '--waffle-eval-json', str(out/'metrics.json'), '--load-path', str(checkpoint), '--num-processes', str(a.processes),
     '--num-mini-batch', str(a.processes), '--num-steps', '30', '--seq_length', '30', '--seed', str(a.seed)]
 train.main()
+metrics_path = out / 'metrics.json'
+metrics = json.loads(metrics_path.read_text())
+metrics['diagnostic_forward_transform'] = a.forward_transform
+metrics_path.write_text(json.dumps(metrics, indent=2) + '\n')

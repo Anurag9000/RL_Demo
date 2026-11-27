@@ -1,5 +1,5 @@
 {
-  "copied_utc": "2026-11-27T16:22:22Z",
+  "copied_utc": "2026-11-27T16:26:16Z",
   "files": {
     "CODE_AUDIT_PROGRESS.md": {
       "bytes": 106095,
@@ -14,8 +14,8 @@
       "sha256": "a0ab65725f0904f33a5cdb8b2c5a1bfde7da4267806ef62a6083fc883a2f47bd"
     },
     "commands.jsonl": {
-      "bytes": 75517,
-      "sha256": "6817d2f42ba0d88bc37d0b9097c2031b635155a24c107eb126add12b5285a8cc"
+      "bytes": 75878,
+      "sha256": "6f195ce164705b520cf6e4636d9b9aca5b3a6e305deebf0b4143a7df0f470b72"
     },
     "evaluations/seed436_update200_validation500_20261127/EVALUATION_MANIFEST.json": {
       "bytes": 87485,
@@ -34,8 +34,8 @@
       "sha256": "28b747ae212c1beb4dc7b45e2ef3450480c01aad6d4c3112666478c7050305b3"
     },
     "scripts/diagnose_v5_action_gate.py": {
-      "bytes": 4655,
-      "sha256": "f9476d2612fe427eed99d41523a389119333ec8c00427593b17180ca2ff52e8b"
+      "bytes": 5573,
+      "sha256": "16661ca8246d428697622f5c2e5f86a6300487552dc52d9468a275e11b829510"
     },
     "scripts/eval_v5_bank_checkpoint.sh": {
       "bytes": 6121,
@@ -46,8 +46,8 @@
       "sha256": "5b07b412caab495a0ccabebe2d38849d0c3e8c8cca5c0d8b94cf655774f628e7"
     },
     "scripts/run_v5_action_gate_diagnostic.sh": {
-      "bytes": 2640,
-      "sha256": "bddf3b6908b0184416946130b056c139b1f3244c5a1a8dcd5d3e80b54ba9e26a"
+      "bytes": 2946,
+      "sha256": "aaaf761aa24c748524ad8d615170d59ed9ece50ac53e4b15baabf7b7584b661d"
     },
     "evaluations/seed437_update340_validation_action_gate100_20261127/EVALUATION_MANIFEST.json": {
       "bytes": 39154,
