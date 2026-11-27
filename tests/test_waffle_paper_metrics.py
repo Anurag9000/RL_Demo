@@ -3,7 +3,7 @@ import tempfile
 from pathlib import Path
 import numpy as np
 from waffle_pi.paper_metrics import intrusion_metrics, aggregate_intrusion_metrics
-from waffle_pi.offline_metrics import score_trace_directory
+from waffle_pi.offline_metrics import score_trace_directory, verify_and_apply_offline_metrics
 
 
 class PaperMetrics(unittest.TestCase):
@@ -76,6 +76,34 @@ class PaperMetrics(unittest.TestCase):
             self.assertEqual(result['episodes'][0]['checkpoint_sha256'],'checkpoint')
             self.assertEqual(result['episodes'][0]['human_ids'],['person_0'])
             self.assertEqual(result['episodes'][0]['human_time_end'],3.25)
+
+    def test_offline_metrics_are_reported_after_float32_aggregate_parity(self):
+        episode=[dict(scenario_id='case',paper_itr=float(np.float32(.4)),paper_sd_m=.70000001,
+                      paper_intrusion_steps=2,paper_episode_steps=5,paper_sd_sum_m=1.40000002,paper_sd_count=2)]
+        offline=dict(trace_count=1,episodes=[dict(scenario_id='case',itr=.4,sd_m=.7,
+                      intrusion_steps=2,episode_steps=5,sd_sum_m=1.4,sd_count=2)],
+                      all_online_parity=True,mean_episode_itr=.4,pooled_sd_m=.7)
+        online=dict(paper_itr=float(np.float32(.4)),paper_sd_m=float(np.float32(.7)))
+        itr,sd=verify_and_apply_offline_metrics(episode,offline,online)
+        self.assertEqual(itr,.4); self.assertEqual(sd,.7)
+        self.assertEqual(episode[0]['paper_itr'],.4)
+        self.assertEqual(episode[0]['paper_sd_m'],.7)
+        online['paper_itr']=.3
+        with self.assertRaisesRegex(RuntimeError,'ITR aggregates disagree'):
+            verify_and_apply_offline_metrics(episode,offline,online)
+
+    def test_offline_reconciliation_rejects_duplicate_or_missing_scenarios(self):
+        online=dict(paper_itr=.5,paper_sd_m=.7)
+        scored=dict(scenario_id='case',itr=.5,sd_m=.7,intrusion_steps=1,
+                    episode_steps=2,sd_sum_m=.7,sd_count=1)
+        offline=dict(trace_count=2,episodes=[scored,dict(scored)],all_online_parity=True,
+                     mean_episode_itr=.5,pooled_sd_m=.7)
+        episodes=[dict(scenario_id='case',paper_itr=.5,paper_sd_m=.7)]*2
+        with self.assertRaisesRegex(RuntimeError,'duplicate scenario IDs'):
+            verify_and_apply_offline_metrics(episodes,offline,online)
+        offline=dict(offline,trace_count=1,episodes=[scored])
+        with self.assertRaisesRegex(RuntimeError,'count does not match'):
+            verify_and_apply_offline_metrics(episodes,offline,online)
 
     def test_pooled_metrics_weight_intrusion_events_and_timesteps(self):
         pooled = aggregate_intrusion_metrics([

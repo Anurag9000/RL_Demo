@@ -170,17 +170,12 @@ def run(args):
                 result['paper_sd_intrusion_steps']=pooled['paper_intrusion_steps']
                 result['mean_paper_sd_m']=pooled['paper_sd_m']
                 result['paper_metric_definition']='ITR is the unweighted mean across episodes of each episode fraction whose robot center intrudes into any human ground-truth position from t+1 through t+5; SD is the pooled mean current-time closest-human center distance over intrusion timesteps.'
-                from .offline_metrics import score_trace_directory
+                from .offline_metrics import score_trace_directory,verify_and_apply_offline_metrics
                 trace_dir=env.venv.eval_trace_dir
                 offline=score_trace_directory(trace_dir)
-                if offline['trace_count']!=len(episode_metrics) or not offline['all_online_parity']:
-                    raise RuntimeError('saved truth trace count or independent paper-metric parity check failed')
-                if abs(offline['mean_episode_itr']-pooled['paper_itr'])>1e-12:
-                    raise RuntimeError('offline and online ITR aggregates disagree')
-                online_sd=pooled['paper_sd_m']
-                offline_sd=offline['pooled_sd_m']
-                if (online_sd is None)!=(offline_sd is None) or (online_sd is not None and abs(online_sd-offline_sd)>1e-6):
-                    raise RuntimeError('offline and online SD aggregates disagree')
+                paper_itr,paper_sd=verify_and_apply_offline_metrics(episode_metrics,offline,pooled)
+                result['mean_paper_itr']=paper_itr
+                result['mean_paper_sd_m']=paper_sd
                 result['paper_trace_dir']=str(trace_dir)
                 result['paper_trace_count']=offline['trace_count']
                 result['paper_trace_offline_verification']={

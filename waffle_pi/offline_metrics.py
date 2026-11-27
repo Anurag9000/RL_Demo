@@ -81,6 +81,39 @@ def score_trace_directory(directory):
         all_online_parity=all(x.get('online_parity',False) for x in episodes))
 
 
+def verify_and_apply_offline_metrics(episode_metrics, offline, online_aggregate, atol=1e-6):
+    """Check float32 online aggregates against traces, then publish trace scores."""
+    if len(episode_metrics)!=offline['trace_count'] or len(offline['episodes'])!=len(episode_metrics):
+        raise RuntimeError('saved truth trace count does not match completed episodes')
+    if not offline['all_online_parity']:
+        raise RuntimeError('per-episode online/offline paper-metric parity check failed')
+    if abs(float(offline['mean_episode_itr'])-float(online_aggregate['paper_itr']))>atol:
+        raise RuntimeError('offline and online ITR aggregates disagree')
+    online_sd=online_aggregate['paper_sd_m']
+    offline_sd=offline['pooled_sd_m']
+    if (online_sd is None)!=(offline_sd is None) or (online_sd is not None and abs(float(online_sd)-float(offline_sd))>atol):
+        raise RuntimeError('offline and online SD aggregates disagree')
+    by_scenario={}
+    for scored in offline['episodes']:
+        scenario_id=scored['scenario_id']
+        if not scenario_id or scenario_id in by_scenario:
+            raise RuntimeError('offline traces have missing or duplicate scenario IDs')
+        by_scenario[scenario_id]=scored
+    seen=set()
+    for episode in episode_metrics:
+        scenario_id=episode.get('scenario_id')
+        if scenario_id not in by_scenario or scenario_id in seen:
+            raise RuntimeError('completed episode IDs do not exactly match unique offline traces')
+        seen.add(scenario_id)
+        scored=by_scenario[scenario_id]
+        episode.update(paper_itr=scored['itr'],paper_sd_m=scored['sd_m'],
+            paper_intrusion_steps=scored['intrusion_steps'],paper_episode_steps=scored['episode_steps'],
+            paper_sd_sum_m=scored['sd_sum_m'],paper_sd_count=scored['sd_count'])
+    if seen!=set(by_scenario):
+        raise RuntimeError('offline traces contain cases absent from evaluator results')
+    return offline['mean_episode_itr'],offline['pooled_sd_m']
+
+
 def main(argv=None):
     import argparse
     parser=argparse.ArgumentParser(description=__doc__)

@@ -215,15 +215,19 @@ travel time/path length, and straight-line SPL. Wilson intervals are descriptive
 for correlated scenarios. Do not use simulator collision fractions as physical
 safety certification.
 
-Gazebo evaluation writes one compressed, non-pickle `.npz` paper-metric truth
-trace per completed episode. By default, `--waffle-eval-json OUT/metrics.json`
-places them in `OUT/metrics_traces`; `--waffle-eval-trace-dir DIR` sets an
-explicit directory. Each trace stores robot decision poses, ground-truth human
-positions including the four-frame post-terminal suffix, human/robot radii,
-simulated timestamps, scenario/split/seed, outcome and profile/checkpoint/
-detector/model-SDF/worker file hashes. The evaluator independently recomputes
-ITR and SD from these files and fails if trace count or online/offline metrics
-disagree. Recompute or inspect them later with:
+Gazebo evaluation writes one compressed, non-pickle NPZ paper-metric truth
+trace per completed episode. By default, --waffle-eval-json OUT/metrics.json
+places them in OUT/metrics_traces; --waffle-eval-trace-dir DIR sets an explicit
+directory. Each trace stores robot decision poses, ground-truth human positions
+including the four-frame post-terminal suffix, human/robot radii, stable Gazebo
+crowd entity IDs, actual simulator timestamps, scenario/split/seed, outcome and
+profile/checkpoint/detector/model-SDF/worker file hashes. The evaluator
+independently recomputes ITR and SD, checks unique scenario coverage and
+online/offline parity, and reports the float64 trace scores after allowing only
+1e-6 aggregate tolerance for online float32 rounding. A missing future horizon
+or repeated/missing scenario trace is an error.
+
+Recompute or inspect them later with:
 
 ~~sh
 python -m waffle_pi.offline_metrics --trace-dir OUT/metrics_traces --output OUT/offline_metrics.json
