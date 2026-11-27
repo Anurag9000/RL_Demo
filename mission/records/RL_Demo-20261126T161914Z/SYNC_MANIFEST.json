@@ -1,21 +1,21 @@
 {
-  "copied_utc": "2026-11-27T16:27:42Z",
+  "copied_utc": "2026-11-27T16:35:41Z",
   "files": {
     "CODE_AUDIT_PROGRESS.md": {
       "bytes": 106095,
       "sha256": "08f984202573633f29901a2170627bf6536fa2ea33fa81f5541a96319d82e5cd"
     },
     "ISSUES.md": {
-      "bytes": 18280,
-      "sha256": "3b4b4d1378af30349f2b5c807b98102478ae18d3858aa9728b39daf45bf5e2a9"
+      "bytes": 18341,
+      "sha256": "605909fb77ca92f5c29e87af9ab4a6a4b5a182500f73b88ef551a497af33b3b6"
     },
     "STATUS.md": {
-      "bytes": 97824,
-      "sha256": "a0ab65725f0904f33a5cdb8b2c5a1bfde7da4267806ef62a6083fc883a2f47bd"
+      "bytes": 98845,
+      "sha256": "859f265029c6cfce58d1dd75f4b77da5ed22afc3c08fdd31bf6bd14fa8e15e10"
     },
     "commands.jsonl": {
-      "bytes": 76365,
-      "sha256": "b798a78f132ac9c372a39092d9488915be5c874a2d72a8a73c5be4027f3e2b93"
+      "bytes": 77088,
+      "sha256": "25211badb3177a78aaa8ffe38183652ff85928b417168ff8c536ac1723356ee6"
     },
     "evaluations/seed436_update200_validation500_20261127/EVALUATION_MANIFEST.json": {
       "bytes": 87485,
@@ -42,8 +42,8 @@
       "sha256": "fb83935740e9b97299987ffb2a0ab56483be80b84b2c84ba6a2d87b8f2c17402"
     },
     "state.json": {
-      "bytes": 75785,
-      "sha256": "5b07b412caab495a0ccabebe2d38849d0c3e8c8cca5c0d8b94cf655774f628e7"
+      "bytes": 76876,
+      "sha256": "21763730852b29efe569e58d62845f932c8de2df62a447758a9070c876e1cf6d"
     },
     "scripts/run_v5_action_gate_diagnostic.sh": {
       "bytes": 2946,
@@ -52,6 +52,10 @@
     "evaluations/seed437_update340_validation_action_gate100_20261127/EVALUATION_MANIFEST.json": {
       "bytes": 39154,
       "sha256": "6470d6411d8b7f4a8e35b75292bee300af616ab833c2e43501fce9d6d11538fc"
+    },
+    "evaluations/seed437_update340_validation_action_gate100_sigmoid_forward_counterfactual_20261127/EVALUATION_MANIFEST.json": {
+      "bytes": 39310,
+      "sha256": "e7826e35924723ad4c8b485c0034f8af94ba546d1ba597c90b8bba5ea0435e6d"
     }
   },
   "source": "/home/rl-group4/waffle_runs/RL_Demo-20261126T161914Z/mission"

@@ -579,3 +579,10 @@ The 100-episode, 100-unique-scenario validation diagnostic completed on H100 GPU
 Action analysis found all 605 latent forward components below zero (mean -0.502817, range [-0.583763,-0.313935]). The native forward-only mapping projected all of them to zero linear speed in every guard substep. Across 3,025 guard substeps, 1,702 (56.3%) were blocked; sensor/tracker faults were present in 85 (2.8%), and scans were not stale beyond one second. Initial surface clearance ranged from 0.0813m to 1.2292m; 43 scenarios started above 0.4m but still had no successes and averaged 0.001358m path. The evidence points to collapsed forward-action output as the dominant observed failure for this checkpoint. The gate remains intact; no test cases were read and the active learners were preserved.
 
 Full archive with metrics, eight action logs, 100 compressed traces, 116 Gazebo worker logs, run receipt, analysis, and per-file SHA-256 manifest is at `evaluations/seed437_update340_validation_action_gate100_20261127/`.
+
+
+## 2026-11-27T16:35:41Z matched sigmoid-forward counterfactual
+
+A diagnostic-only sigmoid forward mapping was evaluated on the same 100 validation scenarios and checkpoint as the checkpoint-native action/gate run; the safety gate remained unchanged. All 100 episodes still collided, with 0 successes and 0 timeouts. Mean path increased from 0.001010m to 0.021136m; mean duration was 1.5225s. The gate was active in 97% of episodes and blocked 1,751/3,045 physics substeps (57.5%); sensor/tracker faults accounted for 85/3,045 (2.8%). Scenarios matched one-to-one and offline trace verification passed. The action-map dead zone explains near-zero movement but changing the mapping alone did not solve the navigation failure. This counterfactual is not a qualified checkpoint or action contract.
+
+Full 229-file archive with metrics, action logs, 100 traces, worker logs, receipt, analysis, and per-file SHA-256 manifest: `evaluations/seed437_update340_validation_action_gate100_sigmoid_forward_counterfactual_20261127/`.

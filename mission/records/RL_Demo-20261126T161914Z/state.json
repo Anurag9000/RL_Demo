@@ -2034,5 +2034,33 @@
     "test_split_used": false,
     "archive": "evaluations/seed437_update340_validation_action_gate100_20261127",
     "external_archive": "/home/rl-group4/waffle_runs/RL_Demo-20261126T161914Z/mission/records/RL_Demo-20261126T161914Z/evaluations/seed437_update340_validation_action_gate100_20261127"
+  },
+  "validation_seed437_update340_sigmoid_counterfactual_20261127": {
+    "status": "completed_failed_counterfactual",
+    "host": "gpu2",
+    "physical_gpu": 0,
+    "started_utc": "2026-11-27T16:27:35Z",
+    "finished_utc": "2026-11-27T16:32:53Z",
+    "exit_status": 0,
+    "checkpoint_sha256": "889dd923daf4356fc4c7627aa6138c371366243c6130f60061517343b50ebe8a",
+    "split": "validation",
+    "seed": 900440,
+    "episodes": 100,
+    "unique_scenarios": 100,
+    "matched_checkpoint_native_baseline": true,
+    "transform": "v=max_linear*sigmoid(z0); w=max_angular*tanh(z1)",
+    "safety_gate_changed": false,
+    "successes": 0,
+    "collisions": 100,
+    "timeouts": 0,
+    "mean_path_m": 0.021136341656529403,
+    "baseline_mean_path_m": 0.001009823864364341,
+    "gate_blocked_substeps": 1751,
+    "gate_substeps": 3045,
+    "sensor_fault_substeps": 85,
+    "trace_metric_offline_verification_passed": true,
+    "test_split_used": false,
+    "training_changed": false,
+    "archive": "evaluations/seed437_update340_validation_action_gate100_sigmoid_forward_counterfactual_20261127"
   }
 }
