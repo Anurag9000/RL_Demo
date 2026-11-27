@@ -179,6 +179,41 @@ class Integration(unittest.TestCase):
             finally:
                 env.close()
 
+    def test_finished_eval_lane_does_not_reset_while_other_lane_finishes_quota(self):
+        profile=json.loads(Path('configs/waffle_gazebo.example.json').read_text())
+        with tempfile.TemporaryDirectory() as tmp:
+            path=Path(tmp)/'model.sdf'; path.write_text(FIXTURE)
+            cfg=SimpleNamespace(fidelity=profile,sim=SimpleNamespace(human_num=1,arena_size=2.5),
+                env=SimpleNamespace(time_step=.25,time_limit=.25),
+                robot=SimpleNamespace(radius=.25,v_pref=.1,sensor_range=3.),
+                reward=SimpleNamespace(discomfort_dist=.25,discomfort_penalty_factor=10.,success_reward=10.,collision_penalty=-20.),
+                waffle_safety=safety_parameters(None,.25),waffle_limits=DriveLimits(max_linear=.1,max_angular=.5))
+            args=SimpleNamespace(num_processes=2,seed=13,waffle_require_measured=False,waffle_scene_split='train',
+                waffle_eval_episodes=3,waffle_gazebo_logs=tmp,waffle_gazebo_model=str(path),
+                waffle_gazebo_worker='fixture',waffle_gazebo_timeout=2.,waffle_detector_weights='fixture',
+                waffle_gazebo_detector_device='cpu',waffle_reactive_humans=False)
+            env=GazeboVecEnv(cfg,args,torch.device('cpu'),FakeWorker,FakeDetector)
+            try:
+                env.reset()
+                env.set_eval_quotas([1,2])
+                _,_,done,_=env.step(torch.zeros(2,2))
+                self.assertTrue(bool(done.all()))
+                self.assertTrue(bool(env.eval_finished[0]))
+                self.assertFalse(bool(env.eval_finished[1]))
+                lane0_time=env.worlds[0].state['time']
+                lane0_steps=env.worlds[0].steps
+                _,_,done,_=env.step(torch.zeros(2,2))
+                self.assertTrue(bool(done.all()))
+                self.assertEqual(env.worlds[0].state['time'],lane0_time)
+                self.assertEqual(env.worlds[0].steps,lane0_steps)
+                self.assertTrue(bool(env.eval_finished.all()))
+                final_times=[w.state['time'] for w in env.worlds]
+                _,_,done,_=env.step(torch.zeros(2,2))
+                self.assertTrue(bool(done.all()))
+                self.assertEqual([w.state['time'] for w in env.worlds],final_times)
+            finally:
+                env.close()
+
     def test_recurrent_reset_does_not_cut_return(self):
         box=spaces.Box(-1.,1.,shape=(1,12),dtype=np.float32)
         storage=RolloutStorage(2,1,{'spatial_edges':box},
