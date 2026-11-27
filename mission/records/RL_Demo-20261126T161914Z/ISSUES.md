@@ -74,3 +74,8 @@ The isolated 32-world probe exited 0 and returned throughput data, but its world
 
 
 | I-021 | Resolved in source; fixture and stored-trace verified (2026-11-27T13:08Z) | Offline paper-metric trace scoring previously checked monotonic simulator time and identities but did not require timestamps to match policy_dt or prove timestamp coverage through every future scoring horizon. | Commit `a4b563750ff14bcc2118f39f6f68f9203a524ac2` enforces policy interval, robot/human time alignment, monotonic spacing, and full future-horizon coverage; malformed timestamp regression added. Twelve focused tests passed and the stored one-case Gazebo validation trace rescored with online/offline parity. Full validation qualification and sealed final test remain pending. |
+
+
+### I-010 retry-count follow-up (2026-11-27T13:24:09Z)
+
+The active recovery log roots now contain five seed436 and two seed437 retryable worker-closed-stdout records. Six report native worker exit code 139; one seed436 exit code is unavailable. Learners remain alive and were not modified. This increases the observed recovery campaign count; cause remains unknown and logs contain no stack trace in the earlier audit.

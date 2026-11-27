@@ -919,7 +919,7 @@
     "gpu0_free_mib": 92723,
     "gpu1_free_mib": 90660,
     "gpu_total_mib_each": 95830,
-    "timestamp_utc": "2026-11-27T13:13:43Z"
+    "timestamp_utc": "2026-11-27T13:24:09Z"
   },
   "h100_benchmarks_20261127": {
     "allocator_cap_fraction": 0.2,
@@ -957,11 +957,12 @@
     "stage-logged server-only smoke script under mission/scripts exercised actual Gazebo, DR-SPAAM, GST, policy action, and one physics transition",
     "offline paper-metric traces enforce policy-interval timestamps, aligned timelines, and complete future-horizon coverage"
   ],
-  "last_health_poll_utc": "2026-11-27T13:13:43Z",
+  "last_health_poll_utc": "2026-11-27T13:24:09Z",
   "last_inventory_utc": "2026-11-26T17:30:35Z",
-  "last_sync_check_utc": "2026-11-27T13:08:00Z",
+  "last_sync_check_utc": "2026-11-27T13:23:00Z",
+  "ledger_archive_commit": "a969f6414f9de8cd1ddc220b0bb3bede64ae1bc1",
   "mission_id": "20261126T161914Z",
-  "next_health_poll_not_before_utc": "2026-11-27T13:23:43Z",
+  "next_health_poll_not_before_utc": "2026-11-27T13:34:09Z",
   "numa_nodes": 2,
   "paper_metric_audit": {
     "historical_test_sd": "invalid; no saved per-timestep trajectory to recompute",
@@ -1037,11 +1038,11 @@
       2042361,
       2042362
     ],
-    "retry_exit_139_records": 5,
+    "retry_exit_139_records": 6,
     "retry_exit_code_unavailable_records": 1,
     "retry_records_seed436": 5,
-    "retry_records_seed437": 1,
-    "timestamp_utc": "2026-11-27T13:14:20Z"
+    "retry_records_seed437": 2,
+    "timestamp_utc": "2026-11-27T13:24:09Z"
   },
   "recovery_snapshot_20261127T103416Z": {
     "core_diagnostic": {
@@ -1200,10 +1201,51 @@
     "swap_used_mib": 468,
     "timestamp_utc": "2026-11-27T13:13:43Z"
   },
+  "recovery_snapshot_20261127T132409Z": {
+    "dev_shm_free_gib_approx": 252,
+    "gpu0_free_mib": 92723,
+    "gpu1_free_mib": 90660,
+    "gpu_total_mib_each": 95830,
+    "host_available_gib_approx": 463,
+    "jobs_changed": false,
+    "next_health_poll_not_before_utc": "2026-11-27T13:34:09Z",
+    "queried_active_worker_roots_have_retry_ledger": true,
+    "retry_exit_139_records": 6,
+    "retry_exit_code_unavailable_records": 1,
+    "retry_records_seed436": 5,
+    "retry_records_seed437": 2,
+    "root_free_tib_approx": 7.0,
+    "seed436": {
+      "cumulative_log_visible_transitions_with_continuation_offset": 104400,
+      "durable_update": 180,
+      "durable_utc": "2026-11-27T12:50:27Z",
+      "gpu": 1,
+      "pid": 2042361,
+      "recovery_segment_transitions": 94080,
+      "reported_fps": 3,
+      "rolling_reward_mean": -25.22776351928711,
+      "update": 195,
+      "worlds": 16
+    },
+    "seed437": {
+      "cumulative_log_visible_transitions_with_continuation_offset": 74640,
+      "durable_update": 240,
+      "durable_utc": "2026-11-27T13:09:45Z",
+      "gpu": 0,
+      "pid": 2042362,
+      "recovery_segment_transitions": 60000,
+      "reported_fps": 2,
+      "rolling_reward_mean": -25.37166284561157,
+      "update": 249,
+      "worlds": 8
+    },
+    "swap_used_mib": 468,
+    "timestamp_utc": "2026-11-27T13:24:09Z"
+  },
   "repo_branch": "codex/waffle-gazebo-mission-20261126",
   "repo_clean_at_last_sync_check": true,
   "repo_clean_at_start": true,
-  "repo_commit": "a4b563750ff14bcc2118f39f6f68f9203a524ac2",
+  "repo_commit": "a969f6414f9de8cd1ddc220b0bb3bede64ae1bc1",
   "repo_path": "/home/rl-group4/Projects/Untapped/RL_Demo",
   "repo_worktree_clean_at_update": true,
   "selected_candidate": {
