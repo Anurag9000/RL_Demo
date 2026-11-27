@@ -12,3 +12,8 @@ The saved run args and original launcher establish that active seed436/437 runs 
 ## D-003 — Transfer smoke is a wiring gate, not a quality result
 
 The separate seed438 smoke strictly loaded official randomized checkpoint 41665.pt, reset the native action head, used a fresh PPO optimizer and ran 60 actual Gazebo transitions. A fresh evaluator loaded the resulting native checkpoint and completed one validation trace, which collided. This proves only that the transfer/training/checkpoint/evaluation path executes. It does not show the pretrained policy has learned useful navigation or that the goal is met. Continue with a separate sustained pretrained run and use full validation evidence before selecting a candidate; keep test sealed.
+
+
+## D-004 — Start sustained transfer at the measured 32-world screen configuration
+
+The earlier H100 benchmark screen measured 4.706 transitions/s and 2.61GiB peak allocated memory at 32 Gazebo worlds, versus 1.805 transitions/s and 1.20GiB at 4 worlds; each was only two updates, so this is not sustained qualification. The separate official randomized pretrained transfer smoke passed model loading and produced a native checkpoint/optimizer state, while one validation episode failed. Start a distinct 250k-requested-transition (249,600 effective) transfer lineage at 32 worlds on GPU0, with a fresh optimizer and full-state saves every 10 updates, to gather meaningful learning evidence. Keep both prior scratch controls running and test sealed. Reassess throughput and learning on the next permitted global health check.
