@@ -87,3 +87,6 @@ The active recovery log roots now contain five seed436 and two seed437 retryable
 ### I-022 progress follow-up (2026-11-27T13:35Z)
 
 Corrected validation run remains alive and has produced 61/500 trace files; no final metrics JSON yet. Seed437 update240 is diagnostic only. Held-out test remains unused.
+
+
+| I-023 | Open, legacy evaluation path only | `rl/evaluation.py` uses `elif isinstance(infos[0]['info'] is None):`; Python `isinstance` requires a second argument, so an environment that reaches this branch raises `TypeError` instead of accepting the null info case. | Static finding only; active Waffle bank evaluator does not call this legacy loop. Fix and add a focused test before relying on the legacy evaluator for an environment that can return `info=None`. No source was changed during this audit. |
