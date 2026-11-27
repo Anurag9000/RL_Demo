@@ -473,3 +473,6 @@ The 13:12 review note transcribed `gazebo_sim/worker.cc` as 333 lines; `wc -l` c
 ## 2026-11-27T13:55Z combined source line-count correction
 
 Correction to the preceding correction: `wc -l` gives 125 lines for `gazebo_sim/hardware.py`, so the exact five-file total is 1,367 lines (577 + 158 + 153 + 354 + 125). No separate 3-line helper count applies. The earlier 1,221 and 1,245 totals are both withdrawn.
+
+- Training entrypoint/lineage audit: verified `train.py` loads `load_path` only under `resume`; `waffle-native-action` + `waffle-init-cartesian` is the explicit transferred-head reset branch. Active seed436/437 launch records omit resume/init and are scratch actor-critic runs despite the default `load_path` string. Classified as scratch controls; a separate randomized pretrained transfer is required. Evidence is recorded in `ISSUES.md` I-026 and `DECISIONS.md` D-002.
+- 2026-11-27 contact-source diagnostic: matched 100-case validation probe attributes 99 terminal labels to human-disk overlap without a worker contact-or-tilt flag during policy steps; one had the combined worker flag. Wall overlap zero. This does not isolate contact from tilt. Archive at `evaluations/seed436_update280_contact_source_validation100_20261127/`.

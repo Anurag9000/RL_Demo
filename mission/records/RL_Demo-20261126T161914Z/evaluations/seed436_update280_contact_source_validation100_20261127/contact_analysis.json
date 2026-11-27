@@ -1,0 +1,45 @@
+{
+  "run": {
+    "checkpoint_seed": 436,
+    "checkpoint_update": 280,
+    "checkpoint_sha256": "9e1be5871cf88e13c4aa0f12b3677a1c121c12d702eb3d63dd766df52b683004",
+    "profile_sha256": "84557d48d8b92f589ccf62e2b719510ccfdaa83a27c970d42659d4cf94b494e7",
+    "split": "validation",
+    "eval_seed": 90436,
+    "episodes": 100,
+    "processes": 8,
+    "gpu": 0,
+    "finished_utc": "2026-11-27T18:02:39Z"
+  },
+  "evaluation": {
+    "successes": 0,
+    "collision_labels": 100,
+    "timeouts": 0,
+    "policy_steps": 611,
+    "guard_ticks": 3055,
+    "mean_path_m": 0.05961695948856962,
+    "mean_time_s": 1.5275,
+    "gate_intervention_fraction": 0.5875613747954174,
+    "paper_itr_percent": 82.29685559538501,
+    "paper_sd_m": 0.7782316806123076,
+    "trace_offline_verification": {
+      "passed": true,
+      "mean_episode_itr": 0.8229685559538501,
+      "pooled_sd_m": 0.7782316806123076,
+      "intrusion_steps": 423,
+      "episode_steps": 611
+    }
+  },
+  "terminal_source_attribution": {
+    "episodes": 100,
+    "episodes_with_worker_contact_or_tilt_flag_during_policy": 1,
+    "episodes_with_human_disk_overlap_at_terminal": 100,
+    "episodes_with_wall_disk_overlap_at_terminal": 0,
+    "proxy_only_human_disk_terminal_without_worker_flag_or_wall": 99,
+    "worker_contact_or_tilt_substeps_during_policy": 1,
+    "worker_contact_or_tilt_substeps_in_unscored_human_only_lookahead": 696,
+    "worker_flag_semantics": "C++ worker flag combines non-floor contact-sensor events and robot roll/pitch tilt; one event does not prove which source. A false flag means neither was observed by this worker on that substep."
+  },
+  "interpretation": "99/100 evaluator Collision labels were caused by conservative robot-human disk overlap without a worker contact-or-tilt flag in the scored policy episode; one also had such a flag. All 100 had negative minimum human disk clearance; none had wall disk overlap at terminal. This is not evidence of 99 false safety violations, because the disk proxy is intentionally conservative, but it is not 100 verified physical Gazebo contacts. The worker flag is not split into contact vs tilt. Human-only lookahead flags occur after policy termination and are excluded from outcome attribution.",
+  "test_split_used": false
+}

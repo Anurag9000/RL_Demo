@@ -2109,6 +2109,52 @@
     "learner_changed": false,
     "artifacts": "evaluations/seed436_update280_contactprobe1_validation_20261127"
   },
-  "last_health_check_utc": "2026-11-27T17:54:48Z",
-  "next_health_check_not_before_utc": "2026-11-27T18:04:48Z"
+  "last_health_check_utc": "2026-11-27T18:09:03Z",
+  "next_health_check_not_before_utc": "2026-11-27T18:19:03Z",
+  "validation_seed436_update280_contact_source100_20261127": {
+    "status": "completed_validation_contact_source_diagnostic",
+    "started_utc": "2026-11-27T17:57:07Z",
+    "finished_utc": "2026-11-27T18:02:39Z",
+    "exit_status": 0,
+    "checkpoint": "experiments/waffle_safe_clearance_gpu1_ppo_seed436_v5_recovery1_20261127/checkpoints/00280.pt",
+    "checkpoint_sha256": "9e1be5871cf88e13c4aa0f12b3677a1c121c12d702eb3d63dd766df52b683004",
+    "split": "validation",
+    "seed": 90436,
+    "episodes": 100,
+    "processes": 8,
+    "successes": 0,
+    "evaluator_collision_labels": 100,
+    "timeouts": 0,
+    "policy_steps": 611,
+    "worker_contact_or_tilt_episodes": 1,
+    "human_disk_overlap_episodes": 100,
+    "wall_disk_overlap_episodes": 0,
+    "proxy_only_human_disk_terminals": 99,
+    "policy_worker_contact_or_tilt_substeps": 1,
+    "unscored_suffix_worker_contact_or_tilt_substeps": 696,
+    "mean_path_m": 0.05961695948856962,
+    "mean_duration_s": 1.5275,
+    "gate_intervention_fraction": 0.5875613747954174,
+    "mean_paper_itr_percent": 82.29685559538501,
+    "mean_paper_sd_m": 0.7782316806123076,
+    "trace_offline_verification_passed": true,
+    "worker_contact_field_semantics": "combines contact sensor and roll/pitch tilt; source not isolated",
+    "test_split_used": false,
+    "archive": "evaluations/seed436_update280_contact_source_validation100_20261127"
+  },
+  "training_lineage_audit_20261127": {
+    "status": "confirmed_scratch_native_runs_not_pretrained_transfer",
+    "evidence": {
+      "seed436_resume": false,
+      "seed436_continue_state": "same v5 run training_state.pt",
+      "seed436_waffle_init_cartesian": false,
+      "seed436_load_path": "trained_models/GST_predictor_non_rand/checkpoints/41200.pt",
+      "initial_launcher_has_resume_flag": false,
+      "initial_launcher_has_load_path_flag": false,
+      "initial_launcher_has_waffle_init_cartesian_flag": false,
+      "train_py_only_loads_load_path_when_resume": true
+    },
+    "interpretation": "The active v5 lineages started with randomly initialized actor-critic weights; load_path is recorded but unused when resume is false. They are scratch baselines, not the goal pretrained actor transfer.",
+    "action": "Preserve active runs/checkpoints as scratch controls; start a separate randomized-pretrained transfer lineage after transfer smoke. No training process stopped or modified."
+  }
 }

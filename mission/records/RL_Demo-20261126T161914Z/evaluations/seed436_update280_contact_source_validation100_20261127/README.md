@@ -1,0 +1,13 @@
+# Seed 436 update 280 matched validation contact-source diagnostic
+
+Completed on H100 at 2026-11-27T18:02:39Z, exit status 0. This repeated the same 100 validation scenarios, seed 90436, eight lanes and checkpoint as the prior update280 action/gate run, adding telemetry for the native worker flag and conservative terminal proxies. The held-out test split was untouched.
+
+- Checkpoint seed 436 update 280, SHA256 `9e1be5871cf88e13c4aa0f12b3677a1c121c12d702eb3d63dd766df52b683004`; profile SHA256 `84557d48d8b92f589ccf62e2b719510ccfdaa83a27c970d42659d4cf94b494e7`.
+- 100/100 outcomes were labeled `Collision`, 0 success, 0 timeout. Mean path 0.059617 m, mean duration 1.5275 s, gate intervention fraction 0.58756. Offline paper-trace verification passed for all 100 cases and 611 episode steps; mean ITR 82.2969%, pooled SD 0.778232 m over 423 intrusion steps.
+- Terminal attribution: all 100 had conservative robot-human disk overlap; none had wall disk overlap. One episode had a worker contact-or-tilt flag during its scored policy steps; 99 had no such flag and were terminal on human disk overlap alone. The native worker flag combines non-floor contact-sensor events and roll/pitch tilt, so the one event is not confirmed physical contact.
+- The four-frame human-only suffix used for paper lookahead had 696 worker contact-or-tilt substeps across episodes. These events happen after policy termination and do not define the scored episode's cause.
+- The worker combines contact and tilt in its `contact` state field. The diagnostic therefore separates that combined worker event from human-disk and wall-disk proxy causes, but cannot split contact from tilt. No physical contact rate is claimed.
+
+This evidence shows the 100-case `Collision` rate is primarily a conservative disk-terminal rate, not 100 verified Gazebo contacts. It does not show the disk proxy is unsafe or invalid; the proxy is intentionally conservative and controls reward/termination. Before changing it, qualify robot/person geometry and sensor contact semantics, and report proxy and physical worker events separately. Any change to collision termination or reward requires a fresh training lineage.
+
+The run used the actual Gazebo worker, DR-SPAAM, GST and policy, with no test data. `metrics.json`, eight action/gate logs, 100 compressed truth traces, 116 worker files (generated worlds and per-episode Gazebo logs), launcher output, exit receipt and `contact_analysis.json` are preserved and hash-listed in `SHA256SUMS`. Machine-specific run-root strings are redacted in the public launcher/metrics copies; original files remain in the H100 run directory.
