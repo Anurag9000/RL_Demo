@@ -1,33 +1,49 @@
 {
-  "copied_utc": "2026-11-27T14:07:14Z",
+  "copied_utc": "2026-11-27T15:30:38Z",
   "files": {
     "CODE_AUDIT_PROGRESS.md": {
       "bytes": 106095,
       "sha256": "08f984202573633f29901a2170627bf6536fa2ea33fa81f5541a96319d82e5cd"
     },
     "ISSUES.md": {
-      "bytes": 17024,
-      "sha256": "1701c12f22aca09852cb60c0d61b3ac5568d781a700e8edb71a8a3a5cf16daea"
+      "bytes": 17995,
+      "sha256": "f4163cfd109cbcdb4207d2f93a6d19f51c79b0e714e083ba196d28a6ba8627a8"
     },
     "STATUS.md": {
-      "bytes": 93363,
-      "sha256": "de7d910ab545778eccacf497e788b18d51ae2a449ee56117c72ad1280b438afd"
+      "bytes": 95268,
+      "sha256": "9403d8ef3fb0a6cddd2bd448e0f85ec0aa48a30ce51179a8f945917c2e10197f"
     },
     "commands.jsonl": {
-      "bytes": 71625,
-      "sha256": "8789e3ca6d0a9d85732c42a2eb66787baa2ac0b03880b87e675f1c1db5f04b3f"
+      "bytes": 72406,
+      "sha256": "1c081e81b32f54b5ac3e6b7f1c5da0ca9a499a630b634dc28541381e321aae1e"
+    },
+    "evaluations/seed436_update200_validation500_20261127/EVALUATION_MANIFEST.json": {
+      "bytes": 87485,
+      "sha256": "7b5764b8c43561173bac39344346a5cfc775d2b0aad13cff593478c79d2465ef"
     },
     "evaluations/seed437_update240_validation500_20261127/EVALUATION_MANIFEST.json": {
       "bytes": 87502,
       "sha256": "d577f3c292395e4b3a8af673a9bac55311426371ea2aabf7caa18029e965435b"
+    },
+    "evaluations/seed437_update300_validation_diag_20261127/EVALUATION_MANIFEST.json": {
+      "bytes": 1647,
+      "sha256": "f63b5211679400189e9045c75e6907b47400d5ba1e0ba38dcf41be9349b42b7c"
+    },
+    "evaluations/seed437_update300_validation_diag_rerun_20261127/EVALUATION_MANIFEST.json": {
+      "bytes": 1788,
+      "sha256": "28b747ae212c1beb4dc7b45e2ef3450480c01aad6d4c3112666478c7050305b3"
+    },
+    "scripts/diagnose_v5_action_gate.py": {
+      "bytes": 4462,
+      "sha256": "d9d84b1fa6b0b5ed0cf71c9b1ce13540f542b61486b16559132bbdf2dd47e7e6"
     },
     "scripts/eval_v5_bank_checkpoint.sh": {
       "bytes": 6121,
       "sha256": "fb83935740e9b97299987ffb2a0ab56483be80b84b2c84ba6a2d87b8f2c17402"
     },
     "state.json": {
-      "bytes": 70748,
-      "sha256": "a5f8ed4ffa3df5125db221438e01558beaafa08964cd59e34e4071a4ef8a4e4b"
+      "bytes": 73833,
+      "sha256": "28607812417c8ae5de0a95fc8a361a2c9b679fab2bf8c58e52195f5d5eb8e565"
     }
   },
   "source": "/home/rl-group4/waffle_runs/RL_Demo-20261126T161914Z/mission"

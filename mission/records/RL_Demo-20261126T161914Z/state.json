@@ -7,23 +7,34 @@
     "gpu0_untouched": true,
     "gpu1_free_mib": 38813,
     "gpu1_free_mib_observed": 38867,
+    "gpu_free_mib": {
+      "gpu0": 92703,
+      "gpu1": 90660
+    },
     "gpu_snapshot_utc": "2026-11-27T01:46:15Z",
+    "host_available_gib": 463,
     "host_available_gib_approx": 407,
     "last_checkpoint": "experiments/waffle_safe_clearance_gpu1_ppo_seed436_v5_250k_b16_20261127/checkpoints/00000.pt",
-    "last_health_poll_utc": "2026-11-27T14:07:14Z",
-    "next_health_check_not_before_utc": "2026-11-27T14:17:14Z",
+    "last_health_poll_utc": "2026-11-27T15:30:38Z",
+    "next_health_check_not_before_utc": "2026-11-27T15:40:38Z",
+    "observed_utc": "2026-11-27T15:30:38Z",
     "output": "experiments/waffle_safe_clearance_gpu1_ppo_seed436_v5_250k_b16_20261127",
     "physical_gpu": 1,
     "pid": 4076346,
     "prior_update_boundary_transitions": 240,
+    "related_jobs": [
+      "current_training_recovery1.seed436",
+      "current_training_recovery1.seed437"
+    ],
+    "root_fs_free_tib": 7.0,
     "run_id": "waffle_safe_clearance_gpu1_ppo_seed436_v5_250k_b16_20261127",
     "scenario_profile": "mission/profiles/waffle_gazebo_illustrative_safe_clearance_diverse_v5_500x3.json",
     "scenario_split": "train",
     "segment_fps": 3,
     "segment_fps_reported": 3,
     "segment_transitions_logged": 3840,
-    "status": "running_slow",
-    "swap_used_mib": 469,
+    "status": "two recovery learners running slowly",
+    "swap_used_mib": 468,
     "target_segment_transitions": 250000,
     "training_state_last_mtime_utc": "2026-11-27T01:44:13Z",
     "updates_logged": 8,
@@ -59,11 +70,64 @@
   "branch": "codex/waffle-gazebo-mission-20261126",
   "commit": "e5a6da0a938a581d91e6ac7f266bb7c7bf105611",
   "cpu_allowed": "0-63",
+  "current_training_recovery1": {
+    "gpu_free_mib": {
+      "gpu0": 92703,
+      "gpu1": 90660
+    },
+    "gpu_utilization_pct": {
+      "gpu0": 0,
+      "gpu1": 90
+    },
+    "host_available_gib": 463,
+    "jobs": {
+      "seed436": {
+        "gpu": 1,
+        "latest_durable_checkpoint": "experiments/waffle_safe_clearance_gpu1_ppo_seed436_v5_recovery1_20261127/checkpoints/00240.pt",
+        "latest_rolling_reward": -25.119846115112306,
+        "pid": 2042361,
+        "reported_fps": 3,
+        "segment_transitions": 121920,
+        "status": "alive",
+        "update": 253
+      },
+      "seed437": {
+        "gpu": 0,
+        "latest_durable_checkpoint": "experiments/waffle_safe_clearance_gpu0_ppo_seed437_v5_recovery1_20261127/checkpoints/00300.pt",
+        "latest_rolling_reward": -24.67842346191406,
+        "pid": 2042362,
+        "reported_fps": 2,
+        "segment_transitions": 78480,
+        "status": "alive",
+        "update": 326
+      }
+    },
+    "observed_utc": "2026-11-27T15:30:38Z",
+    "preserved": true,
+    "root_fs_free_tib": 7.0,
+    "swap_used_mib": 468
+  },
   "detector": {
     "checkpoint_sha256": "1b62e50d9bcb954975bda28610e09921e8bde94216b0a291a704a579690b6324",
     "cpu_forward_smoke": "passed; 360-point constant-range input; not an accuracy test",
     "name": "DR-SPAAM",
     "source_commit": "d12e90225d52ba6c85d20061f1e7286d6a64aade"
+  },
+  "diagnostic_seed437_update300_20261127": {
+    "archive": "mission/records/RL_Demo-20261126T161914Z/evaluations/seed437_update300_validation_diag_rerun_20261127",
+    "blocked_physics_substeps": 34,
+    "checkpoint_sha256": "0ac711418ff64269aef11ab3a55f92c9426a12dd3f5b1ed30bf34264f4d6cb37",
+    "episodes": 1,
+    "nonfault_blocked_substeps": 29,
+    "outcomes": {
+      "Collision": 1
+    },
+    "physics_substeps": 45,
+    "policy_steps": 9,
+    "scenario_id": "v5-validation-0085",
+    "sensor_fault_substeps": 5,
+    "status": "complete_diagnostic_only",
+    "test_split_used": false
   },
   "diverse_profile_v4_reward": {
     "path": "mission/profiles/waffle_gazebo_illustrative_safe_clearance_diverse_v4_reward.json",
@@ -1017,12 +1081,42 @@
     "stage-logged server-only smoke script under mission/scripts exercised actual Gazebo, DR-SPAAM, GST, policy action, and one physics transition",
     "offline paper-metric traces enforce policy-interval timestamps, aligned timelines, and complete future-horizon coverage"
   ],
-  "last_health_poll_utc": "2026-11-27T14:07:14Z",
+  "last_health_poll_utc": "2026-11-27T15:30:38Z",
   "last_inventory_utc": "2026-11-26T17:30:35Z",
   "last_sync_check_utc": "2026-11-27T14:06:00Z",
+  "latest_validation_seed436_update200_20261127": {
+    "archive": "mission/records/RL_Demo-20261126T161914Z/evaluations/seed436_update200_validation500_20261127",
+    "checkpoint_sha256": "9c7967c1087239af6643484cae3bc2f524c9e12a47e07cfe9f2d63e340f5b380",
+    "collision_rate": 1.0,
+    "counted_transitions": 3048,
+    "elapsed_s": 1628.0822129435837,
+    "episodes": 500,
+    "gate_episode_fraction": 0.976,
+    "gate_intervention_fraction": 0.5879265091863517,
+    "mean_paper_itr": 0.8102718358458396,
+    "mean_paper_sd_m": 0.7797832545190102,
+    "mean_path_m": 0.05468563079626252,
+    "mean_reward": -24.782902240753174,
+    "mean_time_s": 1.524,
+    "offline_trace_verification": {
+      "episode_steps": 3048,
+      "intrusion_steps": 2069,
+      "mean_episode_itr": 0.8102718358458396,
+      "passed": true,
+      "pooled_sd_m": 0.7797832545190102
+    },
+    "outcomes": {
+      "Collision": 500
+    },
+    "status": "complete_failure",
+    "success_rate": 0.0,
+    "test_split_used": false,
+    "timeout_rate": 0.0,
+    "transitions_per_sec": 2.0244677902603025
+  },
   "ledger_archive_commit": "f3ca4f77d46abfeaacd2d4adb031f40b5c14ec50",
   "mission_id": "20261126T161914Z",
-  "next_health_poll_not_before_utc": "2026-11-27T14:17:14Z",
+  "next_health_poll_not_before_utc": "2026-11-27T15:40:38Z",
   "numa_nodes": 2,
   "paper_metric_audit": {
     "historical_test_sd": "invalid; no saved per-timestep trajectory to recompute",

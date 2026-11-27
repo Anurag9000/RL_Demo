@@ -1,0 +1,14 @@
+{
+  "checkpoint": "/home/rl-group4/waffle_runs/RL_Demo-20261126T161914Z/experiments/waffle_safe_clearance_gpu0_ppo_seed437_v5_recovery1_20261127/checkpoints/00300.pt",
+  "checkpoint_sha256": "0ac711418ff64269aef11ab3a55f92c9426a12dd3f5b1ed30bf34264f4d6cb37",
+  "episodes": 1,
+  "evaluation_seed": 900437,
+  "exit_status": 0,
+  "profile_sha256": "84557d48d8b92f589ccf62e2b719510ccfdaa83a27c970d42659d4cf94b494e7",
+  "scenario_ids": 1,
+  "script": "/home/rl-group4/Projects/Untapped/RL_Demo/mission/records/RL_Demo-20261126T161914Z/scripts/diagnose_v5_action_gate.py",
+  "script_sha256": "d9d84b1fa6b0b5ed0cf71c9b1ce13540f542b61486b16559132bbdf2dd47e7e6",
+  "split": "validation",
+  "status": "diagnostic_only; no checkpoint selection; held-out test untouched",
+  "training_seed": 437
+}

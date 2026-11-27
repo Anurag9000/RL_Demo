@@ -1,0 +1,69 @@
+{
+  "episodes": 1,
+  "outcomes": {
+    "Collision": 1
+  },
+  "success_rate": 0.0,
+  "collision_rate": 1.0,
+  "timeout_rate": 0.0,
+  "mean_reward": -28.573978424072266,
+  "seed": 900437,
+  "gate_intervention_fraction": 0.7777777777777778,
+  "backend": "gazebo",
+  "transitions_per_sec": 3.601962625167519,
+  "counted_transitions": 9,
+  "elapsed_s": 2.4986378084868193,
+  "success_ci95": [
+    0.0,
+    0.7934506856227626
+  ],
+  "collision_ci95": [
+    0.20654931437723745,
+    1.0
+  ],
+  "scene_split": "validation",
+  "unique_scenarios": 1,
+  "episode_metrics": [
+    {
+      "success": false,
+      "path_m": 0.009215405210852623,
+      "time_s": 2.25,
+      "rotation_rad": 0.21687626838684082,
+      "min_human_clearance_m": -0.07226220518350601,
+      "min_wall_clearance_m": 1.791869878768921,
+      "intrusion_s": 1.5,
+      "gate_fraction": 0.7777777777777778,
+      "straight_line_spl": 0.0,
+      "final_goal_distance_m": 1.0189131498336792,
+      "paper_itr": 0.6666666666666666,
+      "paper_sd_m": 0.7382534671230636,
+      "paper_intrusion_steps": 6,
+      "paper_episode_steps": 9,
+      "paper_sd_sum_m": 4.429520802738382,
+      "paper_sd_count": 6,
+      "scenario_id": "v5-validation-0085"
+    }
+  ],
+  "mean_path_m": 0.009215405210852623,
+  "mean_time_s": 2.25,
+  "mean_rotation_rad": 0.21687626838684082,
+  "mean_intrusion_s": 1.5,
+  "mean_straight_line_spl": 0.0,
+  "mean_final_goal_distance_m": 1.0189131498336792,
+  "p05_min_human_clearance_m": -0.07226220518350601,
+  "p05_min_wall_clearance_m": 1.791869878768921,
+  "gate_episode_fraction": 1.0,
+  "mean_paper_itr": 0.6666666666666666,
+  "paper_sd_intrusion_steps": 6,
+  "mean_paper_sd_m": 0.7382534671230636,
+  "paper_metric_definition": "ITR is the unweighted mean across episodes of each episode fraction whose robot center intrudes into any human ground-truth position from t+1 through t+5; SD is the pooled mean current-time closest-human center distance over intrusion timesteps.",
+  "paper_trace_dir": "/home/rl-group4/waffle_runs/RL_Demo-20261126T161914Z/evaluations/seed437_update300_validation_diag_rerun_20261127/metrics_traces",
+  "paper_trace_count": 1,
+  "paper_trace_offline_verification": {
+    "passed": true,
+    "mean_episode_itr": 0.6666666666666666,
+    "pooled_sd_m": 0.7382534671230636,
+    "intrusion_steps": 6,
+    "episode_steps": 9
+  }
+}
