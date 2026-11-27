@@ -2276,7 +2276,7 @@
     "interpretation": "scratch controls advance slowly with low rewards; neither converged; both preserved"
   },
   "pretrained_transfer_250k_seed438_20261127": {
-    "status": "running",
+    "status": "running_exploratory_illustrative_profile_not_paper_regime_matched",
     "started_utc": "2026-11-27T18:31:36Z",
     "launcher_pid": 3235188,
     "python_pid": 3235199,
@@ -2301,7 +2301,10 @@
     "profile": "illustrative v5 safe-clearance diverse 500x3",
     "initial_checkpoint_load_confirmed": true,
     "scratch_controls_stopped": false,
-    "test_split_used": false
+    "test_split_used": false,
+    "paper_regime_match": false,
+    "regime_mismatch_reason": "The v5 generator uses 4 humans, one fixed two-waypoint cycle per person, per-case heterogeneous radius 0.26-0.32m and speed 0.55-0.95m/s, with no within-episode goal changes. It does not match either paper regime exactly.",
+    "allowed_interpretation": "Exploratory nominal Gazebo training and throughput baseline; not a final paper-regime candidate."
   },
   "paper_metric_and_case_schedule_audit_20261127": {
     "source_files": [
@@ -2327,5 +2330,21 @@
       "The 500-case arithmetic check mirrors the current scheduler formula; it is not an end-to-end 500-world evaluator run.",
       "Original paper prose/code SD convention remains documented separately; current implementation reports center-distance interpretation."
     ]
+  },
+  "scenario_regime_audit_20261127": {
+    "paper_source": "research/2203.01821-v4.txt lines 308-322",
+    "randomized_regime": "Within-episode random goal changes; per-human vmax 0.5-1.5m/s and radius 0.3-0.5m.",
+    "nonrandomized_regime": "Common human max speed and radius, no random goal changes.",
+    "v5_profile_generator": "mission/scripts/generate_diverse_scenarios.py lines 19-60",
+    "v5_profile_cases": {
+      "train": 500,
+      "validation": 500,
+      "test": 500,
+      "humans_per_case": 4
+    },
+    "v5_profile_behavior": "Each human has exactly two cyclic waypoints; radius 0.26-0.32m and speed 0.55-0.95m/s are fixed per case; no in-episode goals are sampled.",
+    "current_regime_match": "neither exactly; per-person traits vary but goal intent does not change within episode",
+    "v5_mission_note": "stale: text calls it v3 although profile filename and generated scenarios are v5",
+    "test_split_used": false
   }
 }

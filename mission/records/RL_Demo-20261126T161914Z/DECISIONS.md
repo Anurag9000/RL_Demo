@@ -17,3 +17,8 @@ The separate seed438 smoke strictly loaded official randomized checkpoint 41665.
 ## D-004 — Start sustained transfer at the measured 32-world screen configuration
 
 The earlier H100 benchmark screen measured 4.706 transitions/s and 2.61GiB peak allocated memory at 32 Gazebo worlds, versus 1.805 transitions/s and 1.20GiB at 4 worlds; each was only two updates, so this is not sustained qualification. The separate official randomized pretrained transfer smoke passed model loading and produced a native checkpoint/optimizer state, while one validation episode failed. Start a distinct 250k-requested-transition (249,600 effective) transfer lineage at 32 worlds on GPU0, with a fresh optimizer and full-state saves every 10 updates, to gather meaningful learning evidence. Keep both prior scratch controls running and test sealed. Reassess throughput and learning on the next permitted global health check.
+
+
+## D-005 — Keep the current v5 training run exploratory after the regime audit
+
+The v5 profile provides 500 independent cases per split but its human dynamics do not match either primary-paper regime exactly: it has static cyclic two-waypoint paths and heterogeneous traits, no within-episode goal changes, and different speed/radius ranges. The 250k seed438 run has already started against this illustrative profile. Preserve it as an exploratory Gazebo/PPO and throughput baseline, but do not call it a paper-regime candidate or use it as final evidence. Build separate randomized and nonrandomized regime profiles/dynamics with explicit provenance before final regime evaluation; preserve the test split.

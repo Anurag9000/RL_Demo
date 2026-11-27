@@ -628,3 +628,8 @@ Started the distinct pretrained seed438 target run at 18:31:36Z on GPU0: launche
 ## 2026-11-27T18:36Z paper-metric and case-schedule audit
 
 Static review confirmed the paper metric implementation and offline trace verifier contracts. A formula-level enumeration for 500 scenarios across lane counts 1 through 64 found no duplicate or omitted indices under current balanced quotas. The targeted paper-metric unit suite passed (13 tests, 0.011s). This does not replace an actual full unique 500-case Gazebo evaluation; the original paper's SD convention remains explicitly documented as an interpretation. Test split untouched.
+
+
+## 2026-11-27T18:38Z paper-regime scenario gap found
+
+Read the locally stored primary paper text alongside the v5 generator and all six current profile inventories. The paper's randomized regime has within-episode random goal changes and per-human maximum speed 0.5–1.5m/s/radius 0.3–0.5m; the nonrandomized regime uses common human speed/radius and no random goal changes. The current v5 bank has 500 train/validation/test cases, all with four humans; each human follows a fixed cyclic two-waypoint path, with heterogeneous per-case speed 0.55–0.95m/s and radius 0.26–0.32m. It implements neither paper regime exactly, and its `mission_note` is stale (still says v3). I-028 is open. The running seed438 line is reclassified as exploratory nominal training/throughput evidence, not paper-regime-matched training. No test cases were executed or inspected for behavior.
