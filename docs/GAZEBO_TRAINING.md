@@ -215,6 +215,23 @@ travel time/path length, and straight-line SPL. Wilson intervals are descriptive
 for correlated scenarios. Do not use simulator collision fractions as physical
 safety certification.
 
+Gazebo evaluation writes one compressed, non-pickle `.npz` paper-metric truth
+trace per completed episode. By default, `--waffle-eval-json OUT/metrics.json`
+places them in `OUT/metrics_traces`; `--waffle-eval-trace-dir DIR` sets an
+explicit directory. Each trace stores robot decision poses, ground-truth human
+positions including the four-frame post-terminal suffix, human/robot radii,
+simulated timestamps, scenario/split/seed, outcome and profile/checkpoint/
+detector/model-SDF/worker file hashes. The evaluator independently recomputes
+ITR and SD from these files and fails if trace count or online/offline metrics
+disagree. Recompute or inspect them later with:
+
+~~sh
+python -m waffle_pi.offline_metrics --trace-dir OUT/metrics_traces --output OUT/offline_metrics.json
+~~
+
+These traces support the paper's future-position ITR and current-time SD audit;
+they do not constitute a full action, wheel, scan or video recording.
+
 The real ROS 2 path uses actual LDS, DR-SPAAM, timestamped tracker/GST,
 native actor, and independent Pi safety gate. Pass --fidelity-profile to
 the detector and policy; the detector verifies model parameters, weight hash

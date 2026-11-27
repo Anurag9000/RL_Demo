@@ -168,6 +168,17 @@ class Integration(unittest.TestCase):
                 self.assertTrue(bool(done[0]))
                 self.assertEqual(int(env.paper_episode_steps[0]),1)
                 self.assertTrue(bool(torch.isfinite(env.paper_itr).all()))
+                trace_files=sorted((Path(tmp)/'paper_traces').glob('*.npz'))
+                self.assertEqual(len(trace_files),1)
+                with np.load(trace_files[0],allow_pickle=False) as trace:
+                    self.assertEqual(trace['episode_steps'].item(),1)
+                    self.assertEqual(trace['robot_positions'].shape,(2,2))
+                    self.assertEqual(trace['human_positions'].shape[0],6)
+                    self.assertEqual(trace['scenario_id'].item(),'illustrative-1-train')
+                    self.assertEqual(bool(trace['online_sd_valid'].item()),bool(torch.isfinite(env.paper_sd_m[0])))
+                from waffle_pi.offline_metrics import score_trace_file
+                offline=score_trace_file(trace_files[0])
+                self.assertTrue(offline['online_parity'])
                 self.assertEqual(env.last_scenario_ids[0],'illustrative-1-train')
                 self.assertTrue(bool(env.eval_finished[0]))
                 self.assertEqual(int(env.case_ids[0]),scenario_index)

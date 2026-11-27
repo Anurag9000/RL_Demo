@@ -1,0 +1,92 @@
+"""Independent paper-metric recomputation from immutable Gazebo truth traces."""
+from pathlib import Path
+import json
+import numpy as np
+
+
+def score_trace_file(path):
+    """Recompute paper ITR/SD without calling the online metric implementation."""
+    path=Path(path)
+    with np.load(path,allow_pickle=False) as trace:
+        robot=np.asarray(trace['robot_positions'],dtype=np.float64)
+        humans=np.asarray(trace['human_positions'],dtype=np.float64)
+        radii=np.asarray(trace['human_radii'],dtype=np.float64)
+        robot_radius=float(trace['robot_radius'])
+        future_steps=int(trace['future_steps'])
+        episode_steps=int(trace['episode_steps'])
+        metadata={k:trace[k].item() for k in ('scenario_id','scenario_index','split','seed','lane','episode_number','profile_sha256','checkpoint_sha256','detector_sha256','model_sdf_sha256','worker_sha256') if k in trace}
+        online_itr=float(trace['online_itr']) if 'online_itr' in trace else None
+        online_sd_valid=bool(trace['online_sd_valid']) if 'online_sd_valid' in trace else None
+        online_sd=float(trace['online_sd_m']) if online_sd_valid else None
+    if robot.ndim!=2 or robot.shape[1]!=2 or not np.isfinite(robot).all():
+        raise ValueError(f'{path}: invalid robot truth trace')
+    if humans.ndim!=3 or humans.shape[2]!=2 or not np.isfinite(humans).all():
+        raise ValueError(f'{path}: invalid human truth trace')
+    if episode_steps<1 or robot.shape[0]!=episode_steps+1 or future_steps<1:
+        raise ValueError(f'{path}: inconsistent episode length/horizon')
+    if humans.shape[1]!=len(radii) or humans.shape[1]<1 or not np.isfinite(radii).all() or (radii<=0).any():
+        raise ValueError(f'{path}: invalid human radii/slots')
+    if not np.isfinite(robot_radius) or robot_radius<=0 or humans.shape[0]<episode_steps+future_steps:
+        raise ValueError(f'{path}: incomplete future truth horizon')
+    overlap_limit=radii+robot_radius
+    event_count=0
+    social_distance_sum=0.0
+    for decision in range(episode_steps):
+        robot_xy=robot[decision]
+        future_xy=humans[decision+1:decision+1+future_steps]
+        future_separation=np.sqrt(np.sum((future_xy-robot_xy)**2,axis=-1))
+        if np.any(future_separation<overlap_limit[None,:]):
+            current_separation=np.sqrt(np.sum((humans[decision]-robot_xy)**2,axis=-1))
+            social_distance_sum+=float(np.min(current_separation))
+            event_count+=1
+    result=dict(path=str(path),scenario_id=str(metadata.get('scenario_id','')),
+        scenario_index=int(metadata.get('scenario_index',-1)),split=str(metadata.get('split','')),
+        seed=int(metadata.get('seed',-1)),
+        profile_sha256=str(metadata.get('profile_sha256','')),
+        checkpoint_sha256=str(metadata.get('checkpoint_sha256','')),
+        detector_sha256=str(metadata.get('detector_sha256','')),
+        model_sdf_sha256=str(metadata.get('model_sdf_sha256','')),
+        worker_sha256=str(metadata.get('worker_sha256','')),episode_steps=episode_steps,
+        intrusion_steps=event_count,itr=event_count/episode_steps,
+        sd_sum_m=social_distance_sum,sd_count=event_count,
+        sd_m=social_distance_sum/event_count if event_count else None,
+        online_itr=online_itr,online_sd_m=online_sd)
+    if online_itr is not None:
+        result['online_parity']=(abs(result['itr']-online_itr)<=1e-12 and
+            ((online_sd is None and result['sd_m'] is None) or
+             (online_sd is not None and result['sd_m'] is not None and abs(result['sd_m']-online_sd)<=1e-6)))
+    return result
+
+
+def score_trace_directory(directory):
+    files=sorted(Path(directory).glob('*.npz'))
+    if not files:
+        raise ValueError(f'no trace .npz files in {directory}')
+    episodes=[score_trace_file(p) for p in files]
+    events=sum(x['intrusion_steps'] for x in episodes)
+    sd_sum=sum(x['sd_sum_m'] for x in episodes)
+    return dict(trace_count=len(episodes),episodes=episodes,
+        mean_episode_itr=float(np.mean([x['itr'] for x in episodes])),
+        intrusion_steps=events,episode_steps=sum(x['episode_steps'] for x in episodes),
+        pooled_sd_m=sd_sum/events if events else None,
+        all_online_parity=all(x.get('online_parity',False) for x in episodes))
+
+
+def main(argv=None):
+    import argparse
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--trace-dir',required=True)
+    parser.add_argument('--output',default=None)
+    args=parser.parse_args(argv)
+    result=score_trace_directory(args.trace_dir)
+    payload=json.dumps(result,indent=2,allow_nan=False)
+    if args.output:
+        out=Path(args.output)
+        if out.exists(): raise FileExistsError(out)
+        out.parent.mkdir(parents=True,exist_ok=True)
+        out.write_text(payload+'\n')
+    print(payload)
+
+
+if __name__=='__main__':
+    main()

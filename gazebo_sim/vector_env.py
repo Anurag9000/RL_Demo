@@ -338,6 +338,28 @@ class GazeboVecEnv(VecEnv):
         self.case_rng=[np.random.default_rng(np.random.SeedSequence([args.seed,int(os.environ.get('RANK','0')),i,971])) for i in range(self.n)]
         root=Path(args.waffle_gazebo_logs)
         root.mkdir(parents=True,exist_ok=True)
+        trace_dir=getattr(args,'waffle_eval_trace_dir',None)
+        if trace_dir is None and args.waffle_eval_episodes and getattr(args,'waffle_eval_json',None):
+            metrics_path=Path(args.waffle_eval_json)
+            trace_dir=metrics_path.with_suffix('').with_name(metrics_path.stem+'_traces')
+        if trace_dir is None and args.waffle_eval_episodes:
+            trace_dir=root/'paper_traces'
+        self.eval_trace_dir=Path(trace_dir) if trace_dir else None
+        if self.eval_trace_dir is not None:
+            if self.eval_trace_dir.exists() and any(self.eval_trace_dir.iterdir()):
+                raise FileExistsError(f'evaluation trace directory is not empty: {self.eval_trace_dir}')
+            self.eval_trace_dir.mkdir(parents=True,exist_ok=True)
+        def file_sha(path):
+            p=Path(path) if path else None
+            return hashlib.sha256(p.read_bytes()).hexdigest() if p is not None and p.is_file() else ''
+        profile_path=getattr(args,'waffle_fidelity_profile',None)
+        self.eval_hashes={
+            'profile_sha256':file_sha(profile_path),
+            'checkpoint_sha256':file_sha(getattr(args,'load_path',None)),
+            'detector_sha256':file_sha(getattr(args,'waffle_detector_weights',None)),
+            'model_sdf_sha256':file_sha(getattr(args,'waffle_gazebo_model',None)),
+            'worker_sha256':file_sha(getattr(args,'waffle_gazebo_worker',None)),
+        }
         self.root=Path(tempfile.mkdtemp(prefix='gazebo-',dir=root))
         self.pool=ThreadPoolExecutor(max_workers=self.n)
         self.reset_pool=ThreadPoolExecutor(max_workers=min(self.n, max(1,int(os.environ.get('WAFFLE_RESET_THREADS',str(self.n))))))
@@ -398,6 +420,37 @@ class GazeboVecEnv(VecEnv):
         self.eval_quotas=quotas.copy()
         self.eval_finished[:]=False
 
+    def _save_eval_trace(self,lane,scenario_index,scenario_id,episode_number,metrics):
+        world=self.worlds[lane]
+        robot=np.asarray(world.truth_robot_trace,dtype=np.float32)
+        humans=np.asarray(world.truth_human_trace,dtype=np.float32)
+        if len(robot)!=world.steps+1 or len(humans)<len(robot)+4:
+            raise RuntimeError('evaluation truth trace is incomplete or lacks the four-frame suffix')
+        path=self.eval_trace_dir/f'lane-{lane:03d}-episode-{episode_number:04d}-case-{scenario_index:06d}.npz'
+        tmp=path.with_name(path.name+'.tmp')
+        sd_value=metrics['paper_sd_m']
+        sd_valid=sd_value is not None and np.isfinite(sd_value)
+        with tmp.open('wb') as stream:
+            np.savez_compressed(stream,
+                robot_positions=robot,human_positions=humans,human_radii=np.asarray(world.radius,dtype=np.float32),
+                robot_radius=np.asarray(self.cfg.robot.radius,dtype=np.float32),future_steps=np.asarray(5,dtype=np.int32),
+                policy_dt=np.asarray(self.cfg.env.time_step,dtype=np.float64),
+                robot_times=np.arange(len(robot),dtype=np.float64)*self.cfg.env.time_step,
+                human_times=np.arange(len(humans),dtype=np.float64)*self.cfg.env.time_step,
+                episode_steps=np.asarray(world.steps,dtype=np.int32),scenario_index=np.asarray(scenario_index,dtype=np.int32),
+                scenario_id=np.asarray(scenario_id),lane=np.asarray(lane,dtype=np.int32),episode_number=np.asarray(episode_number,dtype=np.int32),
+                split=np.asarray(self.args.waffle_scene_split),seed=np.asarray(self.args.seed,dtype=np.int64),
+                profile_sha256=np.asarray(self.eval_hashes['profile_sha256']),
+                checkpoint_sha256=np.asarray(self.eval_hashes['checkpoint_sha256']),
+                detector_sha256=np.asarray(self.eval_hashes['detector_sha256']),
+                model_sdf_sha256=np.asarray(self.eval_hashes['model_sdf_sha256']),
+                worker_sha256=np.asarray(self.eval_hashes['worker_sha256']),
+                outcome=np.asarray(metrics['outcome'],dtype=np.int32),
+                online_itr=np.asarray(metrics['paper_itr'],dtype=np.float64),
+                online_sd_valid=np.asarray(sd_valid,dtype=np.bool_),
+                online_sd_m=np.asarray(float(sd_value) if sd_valid else 0.,dtype=np.float64))
+        os.replace(tmp,path)
+
     def reset(self):
         cases=[self._case(i) for i in range(self.n)]
         rows=list(self.pool.map(lambda x:x[0].reset(x[1]),zip(self.worlds,cases)))
@@ -457,6 +510,8 @@ class GazeboVecEnv(VecEnv):
                     resets[i]=self.reset_pool.submit(self.worlds[i].reset,self._case(i))
                 else:
                     self.eval_completed[i]+=1
+                    if self.eval_trace_dir is not None:
+                        self._save_eval_trace(i,int(old_ids[i]),old_scenario_ids[i],int(self.eval_completed[i]),rows[i][3])
                     if self.eval_completed[i]>=self.eval_quotas[i]:
                         self.eval_finished[i]=True
                     else:
