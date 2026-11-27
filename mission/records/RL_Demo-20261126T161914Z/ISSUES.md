@@ -82,3 +82,8 @@ The active recovery log roots now contain five seed436 and two seed437 retryable
 
 
 | I-022 | Fixed and running (2026-11-27T13:32Z) | The guarded v5 bank evaluator embedded a Python argument-list syntax error; admission wrote a request, but no evaluation process or output was created. | Added the missing closing bracket; parsed the embedded Python and ran `bash -n`. Removed only the stale request created by the failed attempt and preserved its log. The corrected rerun passed 500-case validation admission and is actively writing traces for seed437 checkpoint 00240. Final metrics not available yet; test split untouched. |
+
+
+### I-022 progress follow-up (2026-11-27T13:35Z)
+
+Corrected validation run remains alive and has produced 61/500 trace files; no final metrics JSON yet. Seed437 update240 is diagnostic only. Held-out test remains unused.
