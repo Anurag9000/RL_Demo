@@ -1,0 +1,73 @@
+{
+  "artifacts": {
+    "README.md": {
+      "bytes": 1066,
+      "sha256": "0252469c2cb8c10fc9b619ccba55d2c803dfd070468e6964fd9f8bf82e5d22b7"
+    },
+    "nonrandomized_gazebo_environment_summary.json": {
+      "bytes": 454,
+      "sha256": "b59f3c32256ff9561139e0bdbc5dc27371f0366b13815f3e849c95b05a0ffd52"
+    },
+    "nonrandomized_training_summary.json": {
+      "bytes": 149,
+      "sha256": "fca59120ed613f7ee4bc9f5d9a847397c30047004a496a990bbf565658a0183f"
+    },
+    "randomized_gazebo_environment_summary.json": {
+      "bytes": 448,
+      "sha256": "01120d881476d07cce26b4191917de879da20e96f29c23073d16e2ab137908af"
+    },
+    "randomized_training_summary.json": {
+      "bytes": 151,
+      "sha256": "fc09e25667526bab993cf304ab5bef7c21a9570a0ddec59d8e1eb5ba3e42d790"
+    },
+    "smoke_report.json": {
+      "bytes": 2809,
+      "sha256": "6d3cd335fbd6d2ffd262c129d2fed6d1af01e2d5cccc32b0aea8aa709f18e391"
+    }
+  },
+  "generated_utc": "2026-11-27T19:34:23Z",
+  "input_checkpoint_sha256": "a60bdd3b8ca84457497365133b9055c80d55b11c5a3bc76b28e38d4200cfd8ce",
+  "profiles": {
+    "nonrandomized": {
+      "path": "mission/profiles/waffle_gazebo_paper_nonrandomized_500x3.json",
+      "sha256": "c6cd247d1f9acd3aee76a958e0a2a463c8cbd099b2d289c46d0b2201754d3d39"
+    },
+    "randomized": {
+      "path": "mission/profiles/waffle_gazebo_paper_randomized_500x3.json",
+      "sha256": "57b373a1c6d63cc281c5699071414b3733dd4084aca8ccd43717ce43fcb68931"
+    }
+  },
+  "runs": {
+    "nonrandomized": {
+      "environment": "nonrandomized_gazebo_environment_summary.json",
+      "episodes_started": 1,
+      "goal_changes": 0,
+      "id": "paper_nonrandomized_regime_smoke_20261128",
+      "profile": "mission/profiles/waffle_gazebo_paper_nonrandomized_500x3.json",
+      "profile_sha256": "c6cd247d1f9acd3aee76a958e0a2a463c8cbd099b2d289c46d0b2201754d3d39",
+      "regime": "nonrandomized",
+      "sample_failures": 0,
+      "summary": "nonrandomized_training_summary.json",
+      "transitions": 1,
+      "updates": 1
+    },
+    "randomized": {
+      "environment": "randomized_gazebo_environment_summary.json",
+      "episodes_started": 4,
+      "goal_changes": 0,
+      "id": "paper_randomized_regime_smoke_r4_20261128",
+      "profile": "mission/profiles/waffle_gazebo_paper_randomized_500x3.json",
+      "profile_sha256": "57b373a1c6d63cc281c5699071414b3733dd4084aca8ccd43717ce43fcb68931",
+      "regime": "randomized",
+      "sample_failures": 0,
+      "summary": "randomized_training_summary.json",
+      "transitions": 20,
+      "updates": 1
+    }
+  },
+  "source_commit": "829acd219cae4c7053314d70c29cd1453b9ba9af",
+  "split": "train",
+  "test_split_used": false,
+  "training_seed_nonrandomized": 940,
+  "training_seed_randomized": 939
+}

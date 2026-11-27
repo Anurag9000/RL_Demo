@@ -2109,7 +2109,7 @@
     "learner_changed": false,
     "artifacts": "evaluations/seed436_update280_contactprobe1_validation_20261127"
   },
-  "last_health_check_utc": "2026-11-27T18:43:07Z",
+  "last_health_check_utc": "2026-11-27T19:41:07Z",
   "next_health_check_not_before_utc": "2026-11-27T18:53:07Z",
   "validation_seed436_update280_contact_source100_20261127": {
     "status": "completed_validation_contact_source_diagnostic",
@@ -2401,5 +2401,61 @@
     "root_disk_free_tb": 7.0,
     "pretrained_wall_clock_observed_tps": 4.17,
     "interpretation": "all three learners advancing; pretrained line is only exploratory because v5 human regimes are not paper matched"
+  },
+  "paper_regime_implementation_20261128": {
+    "next_required": "full regime training, validation selection, 500-case locked evaluation per regime, measured calibration and hardware qualification",
+    "profiles": {
+      "nonrandomized": {
+        "humans_per_case": 4,
+        "path": "mission/profiles/waffle_gazebo_paper_nonrandomized_500x3.json",
+        "sha256": "c6cd247d1f9acd3aee76a958e0a2a463c8cbd099b2d289c46d0b2201754d3d39",
+        "test": 500,
+        "train": 500,
+        "validation": 500
+      },
+      "randomized": {
+        "humans_per_case": 4,
+        "path": "mission/profiles/waffle_gazebo_paper_randomized_500x3.json",
+        "sha256": "57b373a1c6d63cc281c5699071414b3733dd4084aca8ccd43717ce43fcb68931",
+        "test": 500,
+        "train": 500,
+        "validation": 500
+      }
+    },
+    "published_verified": true,
+    "smokes": {
+      "nonrandomized": {
+        "episodes_started": 1,
+        "goal_changes": 0,
+        "result": "Gazebo PPO wiring passed",
+        "run_id": "paper_nonrandomized_regime_smoke_20261128",
+        "sample_failures": 0,
+        "transitions": 1,
+        "updates": 1
+      },
+      "randomized": {
+        "episodes_started": 4,
+        "goal_changes": 0,
+        "result": "Gazebo PPO wiring passed; no episode lasted to 5s event boundary",
+        "run_id": "paper_randomized_regime_smoke_r4_20261128",
+        "sample_failures": 0,
+        "transitions": 20,
+        "updates": 1
+      }
+    },
+    "source_commit": "829acd219cae4c7053314d70c29cd1453b9ba9af",
+    "tests": {
+      "gazebo_integration": 6,
+      "human_dynamics": 8,
+      "py_compile": "passed",
+      "scenario_banks": 3,
+      "worker_cleanup": 1
+    }
+  },
+  "record_archive_reconciliation": {
+    "utc": "2026-11-27T19:42:17Z",
+    "preserved_previous_tracked_state_keys": 132,
+    "merged_run_root_state_keys": 133,
+    "policy": "union keys and prefer current run-root values on conflicts"
   }
 }

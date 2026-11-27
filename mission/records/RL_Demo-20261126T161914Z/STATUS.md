@@ -638,3 +638,32 @@ Read the locally stored primary paper text alongside the v5 generator and all si
 ## 2026-11-27T18:43:07Z consolidated health check
 
 All three mission learners are alive and advancing. Seed437 scratch: update439 / 105,600 transitions, latest checkpoint00420, rolling reward -25.69. Seed436 scratch: update341 / 164,160 transitions, latest checkpoint00340, rolling reward -25.67. New seed438 32-world exploratory pretrained line: update2 / 2,880 transitions, first policy checkpoint `00000.pt`, reward -25.60; full learner-state save is scheduled at update10. It has progressed at about 4.17 global transitions/s across startup and the first updates. Free VRAM: 86,632MiB on GPU0 and 90,660MiB on GPU1; utilization 0% and 90%. Host available RAM 448GiB; root filesystem free about 7.0TiB. Separate PID444191 (564MiB on GPU1) left untouched. The seed438 line remains exploratory because v5 does not match either paper human regime. Next global poll no earlier than 18:53:07Z.
+
+## 2026-11-27T19:34:23Z Paper human-regime implementation and H100 smokes
+
+H100 source commit 829acd219cae4c7053314d70c29cd1453b9ba9af implements separate nominal randomized/nonrandomized human-dynamics profiles, hidden scheduled goal changes, goal-sampling diagnostics, and shutdown environment summaries. Kakarot and GitHub branch codex/waffle-gazebo-mission-20261126 were fast-forwarded and verified at the same commit. The source tree is clean on H100.
+
+Both committed profiles passed validate_gazebo_profile and integrity checks: 500 unique cases in each of train/validation/test, four humans per case, and no duplicate scenario across or between regimes. Profile SHA256 randomized=57b373a1c6d63cc281c5699071414b3733dd4084aca8ccd43717ce43fcb68931; nonrandomized=c6cd247d1f9acd3aee76a958e0a2a463c8cbd099b2d289c46d0b2201754d3d39.
+
+Real Gazebo Harmonic + DR-SPAAM pretrained PPO smoke runs completed on the train split, with no test data read. Randomized run paper_randomized_regime_smoke_r4_20261128 completed one PPO update / 20 transitions, started four episodes, and recorded zero goal changes and zero sampling failures; each episode reset before a five-second event could occur. Nonrandomized run paper_nonrandomized_regime_smoke_20261128 completed one PPO update / one transition, started one episode, and recorded zero changes/failures. These prove wiring and startup only, not convergence or navigation quality. The 5-second trigger is separately covered by a deterministic scheduler test and a PerWorld integration-hook test.
+
+Focused evidence on the committed source: 8 human-dynamics tests, 3 scenario-bank tests, 1 broken-pipe cleanup test, 6 Gazebo environment integration tests, plus py_compile of train.py, worker.py, vector_env.py, human_dynamics.py and scenario generator; all passed. A preliminary launch without WAFFLE_GAZEBO_PODMAN_IMAGE failed before simulation because the host binary could not find libgz-sim8.so.8; a pre-created output directory also correctly tripped the fresh-output guard. Correct Podman environment and fresh run IDs produced the successful smokes. Worker cleanup now suppresses broken-pipe errors so startup failures retain their primary cause.
+
+At the last consolidated training health sample (2026-11-27T19:20:47Z), seed437 PID2042362 was alive at update454/109200 segment transitions (latest checkpoint 00440); seed436 PID2042361 was alive at update353/169920 segment transitions (checkpoint 00340); pretrained seed438 PID3235199 was alive at update12/12480 transitions (checkpoint 00010). Seed438 remains an exploratory v5-profile run and is not a paper-regime result. Next global health sample no earlier than 2026-11-27T19:30:47Z.
+
+Remaining gates include full-duration training on both new regimes, validation-selected candidates, 500-case locked evaluation per regime, full paper crowd-count coverage, hardware calibration and measured profile, benchmark qualification, final CI, and deployment handoff. No physical actuation was performed.
+
+
+## 2026-11-27T19:38:59Z Record manifest reconciliation
+
+The first integrity pass over the copied mission archive found two stale entries in its pre-existing root manifest: CODE_AUDIT_PROGRESS.md and scripts/diagnose_v5_action_gate.py in the tracked archive had later H100 additions than the corresponding run-root source copies. Both archive versions were preserved; I did not overwrite either. I refreshed manifest hashes from the actual tracked archive and recorded the discrepancy here. The state merge also retained all 132 keys from the prior tracked snapshot and merged in the 118-key current run-root snapshot plus this turn's progress fields.
+
+
+## 2026-11-27T19:42:17Z consolidated learner health
+
+The consolidated sample at 2026-11-27T19:41:07Z found all three existing learners alive: seed437 PID2042362 at update461/110880 segment transitions with checkpoint 00460; seed436 PID2042361 at update358/172320 segment transitions with checkpoint 00340; pretrained seed438 PID3235199 at update16/16320 transitions with checkpoint 00010. The v5 seed438 run remains exploratory. The next global health sample is no earlier than 2026-11-27T19:51:07Z.
+
+
+## 2026-11-27T19:42:17Z archive reconciliation note
+
+The tracked archive was newer than some run-root copies. Existing tracked sections were retained verbatim and unique run-root updates appended; the state snapshot was merged by key union. Previous and current versions of CODE_AUDIT_PROGRESS.md and scripts/diagnose_v5_action_gate.py remain preserved in their respective locations, with current tracked-archive hashes recorded in SYNC_MANIFEST.json.

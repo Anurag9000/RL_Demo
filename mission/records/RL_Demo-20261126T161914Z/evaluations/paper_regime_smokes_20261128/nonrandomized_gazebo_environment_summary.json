@@ -1,0 +1,22 @@
+{
+  "reset_s": 7.326678824611008,
+  "physics_ipc_s": 0.18852725997567177,
+  "detector_s": 0.8176564704626799,
+  "step_s": 0.19994039367884398,
+  "steps": 1,
+  "resets": 1,
+  "human_dynamics": {
+    "regime": "nonrandomized",
+    "goal_changes": 0,
+    "sample_failures": 0,
+    "episodes_started": 1,
+    "per_world": [
+      {
+        "index": 0,
+        "goal_changes": 0,
+        "sample_failures": 0,
+        "episodes_started": 1
+      }
+    ]
+  }
+}

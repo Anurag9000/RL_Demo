@@ -1,21 +1,25 @@
 {
-  "copied_utc": "2026-11-27T16:44:31Z",
+  "copied_utc": "2026-11-27T19:42:17Z",
   "files": {
     "CODE_AUDIT_PROGRESS.md": {
-      "bytes": 106095,
-      "sha256": "08f984202573633f29901a2170627bf6536fa2ea33fa81f5541a96319d82e5cd"
+      "bytes": 109059,
+      "sha256": "16b193f9d07678a42e690380a9d5dcecabcf6234d436e42313e7643341cc6c64"
     },
     "ISSUES.md": {
-      "bytes": 18206,
-      "sha256": "ffb69c6479cf086dbe90965ff0346ab27e921b9de64f0372e91e4a096e43a029"
+      "bytes": 23796,
+      "sha256": "0526cb92942370e210c8e7b043d773567aee5111c1ec991c2373d144767afb9e"
     },
     "STATUS.md": {
-      "bytes": 99801,
-      "sha256": "fe8528ace31564e527f39917727f936eb19d35373accdd16039dbd600c9f7a3d"
+      "bytes": 114545,
+      "sha256": "bfd16ab7f6b6ce52e52e4c6dbc406897f9258d1a2a7a36cf187c7b4ad699181e"
     },
     "commands.jsonl": {
-      "bytes": 78264,
-      "sha256": "de35a866c5e95cd2f337a8f4c62f8837915c07c136cd4bed7c8d35c7aed2297f"
+      "bytes": 86376,
+      "sha256": "8bbe12a968abc7c37ad692a4ec62de94558bbde4840d83954f1711fb5e72d435"
+    },
+    "evaluations/paper_regime_smokes_20261128/EVALUATION_MANIFEST.json": {
+      "bytes": 2740,
+      "sha256": "60394f848461170649ce335557af5991037cb399ee30a89100749d3983c3718a"
     },
     "evaluations/seed436_update200_validation500_20261127/EVALUATION_MANIFEST.json": {
       "bytes": 87485,
@@ -33,22 +37,6 @@
       "bytes": 1788,
       "sha256": "28b747ae212c1beb4dc7b45e2ef3450480c01aad6d4c3112666478c7050305b3"
     },
-    "scripts/diagnose_v5_action_gate.py": {
-      "bytes": 5573,
-      "sha256": "16661ca8246d428697622f5c2e5f86a6300487552dc52d9468a275e11b829510"
-    },
-    "scripts/eval_v5_bank_checkpoint.sh": {
-      "bytes": 6121,
-      "sha256": "fb83935740e9b97299987ffb2a0ab56483be80b84b2c84ba6a2d87b8f2c17402"
-    },
-    "state.json": {
-      "bytes": 77996,
-      "sha256": "80983ec610788de9a8fdc0b96c56e43dec32dcf0091564c759e20164d2d23dca"
-    },
-    "scripts/run_v5_action_gate_diagnostic.sh": {
-      "bytes": 2946,
-      "sha256": "aaaf761aa24c748524ad8d615170d59ed9ece50ac53e4b15baabf7b7584b661d"
-    },
     "evaluations/seed437_update340_validation_action_gate100_20261127/EVALUATION_MANIFEST.json": {
       "bytes": 39154,
       "sha256": "6470d6411d8b7f4a8e35b75292bee300af616ab833c2e43501fce9d6d11538fc"
@@ -60,7 +48,24 @@
     "evaluations/seed437_update360_validation_action_gate100_20261127/EVALUATION_MANIFEST.json": {
       "bytes": 39249,
       "sha256": "2a3704354e54b6eb838f88350e86e32921b3fa491ce3ec6629d45e5225b6af4a"
+    },
+    "scripts/diagnose_v5_action_gate.py": {
+      "bytes": 6375,
+      "sha256": "9f892590aa32de853bcd2f25b70a000e2b3a04b0c84c1831eca2283d19ed3d29"
+    },
+    "scripts/eval_v5_bank_checkpoint.sh": {
+      "bytes": 6121,
+      "sha256": "fb83935740e9b97299987ffb2a0ab56483be80b84b2c84ba6a2d87b8f2c17402"
+    },
+    "scripts/run_v5_action_gate_diagnostic.sh": {
+      "bytes": 2946,
+      "sha256": "aaaf761aa24c748524ad8d615170d59ed9ece50ac53e4b15baabf7b7584b661d"
+    },
+    "state.json": {
+      "bytes": 92773,
+      "sha256": "b2164c151d17694f3e2955beb6614d0e1d008043d4de06c904b437b61fd3eef3"
     }
   },
+  "manifest_reconciliation_note": "Tracked and run-root ledgers were merged without deleting prior history. Two archived files remain version-distinct and are each preserved; hashes describe tracked archive bytes.",
   "source": "/home/rl-group4/waffle_runs/RL_Demo-20261126T161914Z/mission"
 }

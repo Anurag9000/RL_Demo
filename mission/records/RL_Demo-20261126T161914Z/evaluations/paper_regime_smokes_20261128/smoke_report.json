@@ -1,0 +1,60 @@
+{
+  "execution": "H100; Gazebo Harmonic native Waffle Pi model; DR-SPAAM; official randomized GST actor; PPO; four simulated humans; train split only",
+  "generated_utc": "2026-11-27T19:34:23Z",
+  "input_checkpoint_sha256": "a60bdd3b8ca84457497365133b9055c80d55b11c5a3bc76b28e38d4200cfd8ce",
+  "limitations": [
+    "Smokes establish execution wiring only, not convergence or navigation quality.",
+    "The randomized smoke episodes reset before five seconds; its goal_changes count is zero. Cadence and PerWorld hook passed deterministic tests.",
+    "Both banks are nominal and illustrative, with four humans only; no hardware calibration or full paper crowd-count coverage.",
+    "The test split was not read; no physical robot motion occurred."
+  ],
+  "profile_integrity": {
+    "cases_per_split": 500,
+    "humans_per_case": 4,
+    "scenario_banks_disjoint": true,
+    "scenario_ids_unique": true,
+    "validate_gazebo_profile": "passed"
+  },
+  "recovery_notes": [
+    "An initial run with an already-created output directory correctly stopped at the fresh-output guard.",
+    "A launch without the host's Podman image environment failed to load libgz-sim8.so.8; using the existing Podman image variables fixed worker startup.",
+    "The first startup failure exposed BrokenPipeError during worker cleanup; cleanup now preserves the primary worker error and has a passing regression test."
+  ],
+  "regression_evidence": {
+    "py_compile": "passed",
+    "test_paper_regime_scenarios": 3,
+    "test_waffle_gazebo_integration": 6,
+    "test_waffle_human_dynamics": 8,
+    "test_waffle_worker_close": 1
+  },
+  "runs": {
+    "nonrandomized": {
+      "environment": "nonrandomized_gazebo_environment_summary.json",
+      "episodes_started": 1,
+      "goal_changes": 0,
+      "id": "paper_nonrandomized_regime_smoke_20261128",
+      "profile": "mission/profiles/waffle_gazebo_paper_nonrandomized_500x3.json",
+      "profile_sha256": "c6cd247d1f9acd3aee76a958e0a2a463c8cbd099b2d289c46d0b2201754d3d39",
+      "regime": "nonrandomized",
+      "sample_failures": 0,
+      "summary": "nonrandomized_training_summary.json",
+      "transitions": 1,
+      "updates": 1
+    },
+    "randomized": {
+      "environment": "randomized_gazebo_environment_summary.json",
+      "episodes_started": 4,
+      "goal_changes": 0,
+      "id": "paper_randomized_regime_smoke_r4_20261128",
+      "profile": "mission/profiles/waffle_gazebo_paper_randomized_500x3.json",
+      "profile_sha256": "57b373a1c6d63cc281c5699071414b3733dd4084aca8ccd43717ce43fcb68931",
+      "regime": "randomized",
+      "sample_failures": 0,
+      "summary": "randomized_training_summary.json",
+      "transitions": 20,
+      "updates": 1
+    }
+  },
+  "schema": "waffle_paper_regime_smoke_v1",
+  "source_commit": "829acd219cae4c7053314d70c29cd1453b9ba9af"
+}

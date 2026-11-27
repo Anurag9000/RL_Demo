@@ -1,0 +1,9 @@
+{
+  "updates": 1,
+  "transitions": 1,
+  "segment_updates": 1,
+  "segment_transitions": 1,
+  "lr": 4e-05,
+  "entropy_coef": 0.0,
+  "clip_param": 0.2
+}
