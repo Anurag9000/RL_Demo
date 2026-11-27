@@ -10,8 +10,8 @@
     "gpu_snapshot_utc": "2026-11-27T01:46:15Z",
     "host_available_gib_approx": 407,
     "last_checkpoint": "experiments/waffle_safe_clearance_gpu1_ppo_seed436_v5_250k_b16_20261127/checkpoints/00000.pt",
-    "last_health_poll_utc": "2026-11-27T13:35:53Z",
-    "next_health_check_not_before_utc": "2026-11-27T13:45:53Z",
+    "last_health_poll_utc": "2026-11-27T13:46:11Z",
+    "next_health_check_not_before_utc": "2026-11-27T13:56:11Z",
     "output": "experiments/waffle_safe_clearance_gpu1_ppo_seed436_v5_250k_b16_20261127",
     "physical_gpu": 1,
     "pid": 4076346,
@@ -726,7 +726,7 @@
     "episode_count": 500,
     "gpu1_free_mib": 88412,
     "gpu1_total_mib": 95830,
-    "last_observed_utc": "2026-11-27T13:35:53Z",
+    "last_observed_utc": "2026-11-27T13:46:11Z",
     "launcher": "mission/scripts/eval_v5_bank_checkpoint.sh",
     "launcher_fixed_issue": "I-022: embedded Python sys.argv closing bracket corrected after initial parse failure; failed log preserved",
     "metrics_json_present": false,
@@ -738,7 +738,7 @@
     "split": "validation",
     "status": "running_validation_diagnostic",
     "test_split_used": false,
-    "trace_count_observed": 61,
+    "trace_count_observed": 247,
     "training_seed": 437
   },
   "evaluations": [
@@ -940,7 +940,7 @@
     "gpu0_free_mib": 92723,
     "gpu1_free_mib": 88412,
     "gpu_total_mib_each": 95830,
-    "timestamp_utc": "2026-11-27T13:35:53Z"
+    "timestamp_utc": "2026-11-27T13:46:11Z"
   },
   "h100_benchmarks_20261127": {
     "allocator_cap_fraction": 0.2,
@@ -978,12 +978,12 @@
     "stage-logged server-only smoke script under mission/scripts exercised actual Gazebo, DR-SPAAM, GST, policy action, and one physics transition",
     "offline paper-metric traces enforce policy-interval timestamps, aligned timelines, and complete future-horizon coverage"
   ],
-  "last_health_poll_utc": "2026-11-27T13:35:53Z",
+  "last_health_poll_utc": "2026-11-27T13:46:11Z",
   "last_inventory_utc": "2026-11-26T17:30:35Z",
-  "last_sync_check_utc": "2026-11-27T13:34:00Z",
-  "ledger_archive_commit": "8a181242791d241982062649203d5ea5948b9f25",
+  "last_sync_check_utc": "2026-11-27T13:45:00Z",
+  "ledger_archive_commit": "f6e66e43cc39c9e56da6dbe9680fcd09bc8e3b2b",
   "mission_id": "20261126T161914Z",
-  "next_health_poll_not_before_utc": "2026-11-27T13:45:53Z",
+  "next_health_poll_not_before_utc": "2026-11-27T13:56:11Z",
   "numa_nodes": 2,
   "paper_metric_audit": {
     "historical_test_sd": "invalid; no saved per-timestep trajectory to recompute",
@@ -1302,6 +1302,46 @@
     },
     "swap_used_mib": 468,
     "timestamp_utc": "2026-11-27T13:35:53Z"
+  },
+  "recovery_snapshot_20261127T134611Z": {
+    "gpu0_free_mib": 92723,
+    "gpu1_free_mib": 88412,
+    "gpu_total_mib_each": 95830,
+    "host_available_gib_approx": 455,
+    "jobs_preserved": [
+      2042361,
+      2042362
+    ],
+    "next_health_poll_not_before_utc": "2026-11-27T13:56:11Z",
+    "retry_records_seed436": 5,
+    "retry_records_seed437": 2,
+    "root_free_tib_approx": 7.0,
+    "seed436": {
+      "cumulative_log_visible_transitions_with_continuation_offset": 109200,
+      "durable_update": 200,
+      "durable_utc": "2026-11-27T13:33:40Z",
+      "gpu": 1,
+      "pid": 2042361,
+      "recovery_segment_transitions": 98880,
+      "reported_fps": 3,
+      "rolling_reward_mean": -25.73768320083618,
+      "update": 205,
+      "worlds": 16
+    },
+    "seed437": {
+      "cumulative_log_visible_transitions_with_continuation_offset": 77760,
+      "durable_update": 260,
+      "durable_utc": "2026-11-27T13:41:57Z",
+      "gpu": 0,
+      "pid": 2042362,
+      "recovery_segment_transitions": 63120,
+      "reported_fps": 2,
+      "rolling_reward_mean": -25.14537395477295,
+      "update": 262,
+      "worlds": 8
+    },
+    "swap_used_mib": 468,
+    "timestamp_utc": "2026-11-27T13:46:11Z"
   },
   "repo_branch": "codex/waffle-gazebo-mission-20261126",
   "repo_clean_at_last_sync_check": true,

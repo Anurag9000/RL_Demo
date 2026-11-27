@@ -528,3 +528,10 @@ A first launch of `eval_v5_bank_checkpoint.sh` passed its split/checkpoint admis
 Seed436 PID 2042361 (GPU1, 16 worlds) reached update 200 / 96,480 recovery-segment transitions, 3 FPS, rolling reward -25.54; durable update200 saved 13:33:40Z. Seed437 PID 2042362 (GPU0, 8 worlds) reached update256 / 61,680 transitions, 2 FPS, reward -25.57; durable state remains update240 from 13:09:45Z. Since 13:24:09Z, segment counters advanced +2,400 (436) and +1,680 (437); with continuation offsets, cumulative log-visible progress is 106,800 and 76,320. Both learners remain alive; retry record counts remain 5 and 2.
 
 The validation-only seed437 update240 evaluation is active (bash 3386551, Python 3386575), with 61 of 500 episode trace files present and no aggregate metrics JSON yet. GPU0 free VRAM 92,723 MiB; GPU1 88,412 MiB. The held-out test split remains untouched. Next learner health sample no earlier than 13:45:53Z.
+
+
+## 2026-11-27T13:46:11Z recovery learners and validation progress
+
+Seed436 PID 2042361 (GPU1, 16 worlds) is at update 205 / 98,880 segment transitions, 3 reported FPS, reward mean -25.74; durable update200 saved 13:33:40Z. Seed437 PID 2042362 (GPU0, 8 worlds) is at update262 / 63,120 transitions, 2 FPS, reward mean -25.15; durable update260 saved 13:41:57Z. Since 13:35:53Z, counters advanced +5/+2,400 (436) and +6/+1,440 (437); adding continuation offsets gives 109,200 and 77,760 cumulative log-visible transitions. Retry ledgers remain 5 seed436 and 2 seed437.
+
+The seed437 update240 500-case validation diagnostic remains active (PID 3386551 and child 3386575), with 247 trace files and no metrics JSON yet. Free VRAM: GPU0 92,723 MiB; GPU1 88,412 MiB. No learner changed. The held-out test split remains untouched. Next health sample no earlier than 13:56:11Z.
