@@ -260,9 +260,9 @@ or repeated/missing scenario trace is an error.
 
 Recompute or inspect them later with:
 
-~~sh
+~~~sh
 python -m waffle_pi.offline_metrics --trace-dir OUT/metrics_traces --output OUT/offline_metrics.json
-~~
+~~~
 
 These traces support the paper's future-position ITR and current-time SD audit;
 they do not constitute a full action, wheel, scan or video recording.
@@ -301,3 +301,30 @@ and scripts.probe_gazebo_pool for comparing against upstream DiffDrive.
 ## Dual EPYC/H100 performance path
 
 See [H100_EPYC_TRAINING.md](H100_EPYC_TRAINING.md) for the new native shared-memory scan transport, overlapping resets, NUMA affinity, optional shared detector batching, pinned transfers, actual NCCL probe, matched-global-batch single/DDP comparison and independent candidate scheduling. These options retain Gazebo and the official Waffle Pi. Earlier statements about JSON-only communication and separate detector weights describe the reference path; the new options are not yet hardware-benchmarked. Measured mode uses an unbatched FP32 detector until parity is qualified.
+
+## Paper-regime training launcher
+
+Run the committed script on the H100 with the qualified run-root and Python
+environment exported. It locks each run ID, records launch arguments and exit
+status, loads the official randomized actor with a fresh PPO optimizer, and
+saves recoverable state every ten updates. These examples use 16 Gazebo worlds
+per regime and the corresponding train split:
+
+~~~sh
+export WAFFLE_RUN_ROOT=/path/to/durable/RL_Demo-run
+export WAFFLE_REPO_ROOT=$PWD
+export WAFFLE_VENV=/path/to/qualified/venv
+mkdir -p "$WAFFLE_RUN_ROOT/logs" "$WAFFLE_RUN_ROOT/mission"
+nohup setsid bash scripts/run_paper_regime_training.sh randomized 0 439 16 4 250000 paper_randomized_gpu0_seed439_20261128 \
+  > "$WAFFLE_RUN_ROOT/logs/paper_randomized_gpu0_seed439_20261128.stdout" 2>&1 </dev/null &
+echo "$!" > "$WAFFLE_RUN_ROOT/mission/paper_randomized_gpu0_seed439_20261128.launcher.pid"
+nohup setsid bash scripts/run_paper_regime_training.sh nonrandomized 1 440 16 4 250000 paper_nonrandomized_gpu1_seed440_20261128 \
+  > "$WAFFLE_RUN_ROOT/logs/paper_nonrandomized_gpu1_seed440_20261128.stdout" 2>&1 </dev/null &
+echo "$!" > "$WAFFLE_RUN_ROOT/mission/paper_nonrandomized_gpu1_seed440_20261128.launcher.pid"
+~~~
+
+These are training commands, not quality claims. The test splits stay locked.
+A handled TERM to the launcher forwards SIGINT to its Python trainer, which
+runs Gazebo cleanup and writes gazebo_environment_summary.json. Resume only
+from a compatible training_state.pt using the matching source, profile and
+run arguments.
