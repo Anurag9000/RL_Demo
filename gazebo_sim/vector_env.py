@@ -9,6 +9,7 @@ observations or rewards. Physics stepping occurs concurrently across worlds.
 from concurrent.futures import ThreadPoolExecutor,as_completed
 import time
 import hashlib
+import json
 import math
 import os
 from pathlib import Path
@@ -83,10 +84,23 @@ class PerWorld:
         world,conf=write_case(self.root,self.args.waffle_gazebo_model,self.profile,scenario,int(self.rng.integers(2**31-1)))
         worker_args=(self.args.waffle_gazebo_worker,world,conf,
                         self.root/f'episode_{self.episode:06d}.log',self.args.waffle_gazebo_timeout)
-        self.worker=self.worker_factory(*worker_args,seed=self.index) if self.worker_factory is Worker else self.worker_factory(*worker_args)
         # Settle on the floor with zero commands. This is not an RL transition.
         warm=round(max(.5,2/self.laser['hz'])/self.g['physics_dt'])
-        self.state=self.worker.step(warm,0.,0.,[[0.,0.]]*self.n,True)
+        for attempt in range(2):
+            self.worker=self.worker_factory(*worker_args,seed=self.index) if self.worker_factory is Worker else self.worker_factory(*worker_args)
+            try:
+                self.state=self.worker.step(warm,0.,0.,[[0.,0.]]*self.n,True)
+                break
+            except RuntimeError as exc:
+                message=str(exc)
+                retryable='Gazebo worker closed stdout' in message
+                self.close()
+                event=dict(episode=self.episode,scenario_id=scenario.get('id'),
+                           startup_attempt=attempt+1,retryable=retryable,error=message)
+                with (self.root/'worker_startup_retries.jsonl').open('a') as f:
+                    f.write(json.dumps(event,allow_nan=False)+'\n')
+                if not retryable or attempt==1:
+                    raise
         if self.state['contact'] or not self.state['floor_contact_observed']:
             raise RuntimeError('Initial Gazebo contact qualification failed')
         self.ingest(self.state)
@@ -318,6 +332,9 @@ class GazeboVecEnv(VecEnv):
         self.order=self.rng.permutation(len(self.cases))
         self.cursor=np.arange(self.n)
         self.case_ids=np.zeros(self.n,dtype=np.int64)
+        self.eval_quotas=None
+        self.eval_completed=np.zeros(self.n,dtype=np.int64)
+        self.eval_finished=np.zeros(self.n,dtype=bool)
         self.case_rng=[np.random.default_rng(np.random.SeedSequence([args.seed,int(os.environ.get('RANK','0')),i,971])) for i in range(self.n)]
         root=Path(args.waffle_gazebo_logs)
         root.mkdir(parents=True,exist_ok=True)
@@ -372,9 +389,22 @@ class GazeboVecEnv(VecEnv):
             self.pinned[k]=(host,event)
         return out
 
+    def set_eval_quotas(self,quotas):
+        quotas=np.asarray(quotas,dtype=np.int64)
+        if quotas.shape!=(self.n,) or (quotas<1).any() or int(quotas.sum())!=int(self.args.waffle_eval_episodes):
+            raise ValueError('Evaluation quotas must be positive per lane and sum to requested episodes')
+        if self.actions is not None or self.eval_completed.any():
+            raise RuntimeError('Evaluation quotas must be set before the first step')
+        self.eval_quotas=quotas.copy()
+        self.eval_finished[:]=False
+
     def reset(self):
         cases=[self._case(i) for i in range(self.n)]
         rows=list(self.pool.map(lambda x:x[0].reset(x[1]),zip(self.worlds,cases)))
+        self.eval_completed[:]=0
+        self.eval_finished[:]=False
+        self._last_obs=rows
+        self._last_metrics=[None]*self.n
         self.policy_reset=torch.ones(self.n,device=self.device,dtype=torch.bool)
         return self._tensor(rows)
 
@@ -387,17 +417,17 @@ class GazeboVecEnv(VecEnv):
         if self.actions is None:
             raise RuntimeError('No pending Gazebo step')
         actions,self.actions=self.actions,None
-        # ORCA is batched across worlds. Human positions are Gazebo truth.
+        active=np.ones(self.n,dtype=bool) if self.eval_quotas is None else ~self.eval_finished
         pos=np.stack([w.state['humans'] for w in self.worlds])
         vel=np.stack([w.human_velocity for w in self.worlds])
         radius=np.stack([w.radius for w in self.worlds])
         speed=np.stack([w.speed for w in self.worlds])
         goals=[]
-        for w,p in zip(self.worlds,pos):
-            w.previous_humans=p.copy()
-            goal=w.routes[np.arange(self.h),w.route]
-            reached=np.linalg.norm(goal-p,axis=-1)<.15
-            w.route=(w.route+reached)%w.routes.shape[1]
+        for i,(w,p) in enumerate(zip(self.worlds,pos)):
+            if active[i]:
+                w.previous_humans=p.copy()
+                reached=np.linalg.norm(w.routes[np.arange(self.h),w.route]-p,axis=-1)<.15
+                w.route=(w.route+reached)%w.routes.shape[1]
             goals.append(w.routes[np.arange(self.h),w.route])
         p,v,r,s,g=[torch.as_tensor(x,device=self.device,dtype=torch.float32) for x in (pos,vel,radius,speed,np.stack(goals))]
         preferred=(g-p)/(g-p).norm(dim=-1,keepdim=True).clamp_min(.1)*s[...,None]
@@ -410,22 +440,27 @@ class GazeboVecEnv(VecEnv):
                        dt=self.cfg.env.time_step)[:,:self.h]
         else:
             human=orca_velocity(p,v,r,preferred,s,dt=self.cfg.env.time_step)
-        # Independent per-world RNGs make episode selection invariant to
-        # completion order while letting reset overlap other worlds' steps.
-        # Keep old case IDs for the terminal transition.
         old_ids=self.case_ids.copy()
         old_scenario_ids=[self.cases[int(i)].get('id',str(int(i))) for i in old_ids]
         velocities=human.cpu().numpy()
-        pending={self.pool.submit(w.step,actions[i],velocities[i]):i for i,w in enumerate(self.worlds)}
+        pending={self.pool.submit(self.worlds[i].step,actions[i],velocities[i]):i for i in range(self.n) if active[i]}
         rows=[None]*self.n
+        for i in range(self.n):
+            if not active[i]:
+                rows[i]=(self._last_obs[i],0.,True,self._last_metrics[i])
         resets={}
-        # A world's next case is derived independently of scheduling order.
-        # Evaluation remains round-robin; training uses per-world case RNG.
         for future in as_completed(pending):
             i=pending[future]
             rows[i]=future.result()
             if rows[i][2]:
-                resets[i]=self.reset_pool.submit(self.worlds[i].reset,self._case(i))
+                if self.eval_quotas is None:
+                    resets[i]=self.reset_pool.submit(self.worlds[i].reset,self._case(i))
+                else:
+                    self.eval_completed[i]+=1
+                    if self.eval_completed[i]>=self.eval_quotas[i]:
+                        self.eval_finished[i]=True
+                    else:
+                        resets[i]=self.reset_pool.submit(self.worlds[i].reset,self._case(i))
         obs,rewards,done,metrics=map(list,zip(*rows))
         self.last_scenario=torch.as_tensor(old_ids,device=self.device)
         self.last_scenario_ids=old_scenario_ids
@@ -433,6 +468,8 @@ class GazeboVecEnv(VecEnv):
             setattr(self,key,torch.as_tensor([m[key] for m in metrics],device=self.device))
         for i,future in resets.items():
             obs[i]=future.result()
+        self._last_obs=obs
+        self._last_metrics=metrics
         self.policy_reset=torch.as_tensor([w.reset_recurrent for w in self.worlds],device=self.device,dtype=torch.bool)
         return self._tensor(obs),torch.as_tensor(rewards,device=self.device,dtype=torch.float32)[:,None],torch.as_tensor(done,device=self.device,dtype=torch.bool),None
 

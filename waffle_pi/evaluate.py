@@ -70,6 +70,8 @@ def run(args):
         quota=torch.full((b,),args.waffle_eval_episodes//b,device=device,dtype=torch.long)
         quota[:args.waffle_eval_episodes%b]+=1
         completed=torch.zeros_like(quota)
+        if args.waffle_gazebo:
+            env.venv.set_eval_quotas(quota.detach().cpu().numpy())
         start=time.perf_counter()
         limit=args.waffle_eval_episodes*(int(config.env.time_limit/config.env.time_step)+5)
         with torch.no_grad():

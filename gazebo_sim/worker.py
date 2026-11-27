@@ -29,7 +29,8 @@ class Worker:
         self.stats=dict(transactions=0,ipc_wait_s=0.,scan_copy_s=0.,scan_bytes=0)
         self.responses=queue.Queue()
         self.tail=deque(maxlen=25)
-        self.log=Path(log).open('w')
+        self.log_path=Path(log)
+        self.log=self.log_path.open('w')
         env=os.environ.copy()
         env.pop('WAFFLE_SCAN_FD',None)
         resources=[str(Path(world).parent)]
@@ -72,7 +73,11 @@ class Worker:
         except Exception as exc:
             self.responses.put({'error':str(exc)})
         finally:
-            self.responses.put({'error':'Gazebo worker closed stdout'})
+            exit_code=self.proc.poll()
+            tail=' | '.join(list(self.tail)[-8:])[-1000:]
+            self.responses.put({'error':
+                f'Gazebo worker closed stdout (pid={self.proc.pid}, exit_code={exit_code}, '
+                f'log={self.log_path}, stdout_tail={tail!r})'})
 
     def step(self,iterations,v,w,humans,stop=False):
         with self.lock:

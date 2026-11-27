@@ -1,6 +1,9 @@
 
 """Pure Python integration fixtures. These do NOT run Gazebo physics."""
 import json
+import io
+import queue
+from collections import deque
 import math
 import tempfile
 import unittest
@@ -10,6 +13,7 @@ import numpy as np
 import torch
 from gazebo_sim.world import training_world,validate_gazebo_profile
 from gazebo_sim.vector_env import GazeboVecEnv
+from gazebo_sim.worker import Worker
 from waffle_pi.dynamics import DriveLimits
 from waffle_pi.native import safety_parameters
 from rl.networks.storage import RolloutStorage
@@ -41,6 +45,20 @@ class FakeWorker:
         pass
 
 
+class FailOnceWorker(FakeWorker):
+    attempts=[]
+    def __init__(self,binary,world,config,log,timeout):
+        super().__init__(binary,world,config,log,timeout)
+        self.identity=(Path(world).read_bytes(),Path(config).read_bytes())
+        self.attempts.append(self.identity)
+        self.fail=len(self.attempts)==1
+    def step(self,*args,**kwargs):
+        if self.fail:
+            self.fail=False
+            raise RuntimeError('Gazebo transaction failed: Gazebo worker closed stdout (exit_code=1)')
+        return super().step(*args,**kwargs)
+
+
 class FakeDetector:
     def __init__(self,*args):
         pass
@@ -51,6 +69,23 @@ class FakeDetector:
 
 
 class Integration(unittest.TestCase):
+    def test_worker_eof_reports_process_and_stdout_tail(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            worker=Worker.__new__(Worker)
+            worker.proc=SimpleNamespace(pid=1234,poll=lambda:17,
+                stdout=io.StringIO('startup banner\nWAFFLE_FRAME {"sequence":1}\nfinal diagnostic\n'))
+            worker.responses=queue.Queue()
+            worker.tail=deque(maxlen=25)
+            worker.log_path=Path(tmp)/'worker.log'
+            worker.log=io.StringIO()
+            worker._read()
+            self.assertEqual(worker.responses.get_nowait(),{'sequence':1})
+            eof=worker.responses.get_nowait()['error']
+            self.assertIn('pid=1234',eof)
+            self.assertIn('exit_code=17',eof)
+            self.assertIn(str(worker.log_path),eof)
+            self.assertIn('final diagnostic',eof)
+
     def test_world_and_parallel_observation(self):
         profile=json.loads(Path('configs/waffle_gazebo.example.json').read_text())
         with tempfile.TemporaryDirectory() as tmp:
@@ -84,6 +119,32 @@ class Integration(unittest.TestCase):
                 self.assertTrue(bool((env.last_path>0).all()))
             finally:
                 env.close()
+    def test_startup_retries_same_scenario_once_without_transition(self):
+        profile=json.loads(Path('configs/waffle_gazebo.example.json').read_text())
+        with tempfile.TemporaryDirectory() as tmp:
+            FailOnceWorker.attempts=[]
+            path=Path(tmp)/'model.sdf'; path.write_text(FIXTURE)
+            cfg=SimpleNamespace(fidelity=profile,sim=SimpleNamespace(human_num=1,arena_size=2.5),
+                env=SimpleNamespace(time_step=.25,time_limit=90.), robot=SimpleNamespace(radius=.25,v_pref=.1,sensor_range=3.),
+                reward=SimpleNamespace(discomfort_dist=.25,discomfort_penalty_factor=10.,success_reward=10.,collision_penalty=-20.),
+                waffle_safety=safety_parameters(None,.25),waffle_limits=DriveLimits(max_linear=.1,max_angular=.5))
+            args=SimpleNamespace(num_processes=1,seed=4,waffle_require_measured=False,waffle_scene_split='train',
+                waffle_eval_episodes=0,waffle_gazebo_logs=tmp,waffle_gazebo_model=str(path),waffle_gazebo_worker='fixture',
+                waffle_gazebo_timeout=2.,waffle_detector_weights='fixture',waffle_gazebo_detector_device='cpu',waffle_reactive_humans=False)
+            env=GazeboVecEnv(cfg,args,torch.device('cpu'),FailOnceWorker,FakeDetector)
+            try:
+                obs=env.reset()
+                self.assertEqual(tuple(obs['robot_node'].shape),(1,1,7))
+                self.assertEqual(len(FailOnceWorker.attempts),2)
+                self.assertEqual(FailOnceWorker.attempts[0],FailOnceWorker.attempts[1])
+                retry=next(Path(tmp).rglob('worker_startup_retries.jsonl'))
+                event=json.loads(retry.read_text().splitlines()[0])
+                self.assertEqual(event['startup_attempt'],1)
+                self.assertTrue(event['retryable'])
+                self.assertEqual(env.worlds[0].steps,0)
+            finally:
+                env.close()
+
     def test_terminal_gazebo_episode_reports_paper_ground_truth_metrics(self):
         profile=json.loads(Path('configs/waffle_gazebo.example.json').read_text())
         with tempfile.TemporaryDirectory() as tmp:
@@ -101,11 +162,20 @@ class Integration(unittest.TestCase):
             env=GazeboVecEnv(cfg,args,torch.device('cpu'),FakeWorker,FakeDetector)
             try:
                 env.reset()
+                env.set_eval_quotas([1])
+                scenario_index=int(env.case_ids[0])
                 _,_,done,_=env.step(torch.zeros(1,2))
                 self.assertTrue(bool(done[0]))
                 self.assertEqual(int(env.paper_episode_steps[0]),1)
                 self.assertTrue(bool(torch.isfinite(env.paper_itr).all()))
                 self.assertEqual(env.last_scenario_ids[0],'illustrative-1-train')
+                self.assertTrue(bool(env.eval_finished[0]))
+                self.assertEqual(int(env.case_ids[0]),scenario_index)
+                terminal_time=env.worlds[0].state['time']
+                _,_,done,_=env.step(torch.zeros(1,2))
+                self.assertTrue(bool(done[0]))
+                self.assertEqual(env.worlds[0].state['time'],terminal_time)
+                self.assertEqual(int(env.case_ids[0]),scenario_index)
             finally:
                 env.close()
 
