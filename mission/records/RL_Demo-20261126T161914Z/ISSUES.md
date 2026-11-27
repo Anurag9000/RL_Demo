@@ -1,0 +1,76 @@
+# Issues and blockers
+
+| ID | Status | Evidence | Next action |
+|---|---|---|---|
+| I-001 | Closed for this campaign; qualification failed | Four diverse v3 PPO seeds completed and one validation-selected checkpoint was tested once on six held-out layouts: 4/6 success, one collision, one timeout. Full evidence is in STATUS.md and state.json. | Any future campaign needs an untouched newly generated test suite; do not retune against the consumed test. |
+| I-002 | Partial | System Python lacks ML dependencies; Gazebo and DR-SPAAM dependencies are isolated under the mission run root; existing FedQCL environment was not modified. | Consider a dedicated mission runtime image if longer campaigns require it. |
+| I-003 | Resolved for this campaign | User authorized residual H100 VRAM. Mission training/evaluation has completed with 10% train and 5% eval allocator caps; final free VRAM was 63,601 MiB GPU0 and 40,520 MiB GPU1. Unrelated processes remain untouched. | No mission process remains active. |
+| I-004 | Open | Targeted search found no physical Waffle/TurtleBot calibration record. The profile is explicitly illustrative. | Keep all claims simulation-only; obtain measurement evidence before measured-fidelity claims or hardware use. |
+| I-005 | Superseded for bounded pilot | gpurun assigns GPUs to other users, but user authorized isolated residual-VRAM experiments; no other process was modified. | Do not claim exclusive allocation; preserve unrelated processes. |
+
+## New evidence: PPO seed and late-checkpoint instability
+
+- Seed429 checkpoints 00010, 00020, and 00040 all failed 3/3 test layouts (all collisions). Seed430 checkpoint 00020 passed 3/3 test and 2/3 validation; checkpoint 00030 passed 3/3 on each split; checkpoint 00040 failed 3/3 test. This supports seed-specific and late-update instability.
+- Seed430 checkpoint 00030 is the strongest current simulation candidate (6/6 across the existing three-layout validation and test sets), but the sample is very small and test checkpoints were inspected repeatedly. Do not call this broad validation or a deployment-ready policy.
+- Expand the illustrative scenario generator, freeze checkpoint selection using validation only, and reserve newly generated test layouts for one final evaluation. Physical calibration remains unavailable.
+
+## Expanded fresh-test failure
+
+Seed430 checkpoint 00030 passed all three old validation and old test layouts but achieved only 3/6 successes on six newly varied test layouts, with 3 collisions and negative lower-tail human clearance. The old three-layout suites were too narrow for generalization. Diverse v3 PPO replications (seeds431/432) are training on nine train layouts, with nine validation layouts for checkpoint selection and six separate test layouts reserved for one final evaluation. All scene data remain illustrative; measured hardware calibration is still unavailable.
+
+Diverse v3 seed432 checkpoint 00040 scored only 3/9 on its nine-layout validation split with 6 collisions and negative lower-tail clearance. The expanded training problem remains unsolved; do not use the reserved six-layout v3 test for this checkpoint unless a validation-selected candidate qualifies.
+
+Both diverse v3 final checkpoints failed validation (seed431 2/9 successes, seed432 3/9, each with 6 collisions). Do not evaluate the reserved v3 test split on either. Earlier checkpoints are being screened only on validation to detect whether late PPO degradation explains the poor final result.
+
+## Reward-shaping v4 result to date
+
+Reward-only v4 kept diverse v3 scenes fixed while increasing intervention penalty (0.5→2.0), human-clearance penalty (2.0→5.0), and margin (0.25→0.4 m). Both paired seeds finished 9,840 transitions, but training reward remained strongly negative. On the same three validation layouts, checkpoint 00010 scored seed431 0/3 and seed432 2/3; checkpoint 00020 repeated 0/3 and 2/3; checkpoint 00030 fell to 0/3 and 1/3. Gate intervention occurred in every episode across these screens. Full nine-layout validation of final checkpoint 00040 is running. These results do not support a successful v4 improvement; keep the six fresh test layouts sealed unless full validation selects a qualifying candidate. All claims remain simulation-only and illustrative.
+
+Reward-shaping v4 final evaluation is complete and failed on both paired seeds: final checkpoint 00040 achieved 0/9 success on each of the nine validation layouts (seed431: 5 collisions/4 timeouts; seed432: 7 collisions/2 timeouts). Gate intervention appeared in every episode and SPL was zero. Do not consume the reserved six-layout test on v4. v4 is a negative result, not an improvement; retain the artifacts and return effort to independent v3-profile replications.
+
+## Final diverse-v3 held-out outcome
+
+The validation-selected seed434 checkpoint00040 was evaluated once on all six reserved v3 test layouts: 4 successes, 1 collision, and 1 timeout; SPL 0.667, paper ITR 0.00704, gate intervention in all six episodes. This fails behavioral qualification; the profile is illustrative and has no physical calibration. Test layouts are consumed and must not be used for tuning or rerun. The seed433/434 validation results also show meaningful seed variance (6/9 vs 8/9 at checkpoint40). Future experiments, if any, require a newly generated untouched test suite and must not use this test result to tune policy parameters.
+
+
+| I-006 | Open for existing artifacts; fixed in source | Paper's ITR is the unweighted average of per-episode c/C ratios; SD is pooled over current-time closest-human distances at intrusion timesteps. Old six-layout test SD used future-window distances and no timestep traces exist to recalculate it. | Keep the test consumed, mark its SD invalid, use corrected source for newly generated runs, and record independent test-bank provenance. |
+
+
+| I-007 | Open | Local mission commit `2fce424` is ready, but GitHub rejected the configured SSH identity `krishmarwah` for `Anurag9000/RL_Demo`; HTTPS has no configured credential helper. | Keep the commit local until an authorized repository identity is available; do not borrow another user's credential. |
+
+## Active continuation issues (2026-11-27 UTC)
+
+| I-008 | Open | Seed-436 v5 continuation is making slow progress: last successful snapshot at 01:49:34Z showed 1,440/250,000 segment transitions at 3 reported FPS on 16 Gazebo worlds. A subsequent shell status command stalled and was interrupted; this does not establish training failure. | Preserve the run. Next consolidated health check only after the 600-second stable-poll interval from the last successful health sample. If slow progress persists, use measured phase/CPU/Gazebo timing evidence before deciding on a scale or scheduler change. |
+| I-009 | Open, unconfirmed | Static audit found Social Force zero-distance divisions and a possible unicycle/ActionXY mismatch in the legacy truth-prediction lookahead path; no focused tests found. | Confirm runtime configuration and reproduce with minimal isolated tests before changing legacy behavior. These paths are not established as blockers in the active native Waffle training route. |
+
+
+| I-010 | Open, repeated native worker SIGSEGV observed | Seed436 recovery recorded four same-scene startup retries across worker slots 4, 5, 13 and 15; three Gazebo children exited 139 and one exit code was unavailable. Learners remained alive. Corresponding logs contain only SDF `gz_frame_id` warnings; no stack trace/tail. Seed437 has no retry event. No core/apport record exists; both learner processes have soft core-size limit 0 and `/var/crash` is empty. | Preserve runs and retry logs. For a future worker launch, consider scoped core capture; do not restart current learners solely for diagnostics or infer cause from warnings alone. |
+| I-011 | Open | The resumed jobs have not yet produced their first progress row as of 2026-11-27T06:25Z; only successful model load and worker launch are confirmed. | First stable health sample at or after 06:35Z; compare transition counters, worker retry records, live processes and per-GPU free VRAM. |
+
+
+| I-012 | Resolved | The pre-existing seed-436 v5 held-out test launcher targeted an obsolete output/checkpoint path and had no validation selection lock. | Replaced it with a parameterized wrapper and shared split-aware evaluator; test admission requires checkpoint hash lock, 500 validation cases and an untouched test split. Keep test execution blocked until validation completes and the lock is written. |
+
+| I-013 | Open | Profile-matched H100 4-world probe measured 1.805 transitions/s; worker reset/physics dominate and current concurrent 8/16-world learners report 2/3 FPS. Optional `rvo2` reference wheel is unavailable from the configured index; parity test remains skipped. | Keep run configs/provenance isolated; use only measured throughput to judge any future environment-count change. Seek an approved local/source distribution only if parity remains necessary; do not alter shared env. |
+
+| I-014 | Open, legacy path only | `CrowdSimVarNum.calc_reward` switches discomfort geometry by phase: training always uses circle distance while validation/test may use truth future trajectory occupancy; train/eval reward semantics can differ for prediction baselines. Native Gazebo Waffle campaign uses its separate reward implementation. | Keep scope-specific; decide whether legacy baseline methodology needs an explicit matched-reward protocol before relying on those comparisons. No active v5 run is affected. |
+
+| I-015 | Open, adaptive runner only | `scripts/train_adaptive.py` can run final test evaluation without a persisted validation lock/checkpoint digest or sealed-test-consumption guard, and its stage-promotion threshold checks success only. | Before using this runner for a sealed final test, bind test admission to the validation-selected checkpoint digest and add a one-use test ledger; consider collision/gate feasibility in promotion. Active v5 runs use the separate gated evaluator. |
+
+### I-010 follow-up: 32-world benchmark worker crash (2026-11-27T11:05Z)
+
+The isolated 32-world probe exited 0 and returned throughput data, but its world-slot-7 startup retry log records a Gazebo child exit 139 at episode 6 (`v5-train-0328`). This adds a fifth observed native Gazebo worker crash/retry across the recovery campaign and scaling probe; four of the five worker exits are confirmed code 139, while one recovery exit code is unavailable. It does not establish a cause or implicate world count; the probe recovered and completed. Main learners were left untouched. Preserve logs and keep stability/root cause open.
+
+| I-016 | Closed, false positive after parity-test review | The initial static reading suggested accumulated gradients, but existing H100 validation log `logs/waffle_validation_after_metric_audit.log` records `test_warmup_rollback_and_adam_parity ... ok` on CUDA and compares four captured/eager optimizer steps, parameters, Adam step counters and exp_avg. | No fix indicated by this finding. Keep optional capture changes covered by parity verification; active v5 remains eager PPO. |
+
+| I-017 | Open, future recovery/reproducibility | Learner state saves Python, NumPy-global, Torch CPU/CUDA RNG but not independent `default_rng` instances owned by `GazeboVecEnv`/`PerWorld`; each continuation rebuilds them from the original seed, repeating the beginning of train-case sampling order. Existing training-state test covers only global RNG. | For future recovery, either persist/restore each environment generator state or derive a documented nonrepeating deterministic segment seed from saved transition/update counters. Do not restart current learners to change this. |
+
+| I-018 | Fix committed, runtime verification blocked (2026-11-27) | Gazebo evaluation lanes previously auto-reset after quota and could open/step uncounted held-out cases. Quota-stop logic now preserves terminal state and cached output for finished lanes; evaluator wires its per-lane quotas before stepping. | Commit `bf72547` adds logic and fake-worker regression assertions. `py_compile` and diff checks pass; unittest import fails in available venv because `gymnasium` and `gym` are missing. Re-run the exact targeted fixture when the repository test dependencies are available; keep this behavior unverified until then. |
+
+| I-018 follow-up | Verified resolved (2026-11-27T11:57:22Z) | Correct campaign `PYTHONPATH` includes vendored `gymnasium`; the initial test failure was an invocation-path issue. | Both fake-worker quota tests passed (2 tests, 0.092 s) with the campaign dependency paths. No Gazebo physics/GPU used. |
+
+| I-019 | Implemented and fixture-verified; real Gazebo evaluation still pending | Gazebo evaluation now persists compressed per-episode truth traces with scenario/split/seed/lane, actual monotonic Gazebo simulator timestamps, stable person_0..person_N crowd entity IDs, four-frame post-terminal crowd suffix, outcome, online metrics and SHA256 provenance fields. A separate offline scorer recomputes ITR/SD and the evaluator fails on trace-count, per-episode or aggregate mismatch. | Focused fake-worker and offline scorer suite passed (9 tests); CLI help, syntax compilation and diff checks passed. Trace timestamp/ID schema and offline validation are fixture-tested; real Gazebo trace production and final locked evaluation remain unrun. Preserve the held-out test split. |
+
+| I-020 | Resolved (2026-11-27T12:45Z) | The first actual saved-trace evaluation smoke had per-episode online/offline parity but failed aggregate ITR comparison because the evaluator compared a float32 online aggregate to a float64 trace score at 1e-12. | Compare aggregate values with 1e-6 float32 rounding tolerance, use recomputed float64 trace metrics as reported values, and require exact unique scenario-ID correspondence. Regression tests include float32 rounding plus duplicate/missing IDs; 11 focused tests pass. Actual one-case v5 validation trace smoke then exited 0 with offline parity. |
+
+
+| I-021 | Resolved in source; fixture and stored-trace verified (2026-11-27T13:08Z) | Offline paper-metric trace scoring previously checked monotonic simulator time and identities but did not require timestamps to match policy_dt or prove timestamp coverage through every future scoring horizon. | Commit `a4b563750ff14bcc2118f39f6f68f9203a524ac2` enforces policy interval, robot/human time alignment, monotonic spacing, and full future-horizon coverage; malformed timestamp regression added. Twelve focused tests passed and the stored one-case Gazebo validation trace rescored with online/offline parity. Full validation qualification and sealed final test remain pending. |

@@ -1,0 +1,26 @@
+{
+  "copied_utc": "2026-11-27T13:15:00Z",
+  "files": {
+    "CODE_AUDIT_PROGRESS.md": {
+      "bytes": 102218,
+      "sha256": "c8d3a5ef418410181e89d9c327e2f990b873a0a35159e0d669d3542d78b06385"
+    },
+    "ISSUES.md": {
+      "bytes": 14733,
+      "sha256": "613a4010e5b164158746e48a1249afec9844d3386d5b45f82e6882cedb4b8223"
+    },
+    "STATUS.md": {
+      "bytes": 86428,
+      "sha256": "5279614c242d50573a54f8f1eaa5b93dcca99684f67b5d3a99ca780b713eccb0"
+    },
+    "commands.jsonl": {
+      "bytes": 68584,
+      "sha256": "9864795815eb62b5929cfba1826ef5a6ae25ce565bfa4fc8300d80bfa3e025c9"
+    },
+    "state.json": {
+      "bytes": 61294,
+      "sha256": "22f80ab13d3806717e6017ca08c08ef63cd34fd7094d0e2078d95d33d0d75217"
+    }
+  },
+  "source": "/home/rl-group4/waffle_runs/RL_Demo-20261126T161914Z/mission"
+}
