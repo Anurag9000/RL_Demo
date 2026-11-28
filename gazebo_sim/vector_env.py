@@ -52,6 +52,9 @@ class PerWorld:
         self.substeps=round(config.env.time_step/self.gate_dt)
         self.rng=np.random.default_rng(args.seed+100003*int(os.environ.get('RANK','0'))+index)
         self.episode=0
+        self.human_goal_change_count=0
+        self.human_goal_sample_failures=0
+        self.human_route_arrival_count=0
         self.index=index
         self.timing=dict(reset_s=0.,physics_ipc_s=0.,detector_s=0.,step_s=0.,steps=0,resets=0)
         self.static_rect=torch.as_tensor(self.profile['scene']['rectangles_m'],dtype=torch.float32).reshape(-1,4)
@@ -74,8 +77,6 @@ class PerWorld:
         self.route=np.zeros(self.n,dtype=np.int64)
         self.current_human_goals=self.routes[np.arange(self.n),self.route].copy()
         self.policy_tick=0
-        self.human_goal_change_count=0
-        self.human_goal_sample_failures=0
         self.human_velocity=np.zeros((self.n,2),np.float32)
         self.tracker=Tracker(self.n)
         self.history=TrajectoryHistory(self.n,5)
@@ -216,6 +217,7 @@ class PerWorld:
         """Advance hidden crowd goals once per real or lookahead policy tick."""
         pos=np.asarray(positions,dtype=np.float32)
         reached=np.linalg.norm(self.current_human_goals-pos,axis=-1)<.15
+        self.human_route_arrival_count+=int(reached.sum())
         self.route=(self.route+reached.astype(np.int64))%self.routes.shape[1]
         route_goals=self.routes[np.arange(self.n),self.route].copy()
         self.current_human_goals=route_goals
@@ -583,9 +585,11 @@ class GazeboVecEnv(VecEnv):
             'regime':self.worlds[0].human_dynamics['regime'] if self.worlds[0].human_dynamics else 'legacy_routes',
             'goal_changes':sum(w.human_goal_change_count for w in self.worlds),
             'sample_failures':sum(w.human_goal_sample_failures for w in self.worlds),
+            'route_arrivals':sum(w.human_route_arrival_count for w in self.worlds),
             'episodes_started':sum(w.episode for w in self.worlds),
             'per_world':[{'index':w.index,'goal_changes':w.human_goal_change_count,
                           'sample_failures':w.human_goal_sample_failures,
+                          'route_arrivals':w.human_route_arrival_count,
                           'episodes_started':w.episode} for w in self.worlds]}
         if self.detector_pool is not None:
             result['detector_pool']=dict(self.detector_pool.stats)

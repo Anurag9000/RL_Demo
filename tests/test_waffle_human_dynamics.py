@@ -2,7 +2,7 @@ import unittest
 from types import SimpleNamespace
 import numpy as np
 from waffle_pi.human_dynamics import update_human_goals,validate_human_dynamics
-from gazebo_sim.vector_env import PerWorld
+from gazebo_sim.vector_env import GazeboVecEnv,PerWorld
 
 
 class HumanDynamicsTests(unittest.TestCase):
@@ -45,6 +45,7 @@ class HumanDynamicsTests(unittest.TestCase):
         world.profile={'scene':{'arena_half_extent_m':5.,'rectangles_m':[]}}
         world.n=2; world.policy_tick=0; world.rng=np.random.default_rng(7)
         world.human_goal_change_count=0; world.human_goal_sample_failures=0
+        world.human_route_arrival_count=0
         first=world.next_human_goals(self.positions.copy())
         np.testing.assert_array_equal(first,world.routes[:,0])
         second=world.next_human_goals(first.copy())
@@ -52,6 +53,7 @@ class HumanDynamicsTests(unittest.TestCase):
         returned=world.next_human_goals(second.copy())
         np.testing.assert_array_equal(returned,world.routes[:,0])
         self.assertEqual(world.human_goal_change_count,0)
+        self.assertEqual(world.human_route_arrival_count,4)
 
     def test_randomized_mid_episode_changes_follow_interval_and_are_seeded(self):
         cfg=dict(regime='randomized',random_goal_changing=True,
@@ -109,6 +111,7 @@ class HumanDynamicsTests(unittest.TestCase):
         world.n=2
         world.policy_tick=19
         world.rng=np.random.default_rng(7)
+        world.human_route_arrival_count=0
         world.human_goal_change_count=0
         world.human_goal_sample_failures=0
         result=world.next_human_goals(self.positions)
@@ -132,6 +135,24 @@ class HumanDynamicsTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'arrival goal changes are unsupported'):
             validate_human_dynamics(dict(regime='nonrandomized',
                 random_goal_changing=False,end_goal_changing=True))
+
+
+    def test_performance_report_aggregates_run_counters(self):
+        env=object.__new__(GazeboVecEnv)
+        timing=dict(reset_s=0.,physics_ipc_s=0.,detector_s=0.,step_s=0.,steps=0,resets=0)
+        env.worlds=[SimpleNamespace(index=0,timing=timing,
+            human_dynamics={'regime':'randomized'},human_goal_change_count=3,
+            human_goal_sample_failures=1,human_route_arrival_count=8,episode=4),
+            SimpleNamespace(index=1,timing=timing,
+            human_dynamics={'regime':'randomized'},human_goal_change_count=2,
+            human_goal_sample_failures=0,human_route_arrival_count=6,episode=3)]
+        env.detector_pool=None
+        report=env.performance_report()['human_dynamics']
+        self.assertEqual(report['goal_changes'],5)
+        self.assertEqual(report['sample_failures'],1)
+        self.assertEqual(report['route_arrivals'],14)
+        self.assertEqual(report['episodes_started'],7)
+        self.assertEqual(report['per_world'][0]['route_arrivals'],8)
 
 
 if __name__=='__main__':
