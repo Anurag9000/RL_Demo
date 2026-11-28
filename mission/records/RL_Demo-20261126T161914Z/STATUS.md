@@ -689,3 +689,7 @@ Fresh independent training is running from official actor41665 with a reset nati
 ## 2026-11-28T05:09:24Z first rollout collected
 
 Both corrected 8-world trainers remain alive. Each collected 240 transitions (one 30-step rollout across eight worlds), but neither has logged its first PPO update. The rollout summaries report randomized seed445 52 episodes / mean reward -21.8 and nonrandomized seed446 39 / -23.2; these startup-only rewards do not establish policy quality. Each logged FPS 0 (integer rounded below one). GPU0 has 32,446 MiB free and GPU1 34,162 MiB free. GPU utilization was not queried. Episode log counts were 70 and 63. Legacy seed436/437/438 processes remain alive and untouched. Next consolidated check is not before 05:19:24Z.
+
+## CI check - 2026-11-28T05:10Z
+
+GitHub Actions query for `codex/waffle-gazebo-mission-20261126` returned 0 workflow runs. The two push workflows filter `main` and `waffle-pi-sim2real`; `workflow_dispatch` is available, but was not invoked. Therefore CI is unverified for this branch. Focused H100 regression tests passed: 11 human-dynamics tests and 3 scenario-bank tests.
