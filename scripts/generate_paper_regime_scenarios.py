@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """Build separate illustrative Waffle banks for the paper's two human regimes.
 
-Human positions, routes and traits are sampled before a run. In the randomized
-regime, scheduled mid-episode goal changes are applied by GazeboVecEnv from the
-hidden profile contract. Both regimes retain the configured end-of-route goal
-resampling used for continuous crowd flow. The policy only receives
+Human positions, routes and traits are sampled before a run. Both regimes use
+the scenario's fixed cyclic waypoint routes. Only the randomized regime can
+receive scheduled hidden goal changes. The policy only receives
 detector/tracker observations.
 """
 import argparse
@@ -22,14 +21,12 @@ SPLIT_SEEDS={
 
 def human_contract(regime):
     if regime=='randomized':
-        return dict(regime=regime,random_goal_changing=True,
+        return dict(regime=regime,route_policy='cyclic_waypoints',random_goal_changing=True,
             random_goal_change_interval_s=5.0,random_goal_change_chance=.5,
-            end_goal_changing=True,end_goal_change_chance=1.0,
             goal_clearance_m=.2)
     if regime=='nonrandomized':
-        return dict(regime=regime,random_goal_changing=False,
+        return dict(regime=regime,route_policy='cyclic_waypoints',random_goal_changing=False,
             random_goal_change_interval_s=0.0,random_goal_change_chance=0.0,
-            end_goal_changing=True,end_goal_change_chance=1.0,
             goal_clearance_m=.2)
     raise ValueError(regime)
 
@@ -99,10 +96,11 @@ def build_profile(base_path,output_path,regime,per_split):
     profile['human_dynamics']=human_contract(regime)
     profile['mission_note']=(
       f'Illustrative, nominal four-human Waffle Pi profile for the paper {regime} regime. '
-      'Crowd goals use bounded hidden simulator-side updates; arena and robot physics remain Waffle-specific. '
+      'Crowds follow cyclic scenario waypoints; only randomized cases have scheduled hidden goal changes. '
+      'Arena and robot physics remain Waffle-specific. '
       'Not calibrated against physical hardware or real crowd measurements.')
     profile['scenario_bank']={
-      'generator':'generate_paper_regime_scenarios.py','generator_version':1,
+      'generator':'generate_paper_regime_scenarios.py','generator_version':2,
       'base_profile_sha256':hashlib.sha256(base_path.read_bytes()).hexdigest(),
       'regime':regime,'per_split':split_info,'total':len(bank),
       'independent_seeded_sampling':True,

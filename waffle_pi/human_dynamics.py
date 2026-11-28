@@ -1,4 +1,4 @@
-"""Hidden simulator-side human goal changes for paper-style crowd regimes."""
+"""Hidden scheduled goal changes for paper-style crowd regimes."""
 import math
 import numpy as np
 
@@ -11,12 +11,16 @@ def validate_human_dynamics(config):
         raise ValueError('human_dynamics.regime must be randomized or nonrandomized')
     interval=float(config.get('random_goal_change_interval_s',0.0))
     chance=float(config.get('random_goal_change_chance',0.0))
-    end_chance=float(config.get('end_goal_change_chance',1.0))
     clearance=float(config.get('goal_clearance_m',0.2))
     if not math.isfinite(interval) or interval<0:
         raise ValueError('random goal interval must be finite and nonnegative')
-    if not 0<=chance<=1 or not 0<=end_chance<=1:
-        raise ValueError('human goal change chances must be in [0,1]')
+    if not 0<=chance<=1:
+        raise ValueError('random goal change chance must be in [0,1]')
+    if 'end_goal_changing' in config or 'end_goal_change_chance' in config:
+        raise ValueError('arrival goal changes are unsupported; use the scenario cyclic waypoint route')
+    route_policy=config.get('route_policy','cyclic_waypoints')
+    if route_policy!='cyclic_waypoints':
+        raise ValueError('human_dynamics.route_policy must be cyclic_waypoints')
     if not math.isfinite(clearance) or clearance<0:
         raise ValueError('goal clearance must be finite and nonnegative')
     random_changing=bool(config.get('random_goal_changing',False))
@@ -27,11 +31,10 @@ def validate_human_dynamics(config):
     if regime=='randomized' and not random_changing:
         raise ValueError('randomized regime must enable scheduled random goal changes')
     return dict(regime=regime,
+                route_policy=route_policy,
                 random_goal_changing=random_changing,
                 random_goal_change_interval_s=interval,
                 random_goal_change_chance=chance,
-                end_goal_changing=bool(config.get('end_goal_changing',True)),
-                end_goal_change_chance=end_chance,
                 goal_clearance_m=clearance)
 
 
@@ -61,11 +64,11 @@ def _valid_candidate(candidate,index,positions,goals,radii,robot_position,
 def update_human_goals(positions,goals,radii,robot_position,robot_goal,
                        robot_radius,arena_half_extent,policy_tick,policy_dt,
                        dynamics,rng,rectangles=(),max_attempts=256):
-    """Apply scheduled random and end-goal changes to hidden simulator goals.
+    """Apply scheduled random changes to hidden simulator goals.
 
+    The caller advances the deterministic scenario waypoint route on arrival.
     Returns ``(goals, changed_count, failed_samples)``. Random changes occur
-    on the configured policy-step cadence; arrival changes are evaluated every
-    policy step. Goal sampling is bounded and rejects human/robot overlaps,
+    only on the configured policy-step cadence. Goal sampling is bounded and rejects human/robot overlaps,
     other humans' destinations, arena-boundary violations and rectangles.
     """
     cfg=validate_human_dynamics(dynamics)
@@ -102,9 +105,7 @@ def update_human_goals(positions,goals,radii,robot_position,robot_goal,
     changed=failed=0
     for i in range(n):
         want_random=random_event and rng.random()<=cfg['random_goal_change_chance']
-        arrived=np.linalg.norm(target[i]-pos[i])<rad[i]
-        want_end=cfg['end_goal_changing'] and arrived and rng.random()<=cfg['end_goal_change_chance']
-        if not (want_random or want_end):
+        if not want_random:
             continue
         accepted=None
         for _ in range(max_attempts):

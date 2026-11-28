@@ -130599,20 +130599,19 @@
     "human_margin": 0.25,
     "wall_margin": 0.1
   },
-  "mission_note": "Illustrative, nominal four-human Waffle Pi profile for the paper nonrandomized regime. Crowd goals use bounded hidden simulator-side updates; arena and robot physics remain Waffle-specific. Not calibrated against physical hardware or real crowd measurements.",
   "human_dynamics": {
     "regime": "nonrandomized",
+    "route_policy": "cyclic_waypoints",
     "random_goal_changing": false,
     "random_goal_change_interval_s": 0.0,
     "random_goal_change_chance": 0.0,
-    "end_goal_changing": true,
-    "end_goal_change_chance": 1.0,
     "goal_clearance_m": 0.2
   },
+  "mission_note": "Illustrative, nominal four-human Waffle Pi profile for the paper nonrandomized regime. Crowds follow cyclic scenario waypoints; only randomized cases have scheduled hidden goal changes. Arena and robot physics remain Waffle-specific. Not calibrated against physical hardware or real crowd measurements.",
   "scenario_bank": {
     "generator": "generate_paper_regime_scenarios.py",
-    "generator_version": 1,
-    "base_profile_sha256": "f2c2ab8a0a5b70a8b4a7c172fff26983603a8542a696f77898c39086591fdb13",
+    "generator_version": 2,
+    "base_profile_sha256": "ab146f9dda23edc37f9bdfd4471fa37a07e90b403a2b115918398b757d4d09f2",
     "regime": "nonrandomized",
     "per_split": {
       "train": {
@@ -130633,11 +130632,10 @@
     "provenance": "procedural illustrative scenarios; no measured human or hardware data",
     "paper_regime_contract": {
       "regime": "nonrandomized",
+      "route_policy": "cyclic_waypoints",
       "random_goal_changing": false,
       "random_goal_change_interval_s": 0.0,
       "random_goal_change_chance": 0.0,
-      "end_goal_changing": true,
-      "end_goal_change_chance": 1.0,
       "goal_clearance_m": 0.2
     }
   }

@@ -16,12 +16,11 @@ class PaperRegimeScenarioTests(unittest.TestCase):
         randomized=GEN.human_contract('randomized')
         nonrandomized=GEN.human_contract('nonrandomized')
         self.assertTrue(randomized['random_goal_changing'])
+        self.assertEqual(randomized['route_policy'],'cyclic_waypoints')
         self.assertEqual(randomized['random_goal_change_interval_s'],5.0)
         self.assertEqual(randomized['random_goal_change_chance'],.5)
         self.assertFalse(nonrandomized['random_goal_changing'])
-        self.assertTrue(randomized['end_goal_changing'])
-        self.assertTrue(nonrandomized['end_goal_changing'])
-        self.assertEqual(nonrandomized['end_goal_change_chance'],1.0)
+        self.assertEqual(nonrandomized['route_policy'],'cyclic_waypoints')
 
     def test_sampled_traits_match_regime_ranges(self):
         rng=__import__('numpy').random.default_rng(3)

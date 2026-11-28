@@ -215,12 +215,13 @@ class PerWorld:
     def next_human_goals(self,positions):
         """Advance hidden crowd goals once per real or lookahead policy tick."""
         pos=np.asarray(positions,dtype=np.float32)
+        reached=np.linalg.norm(self.current_human_goals-pos,axis=-1)<.15
+        self.route=(self.route+reached.astype(np.int64))%self.routes.shape[1]
+        route_goals=self.routes[np.arange(self.n),self.route].copy()
+        self.current_human_goals=route_goals
         if self.human_dynamics is None:
-            reached=np.linalg.norm(self.routes[np.arange(self.n),self.route]-pos,axis=-1)<.15
-            self.route=(self.route+reached)%self.routes.shape[1]
-            self.current_human_goals=self.routes[np.arange(self.n),self.route].copy()
             return self.current_human_goals
-        goals,changed,failed=update_human_goals(pos,self.current_human_goals,self.radius,
+        goals,changed,failed=update_human_goals(pos,route_goals,self.radius,
             np.asarray(self.state['truth'][:2]),self.goal,self.cfg.robot.radius,
             float(self.profile['scene']['arena_half_extent_m']),self.policy_tick,
             float(self.cfg.env.time_step),self.human_dynamics,self.rng,
