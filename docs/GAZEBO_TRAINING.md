@@ -171,19 +171,22 @@ Rebuild them from an illustrative base profile with:
 
 ~~~sh
 python scripts/generate_paper_regime_scenarios.py \
-  --base configs/waffle_gazebo.example.json --output-dir mission/profiles \
-  --per-split 500
+  --base mission/profiles/waffle_gazebo_paper_base.json \
+  --output-dir mission/profiles --per-split 500
 ~~~
 
-The randomized bank uses human radii 0.3–0.5 m, preferred speeds 0.5–1.5 m/s,
-and independent 0.5-probability scheduled hidden goal changes at five-second
-episode boundaries. The nonrandomized bank fixes radius at 0.3 m and speed at
-1.0 m/s and disables scheduled mid-episode changes. Both use end-of-route
-resampling for continuous crowd flow. Human goals and simulator truth remain
-inside Gazebo; the policy receives only detector/tracker observations. The
-training process writes gazebo_environment_summary.json at shutdown with
-goal-change/sample-failure counts, episodes started, worker timing and detector
-statistics when available.
+Both banks use each scenario's fixed cyclic waypoint route, advancing to the
+next waypoint when a human reaches its active destination. The randomized bank
+uses human radii 0.3–0.5 m and preferred speeds 0.5–1.5 m/s; at each five-second
+policy boundary, each human independently receives a sampled temporary goal
+with probability 0.5. On arrival at that temporary goal, its cyclic scenario
+route resumes at the next waypoint. The nonrandomized bank fixes radius at
+0.3 m and speed at 1.0 m/s and never samples a random goal. Neither regime
+resamples a goal merely because a route endpoint was reached. Human goals and
+simulator truth remain inside Gazebo; the policy receives only detector/tracker
+observations. The training process writes gazebo_environment_summary.json at
+shutdown with goal-change/sample-failure counts, episodes started, worker
+timing and detector statistics when available.
 
 These banks are nominal and illustrative, not hardware-calibrated crowd data.
 They cover four humans only, so they do not yet establish the paper's full
