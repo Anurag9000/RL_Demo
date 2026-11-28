@@ -721,3 +721,7 @@ Corrected paper-regime pair: 2 total, 0 complete, 2 live, 0 queued/unlaunched. B
 ## 2026-11-28T06:19:26Z consolidated check
 
 Both corrected regime trainers are alive at update14 / 3,600 transitions each; each advanced 2 updates / 480 transitions since the last check. Each has 246,400 transitions remaining to its requested 250k budget. Update10 remains the latest saved checkpoint; last-window rewards are -22.1 randomized and -23.8 nonrandomized, with no quality inference. GPU0 has 31,671 MiB free and GPU1 38,436 MiB free; utilization not queried. Next check no earlier than 06:29:26Z.
+
+## 2026-11-28T06:30:31Z consolidated check
+
+Both corrected 250k regime runs remain alive at update16 / 4,080 transitions each; each advanced 2 updates / 480 transitions since the previous check. Remaining budget is 245,920 transitions per run. Update10 remains the latest persisted checkpoint. Last-window reward means were -22.1 randomized and -24.0 nonrandomized; no quality inference. GPU0 free VRAM 31,541 MiB, GPU1 38,364 MiB; utilization not queried. Next check no earlier than 06:40:31Z.
