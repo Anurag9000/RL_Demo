@@ -94,18 +94,45 @@
         }
       },
       "interpretation": "Only seed436/437/438 have live trainers; the two paper-regime runs were stopped because their environment contract was wrong. Existing legacy runs were left untouched."
+    },
+    {
+      "timestamp_utc": "2026-11-28T04:59:09Z",
+      "free_vram_mib": {
+        "gpu0": 34760,
+        "gpu1": 34342
+      },
+      "gpu_utilization_queried": false,
+      "legacy_trainers": {
+        "seed436": {
+          "pid": 2042361,
+          "status": "alive"
+        },
+        "seed437": {
+          "pid": 2042362,
+          "status": "alive"
+        },
+        "seed438": {
+          "pid": 3235199,
+          "status": "alive"
+        }
+      },
+      "new_smokes": {
+        "randomized": "finished exit0",
+        "nonrandomized": "finished exit0"
+      },
+      "interpretation": "Consolidated free-VRAM/process snapshot; no GPU utilization query. Legacy trainers were left untouched."
     }
   ],
   "host": "H100",
-  "phase": "Corrected paper-regime source committed and synced; initial seed439/440 runs invalidated and stopped; Gazebo regression smoke pending; seeds436/437/438 remain active.",
+  "phase": "Corrected regime contracts verified in real Gazebo one-update smokes; fresh corrected training remains to run; legacy seed436/437/438 trainers untouched.",
   "polling": {
     "gpu_utilization_queried": false,
-    "last_consolidated_health_check_utc": "2026-11-28T04:16:10Z",
-    "next_check_not_before_utc": "2026-11-28T04:26:10Z"
+    "last_consolidated_health_check_utc": "2026-11-28T04:59:09Z",
+    "next_check_not_before_utc": "2026-11-28T05:09:09Z"
   },
   "previous_workloads": "seed436, seed437 and seed438 were left untouched",
-  "published_kakarot_github_commit": "d9461f0e4b6b04e0307d0522f67b43d8dd12eb6a",
-  "published_tree_sha256_git": "b5b420133af2eb62c0d07ba28e8773fd4420bb48",
+  "published_kakarot_github_commit": "12b9ca28c2079d9dc875edcb13297d1d92782e3e",
+  "published_tree_sha256_git": "752dd1b04c6d9bacb43af43dfc7000a053feca33",
   "resource_admission": {
     "free_vram_mib_gpu0": 43480,
     "free_vram_mib_gpu1": 39521,
@@ -189,8 +216,8 @@
     }
   ],
   "schema": "waffle-paper-regime-training-launch-v1",
-  "source_commit_h100": "59ca1ee9e6da92b28152fab55a3ca0f7e2ebf4d7",
-  "source_tree_sha256_git": "b5b420133af2eb62c0d07ba28e8773fd4420bb48",
+  "source_commit_h100": "7e8f5213c2b109fa8cef04ae99b15c80897e087c",
+  "source_tree_sha256_git": "752dd1b04c6d9bacb43af43dfc7000a053feca33",
   "worker_sha256": "095521529c74cb135c7be804c21a374d7db4299a3928b3b47d0825479fe7e9aa",
   "regime_correction": {
     "fixed_in_commit": "dab4b7d11fa3f4c84b07a9f88683095d2f5a4222",
@@ -213,5 +240,65 @@
       "launcher_signal_reset": "verified Python SIGINT default handler"
     },
     "actual_gazebo_smoke": "pending"
+  },
+  "integration_smokes": [
+    {
+      "run_id": "paper_randomized_schedule_smoke_v3_seed443_20261128",
+      "regime": "randomized",
+      "seed": 443,
+      "gpu": 0,
+      "profile": "mission/profiles/waffle_gazebo_paper_randomized_integration_smoke_v2_20261128.json",
+      "profile_sha256": "8297f021131373df31ddbf1b0e33e946b568b9eea8943a56772fe1cbd3173bb0",
+      "status": "exit0",
+      "finished_utc": "2026-11-28T04:54:21Z",
+      "updates": 1,
+      "transitions": 30,
+      "goal_changes": 2,
+      "sample_failures": 0,
+      "route_arrivals": 31,
+      "training_state_sha256": "57a5e9eaaf661306d883c220327510ff5dd5857ac8a21076254c5675e5e058a1",
+      "checkpoint_sha256": "1dbd00fbc91cc2c15c3c0ed264c413dc290a214a39868ab84e98472487711814",
+      "qualification": "real Gazebo/DR-SPAAM/GST/PPO integration smoke only; not quality evidence"
+    },
+    {
+      "run_id": "paper_nonrandomized_route_smoke_v2_seed444_20261128",
+      "regime": "nonrandomized",
+      "seed": 444,
+      "gpu": 1,
+      "profile": "mission/profiles/waffle_gazebo_paper_nonrandomized_integration_smoke_v2_20261128.json",
+      "profile_sha256": "487364c9d6381bfe896e6748e060849d77f92d6f325f473aa1601ea7bbe8dc79",
+      "status": "exit0",
+      "finished_utc": "2026-11-28T04:55:46Z",
+      "updates": 1,
+      "transitions": 30,
+      "goal_changes": 0,
+      "sample_failures": 0,
+      "route_arrivals": 40,
+      "training_state_sha256": "6639c098f99482e969dffb0eea0c6324075e1e695276275d932c9e6ab1ad0e42",
+      "checkpoint_sha256": "8f9641e0fd7879941b89a8352300f758c1cefcb5b4b7cd1aed855d6d66cb3470",
+      "qualification": "real Gazebo/DR-SPAAM/GST/PPO integration smoke only; not quality evidence"
+    }
+  ],
+  "failed_attempts": [
+    {
+      "run_id": "paper_randomized_schedule_smoke_v2_seed443_20261128",
+      "status": "exit1",
+      "cause": "host worker invoked without the established Podman container worker environment; libgz-sim8.so.8 unavailable on host",
+      "finished_utc": "2026-11-28T04:52:17Z",
+      "outputs_preserved": true,
+      "no_training_update": true
+    },
+    {
+      "run_id": "paper_randomized_schedule_smoke_seed443_20261128",
+      "status": "exit1",
+      "cause": "custom fixture placed pedestrians outside the 2.5 m arena geometry",
+      "outputs_preserved": true,
+      "no_training_update": true
+    }
+  ],
+  "regression_tests": {
+    "test_waffle_human_dynamics.py": "11 passed",
+    "test_paper_regime_scenarios.py": "3 passed",
+    "git_diff_check": "passed"
   }
 }

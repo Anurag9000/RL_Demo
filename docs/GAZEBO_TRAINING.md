@@ -185,8 +185,9 @@ route resumes at the next waypoint. The nonrandomized bank fixes radius at
 resamples a goal merely because a route endpoint was reached. Human goals and
 simulator truth remain inside Gazebo; the policy receives only detector/tracker
 observations. The training process writes gazebo_environment_summary.json at
-shutdown with goal-change/sample-failure counts, episodes started, worker
-timing and detector statistics when available.
+shutdown with cumulative goal-change, sample-failure, and route-arrival counts
+across episodes, episodes started, worker timing, and detector statistics when
+available.
 
 These banks are nominal and illustrative, not hardware-calibrated crowd data.
 They cover four humans only, so they do not yet establish the paper's full
