@@ -268,14 +268,64 @@
         }
       },
       "interpretation": "Both new runs advanced two PPO updates and 480 transitions since prior check. Existing saved state/checkpoint files remain at update 0; no quality evidence yet."
+    },
+    {
+      "timestamp_utc": "2026-11-28T05:45:09Z",
+      "free_vram_mib": {
+        "gpu0": 31939,
+        "gpu1": 38042
+      },
+      "gpu_utilization_queried": false,
+      "trainers": {
+        "paper_randomized_gpu0_seed445_corrected_20261128": {
+          "pid": 443504,
+          "status": "alive",
+          "transitions": 1680,
+          "update_index": 6,
+          "logged_fps": 0,
+          "mean_reward_last_window": -22.0,
+          "persisted_checkpoint_update": 0,
+          "training_state_sha256": "2ef655317546e3ca9e5346335ac81047ba12738ae5821ac616936eb983846773",
+          "checkpoint_sha256": "d8089e1730aa08d43ec0ba8e4563cb1d08d32c3f7dc96fb74839621a3560c112"
+        },
+        "paper_nonrandomized_gpu1_seed446_corrected_20261128": {
+          "pid": 443505,
+          "status": "alive",
+          "transitions": 1680,
+          "update_index": 6,
+          "logged_fps": 0,
+          "mean_reward_last_window": -23.8,
+          "persisted_checkpoint_update": 0,
+          "training_state_sha256": "a8b651e8aa26411bea536626c27a6e1edf46b6a353453ef2a31ab8ca04665092",
+          "checkpoint_sha256": "0ed34f64e9980ee6c42b5426d3fed806e923748594674986baeda8d2b5dc35a8"
+        }
+      },
+      "legacy_trainers": {
+        "seed436": {
+          "pid": 2042361,
+          "status": "alive"
+        },
+        "seed437": {
+          "pid": 2042362,
+          "status": "alive"
+        },
+        "seed438": {
+          "pid": 3235199,
+          "status": "alive"
+        }
+      },
+      "observed_interval_rate_transitions_per_second_per_run": 0.605,
+      "linear_250k_projection_hours_per_run": 114.3,
+      "projection_caveat": "Rough extrapolation from one early interval including cold startup; not a completion or convergence forecast.",
+      "interpretation": "Both jobs advanced 2 updates / 480 transitions since prior check. Periodic checkpoints remain at update 0. No quality evidence."
     }
   ],
   "host": "H100",
-  "phase": "Fresh corrected regime trainers alive at update 4 / 1,200 transitions each; first periodic trained checkpoint is pending. No quality conclusion.",
+  "phase": "Corrected regime training alive at update 6 / 1,680 transitions each. Observed early rate is low; persist, monitor, and re-evaluate throughput after first periodic checkpoint.",
   "polling": {
     "gpu_utilization_queried": false,
-    "last_consolidated_health_check_utc": "2026-11-28T05:31:55Z",
-    "next_check_not_before_utc": "2026-11-28T05:41:55Z"
+    "last_consolidated_health_check_utc": "2026-11-28T05:45:09Z",
+    "next_check_not_before_utc": "2026-11-28T05:55:09Z"
   },
   "previous_workloads": "seed436, seed437 and seed438 were left untouched",
   "published_kakarot_github_commit": "12b9ca28c2079d9dc875edcb13297d1d92782e3e",
@@ -465,8 +515,8 @@
       "status": "alive",
       "launch_pid": 443490,
       "stdout": "logs/paper_randomized_gpu0_seed445_corrected_20261128.stdout",
-      "last_update_index": 4,
-      "last_transitions": 1200,
+      "last_update_index": 6,
+      "last_transitions": 1680,
       "persisted_checkpoint_update": 0
     },
     {
@@ -483,8 +533,8 @@
       "status": "alive",
       "launch_pid": 443491,
       "stdout": "logs/paper_nonrandomized_gpu1_seed446_corrected_20261128.stdout",
-      "last_update_index": 4,
-      "last_transitions": 1200,
+      "last_update_index": 6,
+      "last_transitions": 1680,
       "persisted_checkpoint_update": 0
     }
   ]

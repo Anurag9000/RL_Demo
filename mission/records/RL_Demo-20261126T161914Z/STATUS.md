@@ -701,3 +701,7 @@ Both corrected trainers remain alive and advanced from update 0 / 240 transition
 ## 2026-11-28T05:31:55Z consolidated training check
 
 Both new regime trainers remain alive at update 4 / 1,200 transitions each. Since the previous consolidated check each advanced 2 PPO updates and 480 transitions. Last-window mean rewards were -22.2 randomized and -23.1 nonrandomized; FPS remains below the logger's integer display resolution. These early summaries are not policy-quality evidence. Saved training states and checkpoints remain at update 0 with the existing hashes in the registry; next periodic save is pending. GPU0 free VRAM 32,376 MiB and GPU1 35,947 MiB; no utilization queried. Next check no earlier than 05:41:55Z.
+
+## 2026-11-28T05:45:09Z consolidated training check
+
+Both corrected runs remain alive at update 6 / 1,680 transitions each. The previous interval added 480 transitions per run over 794 seconds, an observed early rate of about 0.605 transitions/s per run. A linear projection to 250k transitions is roughly 114 hours per run; this includes cold startup, is not a reliable completion forecast, and says nothing about convergence. Last-window reward means were -22.0 randomized and -23.8 nonrandomized, with logged FPS rounded to 0. Persisted checkpoints remain at update 0. GPU0 has 31,939 MiB free and GPU1 38,042 MiB free; utilization was not queried. Existing runs 436/437/438 remain alive and untouched. Next check no earlier than 05:55:09Z.
