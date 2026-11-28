@@ -717,3 +717,7 @@ Both corrected trainers remain alive at logged update index 10 / 2,640 transitio
 ## 2026-11-28T06:08:44Z run count and ETA snapshot
 
 Corrected paper-regime pair: 2 total, 0 complete, 2 live, 0 queued/unlaunched. Both are at update 12 / 3,120 of 250,000 transitions (1.25%), with 246,880 remaining each; last persisted checkpoint is update10. At 0.791 transitions/s/run averaged over 3,943 seconds since launch, a linear transition-budget projection is 86.6 hours remaining per run; both run in parallel. This is only a budget estimate, not a convergence or end-to-end mission ETA. Separately, legacy trainers seed436/437/438 are live; invalidated seed439/440 are stopped; two one-update integration smokes completed; two smoke attempts failed and were preserved. Full mission has no selected/validated checkpoint and no final evaluation. GPU0 free VRAM 31,673 MiB; GPU1 38,524 MiB; no utilization query. Next status no earlier than 06:18:44Z.
+
+## 2026-11-28T06:19:26Z consolidated check
+
+Both corrected regime trainers are alive at update14 / 3,600 transitions each; each advanced 2 updates / 480 transitions since the last check. Each has 246,400 transitions remaining to its requested 250k budget. Update10 remains the latest saved checkpoint; last-window rewards are -22.1 randomized and -23.8 nonrandomized, with no quality inference. GPU0 has 31,671 MiB free and GPU1 38,436 MiB free; utilization not queried. Next check no earlier than 06:29:26Z.

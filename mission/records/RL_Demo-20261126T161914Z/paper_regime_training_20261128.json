@@ -423,14 +423,45 @@
       "observed_average_transitions_per_second_per_run": 0.791,
       "linear_budget_eta_hours_per_run": 86.6,
       "eta_caveat": "Extrapolation for transition budget only; no convergence or full mission ETA."
+    },
+    {
+      "timestamp_utc": "2026-11-28T06:19:26Z",
+      "free_vram_mib": {
+        "gpu0": 31671,
+        "gpu1": 38436
+      },
+      "gpu_utilization_queried": false,
+      "trainers": {
+        "paper_randomized_gpu0_seed445_corrected_20261128": {
+          "pid": 443504,
+          "status": "alive",
+          "update_index": 14,
+          "transitions": 3600,
+          "requested_transitions": 250000,
+          "remaining_transitions": 246400,
+          "reward_last_window": -22.1,
+          "persisted_checkpoint_update": 10
+        },
+        "paper_nonrandomized_gpu1_seed446_corrected_20261128": {
+          "pid": 443505,
+          "status": "alive",
+          "update_index": 14,
+          "transitions": 3600,
+          "requested_transitions": 250000,
+          "remaining_transitions": 246400,
+          "reward_last_window": -23.8,
+          "persisted_checkpoint_update": 10
+        }
+      },
+      "interpretation": "Both advanced 2 PPO updates / 480 transitions from last check; update10 remains most recent checkpoint. No quality inference."
     }
   ],
   "host": "H100",
-  "phase": "Two corrected 250k-transition runs alive at update12 / 3,120 transitions each (1.25%); rough 87h remaining per run at observed average rate. Full mission remains incomplete.",
+  "phase": "Corrected 250k regime runs live at update14 / 3600 transitions each; last checkpoint update10; no quality validation.",
   "polling": {
     "gpu_utilization_queried": false,
-    "last_consolidated_health_check_utc": "2026-11-28T06:08:44Z",
-    "next_check_not_before_utc": "2026-11-28T06:18:44Z"
+    "last_consolidated_health_check_utc": "2026-11-28T06:19:26Z",
+    "next_check_not_before_utc": "2026-11-28T06:29:26Z"
   },
   "previous_workloads": "seed436, seed437 and seed438 were left untouched",
   "published_kakarot_github_commit": "12b9ca28c2079d9dc875edcb13297d1d92782e3e",
@@ -623,11 +654,11 @@
       "status": "alive",
       "launch_pid": 443490,
       "stdout": "logs/paper_randomized_gpu0_seed445_corrected_20261128.stdout",
-      "last_update_index": 12,
-      "last_transitions": 3120,
+      "last_update_index": 14,
+      "last_transitions": 3600,
       "persisted_checkpoint_update": 10,
       "training_state_updates_counter": 11,
-      "remaining_transitions": 246880
+      "remaining_transitions": 246400
     },
     {
       "run_id": "paper_nonrandomized_gpu1_seed446_corrected_20261128",
@@ -643,11 +674,11 @@
       "status": "alive",
       "launch_pid": 443491,
       "stdout": "logs/paper_nonrandomized_gpu1_seed446_corrected_20261128.stdout",
-      "last_update_index": 12,
-      "last_transitions": 3120,
+      "last_update_index": 14,
+      "last_transitions": 3600,
       "persisted_checkpoint_update": 10,
       "training_state_updates_counter": 11,
-      "remaining_transitions": 246880
+      "remaining_transitions": 246400
     }
   ],
   "recovery_artifacts": {
