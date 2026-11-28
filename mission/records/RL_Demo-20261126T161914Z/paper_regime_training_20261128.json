@@ -555,7 +555,10 @@
     "test_waffle_human_dynamics.py": "11 passed",
     "test_paper_regime_scenarios.py": "3 passed",
     "git_diff_check": "passed",
-    "github_actions_feature_branch": "No runs found for codex/waffle-gazebo-mission-20261126; repository push workflows filter main and waffle-pi-sim2real; workflow_dispatch was not invoked."
+    "github_actions_feature_branch": "No runs found for codex/waffle-gazebo-mission-20261126; repository push workflows filter main and waffle-pi-sim2real; workflow_dispatch was not invoked.",
+    "test_waffle_training_state.py": "1 passed; Adam and RNG round-trip plus deterministic next update",
+    "test_waffle_paper_metrics.py": "13 passed",
+    "focused_test_total": "28 passed across dynamics, scenarios, state recovery, and paper metrics"
   },
   "active_runs": [
     {
@@ -600,6 +603,7 @@
   "recovery_artifacts": {
     "checkpoint_interval_updates": 10,
     "serialized_state_test": "torch.load on CPU succeeded for both; schema waffle_learner_v1; model/optimizer/RNG present",
-    "resume_smoke": "not yet performed"
+    "resume_smoke": "not yet performed",
+    "recovery_unit_test": "test_waffle_training_state.py passed Adam/optimizer/RNG round-trip and deterministic next update; real Gazebo continuation smoke not performed."
   }
 }
