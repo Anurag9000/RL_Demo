@@ -2581,14 +2581,61 @@
           "nonrandomized": "finished exit0"
         },
         "interpretation": "Consolidated free-VRAM/process snapshot; no GPU utilization query. Legacy trainers were left untouched."
+      },
+      {
+        "timestamp_utc": "2026-11-28T05:09:24Z",
+        "free_vram_mib": {
+          "gpu0": 32446,
+          "gpu1": 34162
+        },
+        "gpu_utilization_queried": false,
+        "trainers": {
+          "paper_randomized_gpu0_seed445_corrected_20261128": {
+            "pid": 443504,
+            "status": "alive",
+            "transitions": 240,
+            "update_index": 0,
+            "logged_fps": 0,
+            "episodes_reported": 52,
+            "mean_reward": -21.8,
+            "first_optimizer_update_completed": false,
+            "episode_worker_logs": 70
+          },
+          "paper_nonrandomized_gpu1_seed446_corrected_20261128": {
+            "pid": 443505,
+            "status": "alive",
+            "transitions": 240,
+            "update_index": 0,
+            "logged_fps": 0,
+            "episodes_reported": 39,
+            "mean_reward": -23.2,
+            "first_optimizer_update_completed": false,
+            "episode_worker_logs": 63
+          }
+        },
+        "legacy_trainers": {
+          "seed436": {
+            "pid": 2042361,
+            "status": "alive"
+          },
+          "seed437": {
+            "pid": 2042362,
+            "status": "alive"
+          },
+          "seed438": {
+            "pid": 3235199,
+            "status": "alive"
+          }
+        },
+        "interpretation": "Initial rollout only; no PPO update observed yet. Logged reward and FPS are startup summaries, not quality or steady-state throughput evidence."
       }
     ],
     "host": "H100",
-    "phase": "Fresh corrected randomized and nonrandomized 250k-transition Gazebo training runs launched on H100 GPUs 0 and 1; monitor at or after 2026-11-28T05:09:09Z. Legacy seed436/437/438 jobs remain untouched.",
+    "phase": "Fresh corrected regime training running; initial 240-transition rollout collected per 8-world job, first PPO update pending. Continue full training and validate before checkpoint selection.",
     "polling": {
       "gpu_utilization_queried": false,
-      "last_consolidated_health_check_utc": "2026-11-28T04:59:09Z",
-      "next_check_not_before_utc": "2026-11-28T05:09:09Z"
+      "last_consolidated_health_check_utc": "2026-11-28T05:09:24Z",
+      "next_check_not_before_utc": "2026-11-28T05:19:24Z"
     },
     "previous_workloads": "seed436, seed437 and seed438 were left untouched",
     "published_kakarot_github_commit": "12b9ca28c2079d9dc875edcb13297d1d92782e3e",
@@ -2842,8 +2889,8 @@
     "interpretation": "logged FPS includes cold startup and is not a steady-state throughput estimate; first rollout/update only, no quality inference"
   },
   "latest_status_20261128": {
-    "timestamp_utc": "2026-11-28T05:03:01Z",
-    "phase": "Corrected profile smokes passed for both regimes; fresh 250k-transition randomized seed445 and nonrandomized seed446 training started on H100 GPUs 0/1 with eight Gazebo worlds each.",
+    "timestamp_utc": "2026-11-28T05:09:24Z",
+    "phase": "Both corrected 8-world regime trainers alive at 240 transitions each; no optimizer update yet; free VRAM 32,446/34,162 MiB; see run registry.",
     "source_commit_h100": "b86381c1a88f3d36e09e6903d8f4c6e451564e3e",
     "source_tree_sha256_git": "ae62a798722afd3c34abdf5dfcc02abe8c51e39d",
     "active_runs": {
@@ -2872,8 +2919,12 @@
       "gpu1": 36581
     },
     "gpu_utilization_queried": false,
-    "next_consolidated_health_check_not_before_utc": "2026-11-28T05:09:09Z",
+    "next_consolidated_health_check_not_before_utc": "2026-11-28T05:19:24Z",
     "published_kakarot_github_commit": "1d923b3",
-    "published_tree_sha256_git": "ae62a798722afd3c34abdf5dfcc02abe8c51e39d"
+    "published_tree_sha256_git": "ae62a798722afd3c34abdf5dfcc02abe8c51e39d",
+    "free_vram_mib": {
+      "gpu0": 32446,
+      "gpu1": 34162
+    }
   }
 }
