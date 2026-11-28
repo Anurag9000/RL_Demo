@@ -375,14 +375,62 @@
         }
       },
       "interpretation": "Both hit their first periodic checkpoint at logged update index 10. Saved learner states deserialize and include model, optimizer, RNG and config state; the serialized update counter is 11 while the log index is 10. Checkpoints are not quality validated."
+    },
+    {
+      "timestamp_utc": "2026-11-28T06:08:44Z",
+      "free_vram_mib": {
+        "gpu0": 31673,
+        "gpu1": 38524
+      },
+      "gpu_utilization_queried": false,
+      "trainers": {
+        "paper_randomized_gpu0_seed445_corrected_20261128": {
+          "pid": 443504,
+          "status": "alive",
+          "update_index": 12,
+          "transitions": 3120,
+          "requested_transitions": 250000,
+          "remaining_transitions": 246880,
+          "reward_last_window": -21.8,
+          "persisted_checkpoint_update": 10
+        },
+        "paper_nonrandomized_gpu1_seed446_corrected_20261128": {
+          "pid": 443505,
+          "status": "alive",
+          "update_index": 12,
+          "transitions": 3120,
+          "requested_transitions": 250000,
+          "remaining_transitions": 246880,
+          "reward_last_window": -23.7,
+          "persisted_checkpoint_update": 10
+        }
+      },
+      "legacy_trainers": {
+        "seed436": {
+          "pid": 2042361,
+          "status": "alive"
+        },
+        "seed437": {
+          "pid": 2042362,
+          "status": "alive"
+        },
+        "seed438": {
+          "pid": 3235199,
+          "status": "alive"
+        }
+      },
+      "elapsed_since_launch_seconds": 3943,
+      "observed_average_transitions_per_second_per_run": 0.791,
+      "linear_budget_eta_hours_per_run": 86.6,
+      "eta_caveat": "Extrapolation for transition budget only; no convergence or full mission ETA."
     }
   ],
   "host": "H100",
-  "phase": "Both corrected runs alive at logged update10 / 2,640 transitions; first periodic native checkpoints and loadable learner states verified. Continue training; no validation yet.",
+  "phase": "Two corrected 250k-transition runs alive at update12 / 3,120 transitions each (1.25%); rough 87h remaining per run at observed average rate. Full mission remains incomplete.",
   "polling": {
     "gpu_utilization_queried": false,
-    "last_consolidated_health_check_utc": "2026-11-28T05:57:44Z",
-    "next_check_not_before_utc": "2026-11-28T06:07:44Z"
+    "last_consolidated_health_check_utc": "2026-11-28T06:08:44Z",
+    "next_check_not_before_utc": "2026-11-28T06:18:44Z"
   },
   "previous_workloads": "seed436, seed437 and seed438 were left untouched",
   "published_kakarot_github_commit": "12b9ca28c2079d9dc875edcb13297d1d92782e3e",
@@ -575,10 +623,11 @@
       "status": "alive",
       "launch_pid": 443490,
       "stdout": "logs/paper_randomized_gpu0_seed445_corrected_20261128.stdout",
-      "last_update_index": 10,
-      "last_transitions": 2640,
+      "last_update_index": 12,
+      "last_transitions": 3120,
       "persisted_checkpoint_update": 10,
-      "training_state_updates_counter": 11
+      "training_state_updates_counter": 11,
+      "remaining_transitions": 246880
     },
     {
       "run_id": "paper_nonrandomized_gpu1_seed446_corrected_20261128",
@@ -594,10 +643,11 @@
       "status": "alive",
       "launch_pid": 443491,
       "stdout": "logs/paper_nonrandomized_gpu1_seed446_corrected_20261128.stdout",
-      "last_update_index": 10,
-      "last_transitions": 2640,
+      "last_update_index": 12,
+      "last_transitions": 3120,
       "persisted_checkpoint_update": 10,
-      "training_state_updates_counter": 11
+      "training_state_updates_counter": 11,
+      "remaining_transitions": 246880
     }
   ],
   "recovery_artifacts": {

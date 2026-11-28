@@ -713,3 +713,7 @@ Both corrected trainers remain alive at logged update index 10 / 2,640 transitio
 ## Focused recovery and paper-metric regression tests
 
 `test_waffle_training_state.py` passed (1 test), covering Adam optimizer and RNG round-trip plus deterministic next update. `test_waffle_paper_metrics.py` passed (13 tests). With the previously run human-dynamics (11) and scenario-bank (3) suites, 28 focused tests pass. The live learner-state files also deserialize on CPU. A Gazebo-backed continuation/resume smoke has not been run; the current continuous jobs remain alive.
+
+## 2026-11-28T06:08:44Z run count and ETA snapshot
+
+Corrected paper-regime pair: 2 total, 0 complete, 2 live, 0 queued/unlaunched. Both are at update 12 / 3,120 of 250,000 transitions (1.25%), with 246,880 remaining each; last persisted checkpoint is update10. At 0.791 transitions/s/run averaged over 3,943 seconds since launch, a linear transition-budget projection is 86.6 hours remaining per run; both run in parallel. This is only a budget estimate, not a convergence or end-to-end mission ETA. Separately, legacy trainers seed436/437/438 are live; invalidated seed439/440 are stopped; two one-update integration smokes completed; two smoke attempts failed and were preserved. Full mission has no selected/validated checkpoint and no final evaluation. GPU0 free VRAM 31,673 MiB; GPU1 38,524 MiB; no utilization query. Next status no earlier than 06:18:44Z.
