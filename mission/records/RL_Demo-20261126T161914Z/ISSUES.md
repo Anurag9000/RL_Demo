@@ -115,3 +115,7 @@ Corrected validation run remains alive and has produced 61/500 trace files; no f
 ### I-028 progress - 2026-11-27T19:34:23Z
 
 Implemented hidden simulator-side randomized goal changes on five-second policy boundaries with per-human probability 0.5, deterministic five-second boundary coverage, and distinct nominal randomized/nonrandomized banks. Both regimes passed real Gazebo training smokes. This partially closes the original profile mismatch. It does not resolve full paper crowd-count coverage, measured human/robot data, long-run validation, or final held-out evaluation. Keep I-028 open until those gates are satisfied.
+
+### I-028 corrected smoke and training follow-up - 2026-11-28T05:03Z
+
+Both corrected profile variants passed actual Gazebo training smokes (one PPO update / 30 transitions): randomized seed443 sampled 2 scheduled changes with 0 failures; fixed-route seed444 recorded 40 route arrivals with 0 random changes. A first custom attempt failed because its helper omitted the established Podman worker environment; a second failed fixture was outside the 2.5 m arena. Both failures were preserved. The standard trainer supplies the Podman environment and successfully launched fresh seed445/446 runs at 8 worlds each, 250k requested transitions. New run IDs and hashes are recorded in the mission registry. I-028 stays open pending quality validation, full held-out evaluation, measured profiles and physical data.
