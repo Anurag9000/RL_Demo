@@ -124,7 +124,7 @@
     }
   ],
   "host": "H100",
-  "phase": "Corrected regime contracts verified in real Gazebo one-update smokes; fresh corrected training remains to run; legacy seed436/437/438 trainers untouched.",
+  "phase": "Fresh corrected randomized and nonrandomized 250k-transition Gazebo training runs launched on H100 GPUs 0 and 1; monitor at or after 2026-11-28T05:09:09Z. Legacy seed436/437/438 jobs remain untouched.",
   "polling": {
     "gpu_utilization_queried": false,
     "last_consolidated_health_check_utc": "2026-11-28T04:59:09Z",
@@ -134,9 +134,10 @@
   "published_kakarot_github_commit": "12b9ca28c2079d9dc875edcb13297d1d92782e3e",
   "published_tree_sha256_git": "752dd1b04c6d9bacb43af43dfc7000a053feca33",
   "resource_admission": {
-    "free_vram_mib_gpu0": 43480,
-    "free_vram_mib_gpu1": 39521,
-    "gpu_utilization_queried": false
+    "free_vram_mib_gpu0": 34760,
+    "free_vram_mib_gpu1": 36581,
+    "gpu_utilization_queried": false,
+    "decision": "8 Gazebo worlds per GPU admitted for fresh paper-regime runs; no allocator cap; startup verified; no utilization query"
   },
   "resource_after_admission": {
     "gpu0": 39692,
@@ -300,5 +301,37 @@
     "test_waffle_human_dynamics.py": "11 passed",
     "test_paper_regime_scenarios.py": "3 passed",
     "git_diff_check": "passed"
-  }
+  },
+  "active_runs": [
+    {
+      "run_id": "paper_randomized_gpu0_seed445_corrected_20261128",
+      "regime": "randomized",
+      "seed": 445,
+      "gpu": 0,
+      "worlds": 8,
+      "mini_batches": 8,
+      "requested_transitions": 250000,
+      "profile": "mission/profiles/waffle_gazebo_paper_randomized_500x3.json",
+      "profile_sha256": "f1e4e918bb0c70244bf87f6a1b85c2f43d56a3d1b00ec058ac74293497342418",
+      "started_utc": "2026-11-28T05:03:01Z",
+      "status": "started weights-only from official actor41665; native action head reset; fresh optimizer",
+      "launch_pid": 443490,
+      "stdout": "logs/paper_randomized_gpu0_seed445_corrected_20261128.stdout"
+    },
+    {
+      "run_id": "paper_nonrandomized_gpu1_seed446_corrected_20261128",
+      "regime": "nonrandomized",
+      "seed": 446,
+      "gpu": 1,
+      "worlds": 8,
+      "mini_batches": 8,
+      "requested_transitions": 250000,
+      "profile": "mission/profiles/waffle_gazebo_paper_nonrandomized_500x3.json",
+      "profile_sha256": "346261f1c4bc80b8514ae3da19e0bbb2efd64ad5b7af83e34d5cf5a28918a0f2",
+      "started_utc": "2026-11-28T05:03:01Z",
+      "status": "started weights-only from official actor41665; native action head reset; fresh optimizer",
+      "launch_pid": 443491,
+      "stdout": "logs/paper_nonrandomized_gpu1_seed446_corrected_20261128.stdout"
+    }
+  ]
 }
