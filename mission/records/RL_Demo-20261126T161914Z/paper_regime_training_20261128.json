@@ -48,18 +48,64 @@
           "update_index": 0
         }
       }
+    },
+    {
+      "timestamp_utc": "2026-11-28T04:16:10Z",
+      "free_vram_mib": {
+        "gpu0": 45554,
+        "gpu1": 45530
+      },
+      "gpu_utilization_queried": false,
+      "trainers": {
+        "paper_randomized_gpu0_seed439_20261128": {
+          "status": "stopped_invalidated",
+          "update_index": 76,
+          "transitions": 36960,
+          "exit_code": 143
+        },
+        "paper_nonrandomized_gpu1_seed440_20261128": {
+          "status": "stopped_invalidated",
+          "update_index": 78,
+          "transitions": 37920,
+          "exit_code": 143
+        }
+      },
+      "legacy_trainers": {
+        "seed436": {
+          "pid": 2042361,
+          "status": "alive",
+          "update_index": 453,
+          "transitions": 217920,
+          "recent_reward": -25.1844808008
+        },
+        "seed437": {
+          "pid": 2042362,
+          "status": "alive",
+          "update_index": 583,
+          "transitions": 140160,
+          "recent_reward": -25.2827939415
+        },
+        "seed438": {
+          "pid": 3235199,
+          "status": "alive",
+          "update_index": 102,
+          "transitions": 98880,
+          "recent_reward": -25.6755625153
+        }
+      },
+      "interpretation": "Only seed436/437/438 have live trainers; the two paper-regime runs were stopped because their environment contract was wrong. Existing legacy runs were left untouched."
     }
   ],
   "host": "H100",
-  "phase": "PPO active; first update completed for both regimes; quality unqualified",
+  "phase": "Corrected paper-regime source committed and synced; initial seed439/440 runs invalidated and stopped; Gazebo regression smoke pending; seeds436/437/438 remain active.",
   "polling": {
     "gpu_utilization_queried": false,
-    "last_consolidated_health_check_utc": "2026-11-27T20:24:04Z",
-    "next_check_not_before_utc": "2026-11-27T20:34:04Z"
+    "last_consolidated_health_check_utc": "2026-11-28T04:16:10Z",
+    "next_check_not_before_utc": "2026-11-28T04:26:10Z"
   },
   "previous_workloads": "seed436, seed437 and seed438 were left untouched",
-  "published_kakarot_github_commit": "5d11cb2129eb3e5be0929ab7ba56ba6286b50768",
-  "published_tree_sha256_git": "04fdc6ce0f21988ecf8840438fc49122f095d46f",
+  "published_kakarot_github_commit": "d9461f0e4b6b04e0307d0522f67b43d8dd12eb6a",
+  "published_tree_sha256_git": "b5b420133af2eb62c0d07ba28e8773fd4420bb48",
   "resource_admission": {
     "free_vram_mib_gpu0": 43480,
     "free_vram_mib_gpu1": 39521,
@@ -74,7 +120,7 @@
     {
       "checkpoint": "trained_models/GST_predictor_rand/checkpoints/41665.pt",
       "checkpoint_sha256": "a60bdd3b8ca84457497365133b9055c80d55b11c5a3bc76b28e38d4200cfd8ce",
-      "evidence": "per-world episode logs present; learner alive; no PPO update/progress.csv observed yet",
+      "evidence": "Stopped at update 76 / 36960 transitions; profile enabled unscheduled random goal sampling on arrival, so this lineage is invalid for the intended regime comparison. Exit code 143 at 2026-11-28T04:03:14Z. Checkpoint preserved but not compatible with corrected regime semantics.",
       "gazebo_world_configs": 16,
       "gpu": 0,
       "initialization": "transferred official randomized actor; native action head reset; fresh PPO optimizer",
@@ -93,12 +139,23 @@
       "started_utc": "2026-11-27T20:10:47Z",
       "startup_evidence_utc": "2026-11-27T20:13:36Z",
       "stdout": "logs/paper_randomized_gpu0_seed439_20261128.stdout",
-      "worlds": 16
+      "worlds": 16,
+      "status": "invalidated_regime_semantics_stopped",
+      "status_update_utc": "2026-11-28T04:03:14Z",
+      "last_update_index": 76,
+      "last_progress_transitions": 36960,
+      "last_logged_mean_reward": -21.664435729980468,
+      "profile_sha256_at_launch": "57b373a1c6d63cc281c5699071414b3733dd4084aca8ccd43717ce43fcb68931",
+      "profile_sha256_current": "f1e4e918bb0c70244bf87f6a1b85c2f43d56a3d1b00ec058ac74293497342418",
+      "exit_code": 143,
+      "checkpoint_state_sha256": "7aeb1c3745de79ad117298a1e2f6369be1733f9198a348bc1d775295d6f65e9a",
+      "checkpoint_state_mtime_utc": "2026-11-28T03:17:11.956Z",
+      "resume_allowed": false
     },
     {
       "checkpoint": "trained_models/GST_predictor_rand/checkpoints/41665.pt",
       "checkpoint_sha256": "a60bdd3b8ca84457497365133b9055c80d55b11c5a3bc76b28e38d4200cfd8ce",
-      "evidence": "per-world episode logs present; learner alive; no PPO update/progress.csv observed yet",
+      "evidence": "Stopped at update 78 / 37920 transitions; profile enabled unscheduled random goal sampling on arrival, so this lineage is invalid for the intended regime comparison. Exit code 143 at 2026-11-28T04:03:14Z. Checkpoint preserved but not compatible with corrected regime semantics.",
       "gazebo_world_configs": 16,
       "gpu": 1,
       "initialization": "transferred official randomized actor; native action head reset; fresh PPO optimizer",
@@ -117,11 +174,44 @@
       "started_utc": "2026-11-27T20:10:47Z",
       "startup_evidence_utc": "2026-11-27T20:13:36Z",
       "stdout": "logs/paper_nonrandomized_gpu1_seed440_20261128.stdout",
-      "worlds": 16
+      "worlds": 16,
+      "status": "invalidated_regime_semantics_stopped",
+      "status_update_utc": "2026-11-28T04:03:14Z",
+      "last_update_index": 78,
+      "last_progress_transitions": 37920,
+      "last_logged_mean_reward": -23.66408164978027,
+      "profile_sha256_at_launch": "c6cd247d1f9acd3aee76a958e0a2a463c8cbd099b2d289c46d0b2201754d3d39",
+      "profile_sha256_current": "346261f1c4bc80b8514ae3da19e0bbb2efd64ad5b7af83e34d5cf5a28918a0f2",
+      "exit_code": 143,
+      "checkpoint_state_sha256": "d5eb289fd40b64ef3e2d71f2b0f5c43ab5e05e9ac29c85c50664e0b8222657b3",
+      "checkpoint_state_mtime_utc": "2026-11-28T03:14:46.513Z",
+      "resume_allowed": false
     }
   ],
   "schema": "waffle-paper-regime-training-launch-v1",
-  "source_commit_h100": "66efe86eb043bfdb31d365be4058b3e6b9016bfc",
-  "source_tree_sha256_git": "04fdc6ce0f21988ecf8840438fc49122f095d46f",
-  "worker_sha256": "095521529c74cb135c7be804c21a374d7db4299a3928b3b47d0825479fe7e9aa"
+  "source_commit_h100": "59ca1ee9e6da92b28152fab55a3ca0f7e2ebf4d7",
+  "source_tree_sha256_git": "b5b420133af2eb62c0d07ba28e8773fd4420bb48",
+  "worker_sha256": "095521529c74cb135c7be804c21a374d7db4299a3928b3b47d0825479fe7e9aa",
+  "regime_correction": {
+    "fixed_in_commit": "dab4b7d11fa3f4c84b07a9f88683095d2f5a4222",
+    "current_source_commit": "59ca1ee9e6da92b28152fab55a3ca0f7e2ebf4d7",
+    "current_source_tree": "b5b420133af2eb62c0d07ba28e8773fd4420bb48",
+    "profile_sha256_current": {
+      "randomized": "f1e4e918bb0c70244bf87f6a1b85c2f43d56a3d1b00ec058ac74293497342418",
+      "nonrandomized": "346261f1c4bc80b8514ae3da19e0bbb2efd64ad5b7af83e34d5cf5a28918a0f2"
+    },
+    "scenario_banks_regenerated": {
+      "randomized": 1500,
+      "nonrandomized": 1500,
+      "case_definitions_unchanged": true
+    },
+    "semantics": "Both regimes advance deterministic cyclic scenario waypoints on arrival. Only randomized runs may sample a temporary goal at scheduled five-second boundaries, independently per human with probability 0.5. Arrival itself never samples a random goal.",
+    "validation": {
+      "human_dynamics_unittest": "10 passed",
+      "paper_regime_scenario_unittest": "3 passed",
+      "profile_validation": "both profiles accepted",
+      "launcher_signal_reset": "verified Python SIGINT default handler"
+    },
+    "actual_gazebo_smoke": "pending"
+  }
 }

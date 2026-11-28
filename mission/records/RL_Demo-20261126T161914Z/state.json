@@ -68,7 +68,7 @@
     "Maintain each process 10% VRAM allocator cap and preserve unrelated jobs"
   ],
   "branch": "codex/waffle-gazebo-mission-20261126",
-  "commit": "8bcaf346a4589e2b21466d1d3cdbfe62074724c5",
+  "commit": "59ca1ee9e6da92b28152fab55a3ca0f7e2ebf4d7",
   "cpu_allowed": "0-63",
   "current_training_recovery1": {
     "gpu_free_mib": {
@@ -1153,7 +1153,7 @@
     "full_final_evaluation": "not run; test split remains sealed",
     "timestamp_validation": "policy_dt spacing, robot/human timeline alignment, complete future horizon coverage; malformed timestamp regression"
   },
-  "phase": "seed436_seed437_v5_recovery_training_running_slow; real validation trace smoke passed; mission_incomplete",
+  "phase": "corrected_paper_regime_profiles_smoke_pending; three legacy trainers still running; mission_incomplete",
   "publication_sync": {
     "artifact_commit": "8bcaf346a4589e2b21466d1d3cdbfe62074724c5",
     "artifact_hash_mismatches": 0,
@@ -2630,5 +2630,56 @@
       }
     },
     "interpretation": "logged FPS includes cold startup and is not a steady-state throughput estimate; first rollout/update only, no quality inference"
+  },
+  "latest_status_20261128": {
+    "timestamp_utc": "2026-11-28T04:16:10Z",
+    "phase": "Corrected paper-regime source committed and synced; initial seed439/440 runs invalidated and stopped; Gazebo regression smoke pending; seeds436/437/438 remain active.",
+    "source_commit_h100": "59ca1ee9e6da92b28152fab55a3ca0f7e2ebf4d7",
+    "source_tree_sha256_git": "b5b420133af2eb62c0d07ba28e8773fd4420bb48",
+    "published_kakarot_github_commit": "d9461f0e4b6b04e0307d0522f67b43d8dd12eb6a",
+    "paper_regime_runs": {
+      "paper_randomized_gpu0_seed439_20261128": {
+        "status": "invalidated_regime_semantics_stopped",
+        "update_index": 76,
+        "transitions": 36960,
+        "exit_code": 143,
+        "checkpoint_sha256": "7aeb1c3745de79ad117298a1e2f6369be1733f9198a348bc1d775295d6f65e9a",
+        "resume_allowed": false
+      },
+      "paper_nonrandomized_gpu1_seed440_20261128": {
+        "status": "invalidated_regime_semantics_stopped",
+        "update_index": 78,
+        "transitions": 37920,
+        "exit_code": 143,
+        "checkpoint_sha256": "d5eb289fd40b64ef3e2d71f2b0f5c43ab5e05e9ac29c85c50664e0b8222657b3",
+        "resume_allowed": false
+      }
+    },
+    "active_legacy_trainers": {
+      "seed436": {
+        "pid": 2042361,
+        "status": "alive",
+        "update_index": 453,
+        "transitions": 217920
+      },
+      "seed437": {
+        "pid": 2042362,
+        "status": "alive",
+        "update_index": 583,
+        "transitions": 140160
+      },
+      "seed438": {
+        "pid": 3235199,
+        "status": "alive",
+        "update_index": 102,
+        "transitions": 98880
+      }
+    },
+    "free_vram_mib": {
+      "gpu0": 45554,
+      "gpu1": 45530
+    },
+    "gpu_utilization_queried": false,
+    "next_consolidated_health_check_not_before_utc": "2026-11-28T04:26:10Z"
   }
 }
