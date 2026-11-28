@@ -2679,14 +2679,63 @@
           }
         },
         "interpretation": "Both corrected jobs advanced from 240 to 720 transitions and updates 0 to 2. Output FPS remains rounded below one. Current training_state/checkpoint files are persisted at update 0; latest optimizer progress is not yet saved. No policy-quality inference."
+      },
+      {
+        "timestamp_utc": "2026-11-28T05:31:55Z",
+        "free_vram_mib": {
+          "gpu0": 32376,
+          "gpu1": 35947
+        },
+        "gpu_utilization_queried": false,
+        "trainers": {
+          "paper_randomized_gpu0_seed445_corrected_20261128": {
+            "pid": 443504,
+            "status": "alive",
+            "transitions": 1200,
+            "update_index": 4,
+            "logged_fps": 0,
+            "episodes_reported_last_window": 100,
+            "mean_reward_last_window": -22.2,
+            "persisted_checkpoint_update": 0,
+            "training_state_sha256": "2ef655317546e3ca9e5346335ac81047ba12738ae5821ac616936eb983846773",
+            "checkpoint_sha256": "d8089e1730aa08d43ec0ba8e4563cb1d08d32c3f7dc96fb74839621a3560c112"
+          },
+          "paper_nonrandomized_gpu1_seed446_corrected_20261128": {
+            "pid": 443505,
+            "status": "alive",
+            "transitions": 1200,
+            "update_index": 4,
+            "logged_fps": 0,
+            "episodes_reported_last_window": 100,
+            "mean_reward_last_window": -23.1,
+            "persisted_checkpoint_update": 0,
+            "training_state_sha256": "a8b651e8aa26411bea536626c27a6e1edf46b6a353453ef2a31ab8ca04665092",
+            "checkpoint_sha256": "0ed34f64e9980ee6c42b5426d3fed806e923748594674986baeda8d2b5dc35a8"
+          }
+        },
+        "legacy_trainers": {
+          "seed436": {
+            "pid": 2042361,
+            "status": "alive"
+          },
+          "seed437": {
+            "pid": 2042362,
+            "status": "alive"
+          },
+          "seed438": {
+            "pid": 3235199,
+            "status": "alive"
+          }
+        },
+        "interpretation": "Both new runs advanced two PPO updates and 480 transitions since prior check. Existing saved state/checkpoint files remain at update 0; no quality evidence yet."
       }
     ],
     "host": "H100",
-    "phase": "Corrected fresh regime trainers alive at update 2 / 720 transitions each; checkpoints remain at initial update 0. Continue to first periodic save and validate.",
+    "phase": "Fresh corrected regime trainers alive at update 4 / 1,200 transitions each; first periodic trained checkpoint is pending. No quality conclusion.",
     "polling": {
       "gpu_utilization_queried": false,
-      "last_consolidated_health_check_utc": "2026-11-28T05:20:14Z",
-      "next_check_not_before_utc": "2026-11-28T05:30:14Z"
+      "last_consolidated_health_check_utc": "2026-11-28T05:31:55Z",
+      "next_check_not_before_utc": "2026-11-28T05:41:55Z"
     },
     "previous_workloads": "seed436, seed437 and seed438 were left untouched",
     "published_kakarot_github_commit": "12b9ca28c2079d9dc875edcb13297d1d92782e3e",
@@ -2876,8 +2925,8 @@
         "status": "alive",
         "launch_pid": 443490,
         "stdout": "logs/paper_randomized_gpu0_seed445_corrected_20261128.stdout",
-        "last_update_index": 2,
-        "last_transitions": 720,
+        "last_update_index": 4,
+        "last_transitions": 1200,
         "persisted_checkpoint_update": 0
       },
       {
@@ -2894,8 +2943,8 @@
         "status": "alive",
         "launch_pid": 443491,
         "stdout": "logs/paper_nonrandomized_gpu1_seed446_corrected_20261128.stdout",
-        "last_update_index": 2,
-        "last_transitions": 720,
+        "last_update_index": 4,
+        "last_transitions": 1200,
         "persisted_checkpoint_update": 0
       }
     ]
@@ -2947,8 +2996,8 @@
     "interpretation": "logged FPS includes cold startup and is not a steady-state throughput estimate; first rollout/update only, no quality inference"
   },
   "latest_status_20261128": {
-    "timestamp_utc": "2026-11-28T05:20:14Z",
-    "phase": "Both corrected regime trainers alive at update 2 / 720 transitions; persisted checkpoints still at update 0.",
+    "timestamp_utc": "2026-11-28T05:31:55Z",
+    "phase": "Corrected regimes at update4/1200 transitions each; saved state remains update0.",
     "source_commit_h100": "b86381c1a88f3d36e09e6903d8f4c6e451564e3e",
     "source_tree_sha256_git": "ae62a798722afd3c34abdf5dfcc02abe8c51e39d",
     "active_runs": {
@@ -2977,12 +3026,12 @@
       "gpu1": 36581
     },
     "gpu_utilization_queried": false,
-    "next_consolidated_health_check_not_before_utc": "2026-11-28T05:30:14Z",
+    "next_consolidated_health_check_not_before_utc": "2026-11-28T05:41:55Z",
     "published_kakarot_github_commit": "1d923b3",
     "published_tree_sha256_git": "ae62a798722afd3c34abdf5dfcc02abe8c51e39d",
     "free_vram_mib": {
-      "gpu0": 32426,
-      "gpu1": 34829
+      "gpu0": 32376,
+      "gpu1": 35947
     }
   }
 }
