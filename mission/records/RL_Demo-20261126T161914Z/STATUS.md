@@ -693,3 +693,7 @@ Both corrected 8-world trainers remain alive. Each collected 240 transitions (on
 ## CI check - 2026-11-28T05:10Z
 
 GitHub Actions query for `codex/waffle-gazebo-mission-20261126` returned 0 workflow runs. The two push workflows filter `main` and `waffle-pi-sim2real`; `workflow_dispatch` is available, but was not invoked. Therefore CI is unverified for this branch. Focused H100 regression tests passed: 11 human-dynamics tests and 3 scenario-bank tests.
+
+## 2026-11-28T05:20:14Z consolidated training check
+
+Both corrected trainers remain alive and advanced from update 0 / 240 transitions to update 2 / 720 transitions. The latest 100 reported episodes had mean reward -21.9 randomized and -23.8 nonrandomized, with logged FPS still rounded to 0; these are early-training diagnostics only. Current persisted checkpoints remain at update 0: randomized training_state SHA-256 `2ef655317546e3ca9e5346335ac81047ba12738ae5821ac616936eb983846773`, checkpoint `00000.pt` SHA-256 `d8089e1730aa08d43ec0ba8e4563cb1d08d32c3f7dc96fb74839621a3560c112`; nonrandomized training_state `a8b651e8aa26411bea536626c27a6e1edf46b6a353453ef2a31ab8ca04665092`, checkpoint `00000.pt` `0ed34f64e9980ee6c42b5426d3fed806e923748594674986baeda8d2b5dc35a8`. GPU0 free VRAM 32,426 MiB, GPU1 34,829 MiB; utilization not queried. Existing seed436/437/438 trainers remain alive and untouched. Next consolidated check no earlier than 05:30:14Z.

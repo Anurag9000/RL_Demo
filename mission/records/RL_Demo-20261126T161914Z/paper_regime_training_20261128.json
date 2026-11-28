@@ -168,14 +168,65 @@
         }
       },
       "interpretation": "Initial rollout only; no PPO update observed yet. Logged reward and FPS are startup summaries, not quality or steady-state throughput evidence."
+    },
+    {
+      "timestamp_utc": "2026-11-28T05:20:14Z",
+      "free_vram_mib": {
+        "gpu0": 32426,
+        "gpu1": 34829
+      },
+      "gpu_utilization_queried": false,
+      "trainers": {
+        "paper_randomized_gpu0_seed445_corrected_20261128": {
+          "pid": 443504,
+          "status": "alive",
+          "transitions": 720,
+          "update_index": 2,
+          "logged_fps": 0,
+          "episodes_reported_last_window": 100,
+          "mean_reward_last_window": -21.9,
+          "persisted_checkpoint_update": 0,
+          "training_state_mtime_utc": "2026-11-28T05:08:08Z",
+          "training_state_sha256": "2ef655317546e3ca9e5346335ac81047ba12738ae5821ac616936eb983846773",
+          "checkpoint_00000_sha256": "d8089e1730aa08d43ec0ba8e4563cb1d08d32c3f7dc96fb74839621a3560c112"
+        },
+        "paper_nonrandomized_gpu1_seed446_corrected_20261128": {
+          "pid": 443505,
+          "status": "alive",
+          "transitions": 720,
+          "update_index": 2,
+          "logged_fps": 0,
+          "episodes_reported_last_window": 100,
+          "mean_reward_last_window": -23.8,
+          "persisted_checkpoint_update": 0,
+          "training_state_mtime_utc": "2026-11-28T05:08:01Z",
+          "training_state_sha256": "a8b651e8aa26411bea536626c27a6e1edf46b6a353453ef2a31ab8ca04665092",
+          "checkpoint_00000_sha256": "0ed34f64e9980ee6c42b5426d3fed806e923748594674986baeda8d2b5dc35a8"
+        }
+      },
+      "legacy_trainers": {
+        "seed436": {
+          "pid": 2042361,
+          "status": "alive"
+        },
+        "seed437": {
+          "pid": 2042362,
+          "status": "alive"
+        },
+        "seed438": {
+          "pid": 3235199,
+          "status": "alive"
+        }
+      },
+      "interpretation": "Both corrected jobs advanced from 240 to 720 transitions and updates 0 to 2. Output FPS remains rounded below one. Current training_state/checkpoint files are persisted at update 0; latest optimizer progress is not yet saved. No policy-quality inference."
     }
   ],
   "host": "H100",
-  "phase": "Fresh corrected regime training running; initial 240-transition rollout collected per 8-world job, first PPO update pending. Continue full training and validate before checkpoint selection.",
+  "phase": "Corrected fresh regime trainers alive at update 2 / 720 transitions each; checkpoints remain at initial update 0. Continue to first periodic save and validate.",
   "polling": {
     "gpu_utilization_queried": false,
-    "last_consolidated_health_check_utc": "2026-11-28T05:09:24Z",
-    "next_check_not_before_utc": "2026-11-28T05:19:24Z"
+    "last_consolidated_health_check_utc": "2026-11-28T05:20:14Z",
+    "next_check_not_before_utc": "2026-11-28T05:30:14Z"
   },
   "previous_workloads": "seed436, seed437 and seed438 were left untouched",
   "published_kakarot_github_commit": "12b9ca28c2079d9dc875edcb13297d1d92782e3e",
@@ -362,9 +413,12 @@
       "profile": "mission/profiles/waffle_gazebo_paper_randomized_500x3.json",
       "profile_sha256": "f1e4e918bb0c70244bf87f6a1b85c2f43d56a3d1b00ec058ac74293497342418",
       "started_utc": "2026-11-28T05:03:01Z",
-      "status": "started weights-only from official actor41665; native action head reset; fresh optimizer",
+      "status": "alive",
       "launch_pid": 443490,
-      "stdout": "logs/paper_randomized_gpu0_seed445_corrected_20261128.stdout"
+      "stdout": "logs/paper_randomized_gpu0_seed445_corrected_20261128.stdout",
+      "last_update_index": 2,
+      "last_transitions": 720,
+      "persisted_checkpoint_update": 0
     },
     {
       "run_id": "paper_nonrandomized_gpu1_seed446_corrected_20261128",
@@ -377,9 +431,12 @@
       "profile": "mission/profiles/waffle_gazebo_paper_nonrandomized_500x3.json",
       "profile_sha256": "346261f1c4bc80b8514ae3da19e0bbb2efd64ad5b7af83e34d5cf5a28918a0f2",
       "started_utc": "2026-11-28T05:03:01Z",
-      "status": "started weights-only from official actor41665; native action head reset; fresh optimizer",
+      "status": "alive",
       "launch_pid": 443491,
-      "stdout": "logs/paper_nonrandomized_gpu1_seed446_corrected_20261128.stdout"
+      "stdout": "logs/paper_nonrandomized_gpu1_seed446_corrected_20261128.stdout",
+      "last_update_index": 2,
+      "last_transitions": 720,
+      "persisted_checkpoint_update": 0
     }
   ]
 }
